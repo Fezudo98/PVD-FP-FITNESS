@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios - Sistema FP Moda Fitness</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="background-container"></div>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/index.html"><img src="/logo.jpg" alt="Logo" width="100"></a>
+        <div class="d-flex">
+            <a href="/index.html" class="btn btn-outline-secondary me-2">Voltar ao Painel</a>
+            <button class="btn btn-outline-warning" id="logoutButton">Sair</button>
+        </div>
+    </div>
+</nav>
+
+    <main class="container main-content mt-4">
+        <h2 class="mb-4">Relatórios e Análises</h2>
+
+        <!-- Seção de Filtros -->
+        <div class="pdv-panel mb-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="dataInicio" class="form-label">Data de Início</label>
+                    <input type="date" id="dataInicio" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label for="dataFim" class="form-label">Data de Fim</label>
+                    <input type="date" id="dataFim" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <button id="filtrarBtn" class="btn btn-custom w-100">Filtrar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção de KPIs -->
+        <div class="row row-cols-1 row-cols-md-3 row-cols-lg-6 g-3 mb-4">
+            <div class="col"><div class="kpi-card text-center h-100"><div class="card-body"><h5>Receita Total</h5><h3 id="kpiReceitaTotal">R$ 0,00</h3></div></div></div>
+            <div class="col"><div class="kpi-card text-center h-100"><div class="card-body"><h5>Lucro Bruto</h5><h3 id="kpiLucroBruto">R$ 0,00</h3></div></div></div>
+            <div class="col"><div class="kpi-card text-center h-100"><div class="card-body"><h5>Vendas</h5><h3 id="kpiTotalVendas">0</h3></div></div></div>
+            <div class="col"><div class="kpi-card text-center h-100"><div class="card-body"><h5>Ticket Médio</h5><h3 id="kpiTicketMedio">R$ 0,00</h3></div></div></div>
+            
+            <!-- ===== ALTERAÇÃO AQUI: Novo card de Descontos ===== -->
+            <div class="col"><div class="kpi-card text-center h-100"><div class="card-body"><h5>Total Descontos</h5><h3 id="kpiTotalDescontos">R$ 0,00</h3></div></div></div>
+            
+            <div class="col"><div class="kpi-card text-center h-100"><div class="card-body"><h5>Taxas de Entrega</h5><h3 id="kpiTaxasEntrega">R$ 0,00</h3></div></div></div>
+        </div>
+
+        <!-- Seção de Gráficos -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-8"><div class="pdv-panel"><canvas id="vendasTempoChart"></canvas></div></div>
+            <div class="col-lg-4"><div class="pdv-panel"><canvas id="formaPagamentoChart"></canvas></div></div>
+        </div>
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6"><div class="pdv-panel"><canvas id="rankingProdutosChart"></canvas></div></div>
+            <div class="col-lg-6"><div class="pdv-panel"><canvas id="rankingVendedoresChart"></canvas></div></div>
+        </div>
+
+        <!-- Tabela de Vendas Detalhadas -->
+        <div class="pdv-panel">
+            <h4>Vendas no Período</h4>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Data</th>
+                            <th>Cliente</th>
+                            <th>Vendedor</th>
+                            <th>Pagamento</th>
+                            <th>Total</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vendasTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para Recibo da Venda -->
+    <div class="modal fade" id="receiptModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content receipt-modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Comprovante de Venda</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="receiptContent">
+                    <div class="text-center mb-3">
+                        <img src="/logo.jpg" alt="Logo" style="width: 150px;">
+                        <h5>FP Moda Fitness</h5>
+                    </div>
+                    <hr>
+                    <p><strong>Venda ID:</strong> <span id="receiptVendaId"></span></p>
+                    <p><strong>Data:</strong> <span id="receiptData"></span></p>
+                    <p><strong>Cliente:</strong> <span id="receiptCliente"></span></p>
+                    <p><strong>Vendedor(a):</strong> <span id="receiptVendedor"></span></p>
+                    <hr>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Qtd.</th>
+                                <th>Preço</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="receiptItemsTable"></tbody>
+                    </table>
+                    <hr>
+                    <div class="text-end">
+                        <p><strong>Subtotal Produtos:</strong> <span id="receiptSubtotal"></span></p>
+                        <p id="receiptDiscountRow" class="d-none"><strong>Desconto (<span id="receiptCupomCode"></span>):</strong> <span id="receiptDiscountValue"></span></p>
+                        <p><strong>Taxa de Entrega:</strong> <span id="receiptTaxaEntrega"></span></p>
+                        <h4><strong>Total Geral:</strong> <span id="receiptTotalGeral"></span></h4>
+                        <p><strong>Pagamento:</strong> <span id="receiptFormaPagamento"></span></p>
+                    </div>
+                    <hr>
+                    <p class="text-center small">Obrigado pela preferência!</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" onclick="printReceipt()">Imprimir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/js/relatorios.js"></script>
+</body>
+</html>

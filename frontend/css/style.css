@@ -1,0 +1,151 @@
+/* Definindo as cores da marca para fácil reutilização */
+:root {
+    --cor-principal: #e0b431; /* Amarelo/Dourado da logo */
+    --cor-fundo: #1c1c1c;      /* Fundo escuro da logo */
+    --cor-card: #2a2a2a;       /* Um cinza um pouco mais claro para o card */
+    --cor-texto: #f8f9fa;      /* Texto branco/claro */
+}
+
+body {
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
+.login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.login-card {
+    background-color: var(--cor-card);
+    border: 1px solid #444;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-logo {
+    max-width: 250px;
+    height: auto;
+}
+
+/* Estilo para os campos de formulário no tema escuro */
+.form-control {
+    background-color: #333;
+    color: var(--cor-texto);
+    border: 1px solid #555;
+}
+
+.form-control:focus {
+    background-color: #444;
+    color: var(--cor-texto);
+    border-color: var(--cor-principal);
+    box-shadow: 0 0 0 0.25rem rgba(224, 180, 49, 0.25);
+}
+
+/* Botão personalizado com a cor da marca */
+.btn-custom {
+    background-color: var(--cor-principal);
+    border-color: var(--cor-principal);
+    color: #000;
+    font-weight: bold;
+}
+
+.btn-custom:hover {
+    background-color: #c9a22b; /* Um tom um pouco mais escuro para o hover */
+    border-color: #c9a22b;
+    color: #000;
+}
+
+/* --- Estilos da Página Principal (Dashboard) --- */
+
+.background-container {
+    background-image: url('/logo.jpg'); /* Navega uma pasta para cima para achar a logo */
+    background-size: cover;
+    background-position: center center;
+    
+    /* O EFEITO MÁGICO */
+    filter: blur(8px) brightness(0.4);
+
+    position: fixed; /* Fica fixo no fundo */
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1; /* Joga o fundo para trás de todo o conteúdo */
+}
+
+.main-content {
+    background-color: rgba(0, 0, 0, 0.5); /* Fundo semi-transparente para o conteúdo */
+    padding: 2rem;
+    border-radius: 10px;
+}
+
+h2, h4 {
+    color: var(--cor-principal);
+}
+
+/* --- Estilos da Página de Produtos --- */
+.table-responsive {
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+/* --- Estilos da Página do PDV --- */
+.pdv-panel {
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 1.5rem;
+    border-radius: 10px;
+    height: 100%;
+}
+
+#searchResults, #cartItems {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #receiptContent, #receiptContent * {
+        visibility: visible;
+    }
+    #receiptContent {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    .modal-dialog {
+        max-width: 100%;
+        margin: 0;
+    }
+}
+
+/* --- Estilos da Página de Relatórios --- */
+.kpi-card {
+    background-color: var(--cor-card);
+    border: 1px solid var(--cor-principal);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.kpi-card h5 {
+    color: #aaa;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.kpi-card h3 {
+    color: var(--cor-principal);
+    font-weight: bold;
+}
+
+/* CORREÇÃO ADICIONADA AQUI */
+.receipt-modal-content {
+    color: #000;
+}

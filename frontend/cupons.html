@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Cupons - Sistema FP Moda Fitness</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="background-container"></div>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/index.html"><img src="/logo.jpg" alt="Logo" width="100"></a>
+        <div class="d-flex">
+            <a href="/index.html" class="btn btn-outline-secondary me-2">Voltar ao Painel</a>
+            <button class="btn btn-outline-warning" id="logoutButton">Sair</button>
+        </div>
+    </div>
+</nav>
+
+    <main class="container main-content mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Gerenciar Cupons de Desconto</h2>
+            <button class="btn btn-custom" id="addCupomBtn">Adicionar Novo Cupom</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dark table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Código</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="cuponsTableBody">
+                    <!-- Linhas da tabela serão inseridas aqui via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal para Adicionar/Editar Cupom -->
+    <div class="modal fade" id="cupomModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Adicionar Cupom</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="cupomForm">
+                        <input type="hidden" id="cupomId">
+                        <div class="mb-3">
+                            <label for="codigo" class="form-label">Código do Cupom</label>
+                            <input type="text" class="form-control" id="codigo" required style="text-transform:uppercase">
+                            <small class="form-text text-muted">Ex: PROMO10, NATAL2025</small>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="tipo_desconto" class="form-label">Tipo de Desconto</label>
+                                <select class="form-select" id="tipo_desconto" required>
+                                    <option value="percentual">Percentual (%)</option>
+                                    <option value="fixo">Fixo (R$)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="valor_desconto" class="form-label">Valor</label>
+                                <input type="number" step="0.01" class="form-control" id="valor_desconto" required>
+                                <small class="form-text text-muted">Use 10 para 10% ou 25.50 para R$25,50</small>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" form="cupomForm" class="btn btn-custom">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/cupons.js"></script>
+</body>
+</html>
