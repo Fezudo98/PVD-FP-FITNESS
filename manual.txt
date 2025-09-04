@@ -58,6 +58,18 @@ Para o sistema funcionar, seu computador precisa de dois programas gratuitos.
 
 *   **PARA DESLIGAR O SISTEMA:** Simplesmente feche a janela preta do servidor.
 
+---
+### ETAPA 3.5: CRIANDO O PRIMEIRO ADMINISTRADOR
+---
+
+1.  Após a primeira execução do `start_server.bat` ter sido concluída, abra seu navegador.
+
+2.  Acesse o seguinte endereço especial:
+    `http://localhost:5000/registrar-admin.html`
+
+3.  Preencha o formulário com os dados do administrador principal da loja e clique em "Criar Administrador".
+
+4.  Após a mensagem de sucesso, você será redirecionado para a tela de login. Agora o sistema está pronto para ser usado.
 
 ---
 ### ETAPA 4: COMO ATUALIZAR O SISTEMA

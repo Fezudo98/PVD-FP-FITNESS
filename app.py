@@ -160,7 +160,12 @@ def serve_static_files(filename):
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     dados = request.get_json()
-    if Usuario.query.count() > 0:
+    
+    # ===== ALTERAÇÃO AQUI: Lógica para o primeiro administrador =====
+    is_first_user = Usuario.query.count() == 0
+
+    if not is_first_user:
+        # Se não for o primeiro usuário, a lógica de segurança normal se aplica
         token = request.headers.get('x-access-token')
         if not token: return jsonify({'erro': 'Apenas um administrador pode criar novos usuários.'}), 401
         try:
@@ -169,12 +174,29 @@ def register():
             if current_user.role != 'admin':
                  return jsonify({'erro': 'Apenas um administrador pode criar novos usuários.'}), 403
         except Exception: return jsonify({'message': 'Token inválido!'}), 401
+
     if Usuario.query.filter_by(email=dados['email']).first():
         return jsonify({'erro': 'Email já cadastrado.'}), 400
+    
     senha_hash = bcrypt.generate_password_hash(dados['senha']).decode('utf-8')
-    novo_usuario = Usuario(nome=dados['nome'], email=dados['email'], senha_hash=senha_hash, role=dados.get('role', 'vendedor'))
+    
+    # Força o primeiro usuário a ser admin, senão usa o que foi enviado (com 'vendedor' como padrão)
+    role_to_set = 'admin' if is_first_user else dados.get('role', 'vendedor')
+    
+    novo_usuario = Usuario(
+        nome=dados['nome'], 
+        email=dados['email'], 
+        senha_hash=senha_hash, 
+        role=role_to_set
+    )
+    
     db.session.add(novo_usuario)
     db.session.commit()
+    
+    # Retorna uma mensagem especial para o primeiro admin
+    if is_first_user:
+        return jsonify({'mensagem': 'Administrador principal criado com sucesso! Você já pode fazer o login.'}), 201
+        
     return jsonify(novo_usuario.to_dict()), 201
 
 @app.route('/api/auth/login', methods=['POST'])
