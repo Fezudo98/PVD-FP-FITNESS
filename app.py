@@ -61,7 +61,7 @@ class Cliente(db.Model):
 class Cupom(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     codigo = db.Column(db.String(50), unique=True, nullable=False)
-    tipo_desconto = db.Column(db.String(20), nullable=False)
+    tipo_desconto = db.Column(db.String(20), nullable=False) # 'percentual' ou 'fixo'
     valor_desconto = db.Column(db.Float, nullable=False)
     ativo = db.Column(db.Boolean, default=True)
 
@@ -77,7 +77,6 @@ class Venda(db.Model):
     status = db.Column(db.String(20), nullable=False, default='Concluída')
     cupom_utilizado = db.Column(db.String(50), nullable=True)
     valor_desconto = db.Column(db.Float, nullable=True, default=0.0)
-    # ===== ALTERAÇÃO AQUI: Adicionando campo de parcelas =====
     parcelas = db.Column(db.Integer, nullable=True, default=1)
     id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     id_vendedor = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
@@ -102,7 +101,7 @@ def token_required(f):
         if not token: return jsonify({'message': 'Token está faltando!'}), 401
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = Usuario.query.get(data['id'])
+            current_user = db.session.get(Usuario, data['id'])
         except Exception: return jsonify({'message': 'Token é inválido!'}), 401
         return f(current_user, *args, **kwargs)
     return decorated
@@ -124,12 +123,9 @@ def salvar_recibo_html(venda):
                 encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
             logo_tag = f'<img src="data:image/jpeg;base64,{encoded_string}" alt="Logo">'
         desconto_html = f'<p><strong>Desconto Aplicado ({venda.cupom_utilizado}):</strong> - R$ {venda.valor_desconto:.2f}</p>' if venda.valor_desconto > 0 else ''
-        
-        # ===== ALTERAÇÃO AQUI: Formatando a forma de pagamento com parcelas =====
         forma_pagamento_str = venda.forma_pagamento
         if venda.forma_pagamento == 'Cartão de Crédito' and venda.parcelas and venda.parcelas > 1:
             forma_pagamento_str = f"Cartão de Crédito ({venda.parcelas}x)"
-
         html_content = f'<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo Venda #{venda.id}</title><style>body{{font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; color: #000;}}.receipt-container{{max-width: 800px; margin: 20px auto; border: 1px solid #ccc; padding: 30px; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1);}}.header{{text-align: center; margin-bottom: 25px;}} .header img{{max-width: 150px;}}table{{width: 100%; border-collapse: collapse; margin-top: 20px;}}th, td{{padding: 12px; border-bottom: 1px solid #ddd; text-align: left;}}th{{background-color: #f2f2f2;}}.totals{{text-align: right; margin-top: 25px; padding-right: 10px;}}.totals p{{margin: 5px 0;}} .totals h3{{margin: 10px 0;}}.footer{{text-align: center; margin-top: 35px; font-size: 0.9em; color: #777;}}hr{{border: 0; border-top: 1px solid #eee; margin: 20px 0;}}</style></head><body><div class="receipt-container"><div class="header">{logo_tag}</div><p><strong>Venda ID:</strong> {venda.id}</p><p><strong>Data:</strong> {venda.data_hora.strftime("%d/%m/%Y %H:%M:%S")}</p><p><strong>Cliente:</strong> {venda.cliente.nome if venda.cliente else "Consumidor Final"}</p><p><strong>Vendedor(a):</strong> {venda.vendedor.nome}</p><hr><table><thead><tr><th style="text-align: left;">Produto</th><th style="text-align: center;">Qtd.</th><th style="text-align: right;">Preço Unit.</th><th style="text-align: right;">Subtotal</th></tr></thead><tbody>{itens_html}</tbody></table><div class="totals"><p><strong>Subtotal Produtos:</strong> R$ {subtotal_produtos:.2f}</p>{desconto_html}<p><strong>Taxa de Entrega:</strong> R$ {venda.taxa_entrega:.2f}</p><h3><strong>Total Geral:</strong> R$ {venda.total_venda:.2f}</h3><p><strong>Forma de Pagamento:</strong> {forma_pagamento_str}</p></div><hr><div class="footer"><p>Obrigado pela preferência!</p></div></div></body></html>'
         file_name = f"venda_{venda.id}_{venda.data_hora.strftime('%Y-%m-%d_%H-%M-%S')}.html"
         file_path = os.path.join(recibos_dir, file_name)
@@ -160,43 +156,25 @@ def serve_static_files(filename):
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     dados = request.get_json()
-    
-    # ===== ALTERAÇÃO AQUI: Lógica para o primeiro administrador =====
     is_first_user = Usuario.query.count() == 0
-
     if not is_first_user:
-        # Se não for o primeiro usuário, a lógica de segurança normal se aplica
         token = request.headers.get('x-access-token')
         if not token: return jsonify({'erro': 'Apenas um administrador pode criar novos usuários.'}), 401
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = Usuario.query.get(data['id'])
+            current_user = db.session.get(Usuario, data['id'])
             if current_user.role != 'admin':
                  return jsonify({'erro': 'Apenas um administrador pode criar novos usuários.'}), 403
         except Exception: return jsonify({'message': 'Token inválido!'}), 401
-
     if Usuario.query.filter_by(email=dados['email']).first():
         return jsonify({'erro': 'Email já cadastrado.'}), 400
-    
     senha_hash = bcrypt.generate_password_hash(dados['senha']).decode('utf-8')
-    
-    # Força o primeiro usuário a ser admin, senão usa o que foi enviado (com 'vendedor' como padrão)
     role_to_set = 'admin' if is_first_user else dados.get('role', 'vendedor')
-    
-    novo_usuario = Usuario(
-        nome=dados['nome'], 
-        email=dados['email'], 
-        senha_hash=senha_hash, 
-        role=role_to_set
-    )
-    
+    novo_usuario = Usuario(nome=dados['nome'], email=dados['email'], senha_hash=senha_hash, role=role_to_set)
     db.session.add(novo_usuario)
     db.session.commit()
-    
-    # Retorna uma mensagem especial para o primeiro admin
     if is_first_user:
         return jsonify({'mensagem': 'Administrador principal criado com sucesso! Você já pode fazer o login.'}), 201
-        
     return jsonify(novo_usuario.to_dict()), 201
 
 @app.route('/api/auth/login', methods=['POST'])
@@ -223,10 +201,12 @@ def gerenciar_produtos(current_user):
         if Produto.query.filter_by(sku=dados['sku']).first(): return jsonify({'erro': f'SKU {dados["sku"]} já existe.'}), 400
         novo_produto = Produto(sku=dados.get('sku'), nome=dados.get('nome'), categoria=dados.get('categoria'), cor=dados.get('cor'), tamanho=dados.get('tamanho'), preco_custo=float(dados.get('preco_custo')), preco_venda=float(dados.get('preco_venda')), quantidade=int(dados.get('quantidade', 0)))
         if 'imagem' in request.files and request.files['imagem'].filename != '':
+            uploads_dir = os.path.join(base_dir, 'uploads')
+            os.makedirs(uploads_dir, exist_ok=True)
             file = request.files['imagem']
             extensao = file.filename.rsplit('.', 1)[1].lower()
             filename = f"{secure_filename(novo_produto.sku)}.{extensao}"
-            file.save(os.path.join(base_dir, 'uploads', filename))
+            file.save(os.path.join(uploads_dir, filename))
             novo_produto.imagem_url = filename
         db.session.add(novo_produto)
         db.session.commit()
@@ -235,7 +215,7 @@ def gerenciar_produtos(current_user):
 @app.route('/api/produtos/<int:produto_id>', methods=['GET', 'PUT', 'DELETE'])
 @token_required
 def gerenciar_produto_especifico(current_user, produto_id):
-    produto = Produto.query.get_or_404(produto_id)
+    produto = db.session.get_or_404(Produto, produto_id)
     if request.method == 'GET': return jsonify(produto.to_dict())
     if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
     if request.method == 'PUT':
@@ -249,12 +229,14 @@ def gerenciar_produto_especifico(current_user, produto_id):
         produto.quantidade = int(dados.get('quantidade', produto.quantidade))
         produto.limite_estoque_baixo = int(dados.get('limite_estoque_baixo', produto.limite_estoque_baixo))
         if 'imagem' in request.files and request.files['imagem'].filename != '':
+            uploads_dir = os.path.join(base_dir, 'uploads')
+            os.makedirs(uploads_dir, exist_ok=True)
             file = request.files['imagem']
-            if produto.imagem_url and os.path.exists(os.path.join(base_dir, 'uploads', produto.imagem_url)):
-                os.remove(os.path.join(base_dir, 'uploads', produto.imagem_url))
+            if produto.imagem_url and os.path.exists(os.path.join(uploads_dir, produto.imagem_url)):
+                os.remove(os.path.join(uploads_dir, produto.imagem_url))
             extensao = file.filename.rsplit('.', 1)[1].lower()
             filename = f"{secure_filename(produto.sku)}.{extensao}"
-            file.save(os.path.join(base_dir, 'uploads', filename))
+            file.save(os.path.join(uploads_dir, filename))
             produto.imagem_url = filename
         db.session.commit()
         return jsonify(produto.to_dict())
@@ -270,14 +252,14 @@ def gerenciar_produto_especifico(current_user, produto_id):
 @token_required
 def get_all_users(current_user):
     if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
-    users = Usuario.query.all()
+    users = db.session.execute(db.select(Usuario)).scalars().all()
     return jsonify([user.to_dict() for user in users])
 
 @app.route('/api/usuarios/<int:user_id>', methods=['PUT', 'DELETE'])
 @token_required
 def manage_specific_user(current_user, user_id):
     if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
-    user = Usuario.query.get_or_404(user_id)
+    user = db.session.get_or_404(Usuario, user_id)
     if request.method == 'PUT':
         dados = request.get_json()
         user.nome = dados.get('nome', user.nome)
@@ -304,13 +286,13 @@ def gerenciar_clientes(current_user):
         db.session.commit()
         return jsonify(novo_cliente.to_dict()), 201
     else:
-        clientes = Cliente.query.all()
+        clientes = db.session.execute(db.select(Cliente)).scalars().all()
         return jsonify([cliente.to_dict() for cliente in clientes])
 
 @app.route('/api/clientes/<int:cliente_id>', methods=['PUT', 'DELETE'])
 @token_required
 def gerenciar_cliente_especifico(current_user, cliente_id):
-    cliente = Cliente.query.get_or_404(cliente_id)
+    cliente = db.session.get_or_404(Cliente, cliente_id)
     if request.method == 'PUT':
         dados = request.get_json()
         cliente.nome = dados.get('nome', cliente.nome)
@@ -329,7 +311,7 @@ def gerenciar_cliente_especifico(current_user, cliente_id):
 def gerenciar_cupons(current_user):
     if current_user.role != 'admin': return jsonify({'erro': 'Acesso negado.'}), 403
     if request.method == 'GET':
-        cupons = Cupom.query.all()
+        cupons = db.session.execute(db.select(Cupom)).scalars().all()
         return jsonify([cupom.to_dict() for cupom in cupons])
     if request.method == 'POST':
         dados = request.get_json()
@@ -344,7 +326,7 @@ def gerenciar_cupons(current_user):
 @token_required
 def gerenciar_cupom_especifico(current_user, cupom_id):
     if current_user.role != 'admin': return jsonify({'erro': 'Acesso negado.'}), 403
-    cupom = Cupom.query.get_or_404(cupom_id)
+    cupom = db.session.get_or_404(Cupom, cupom_id)
     if request.method == 'PUT':
         dados = request.get_json()
         cupom.ativo = dados.get('ativo', cupom.ativo)
@@ -371,19 +353,9 @@ def registrar_venda(current_user):
     itens_venda_data = dados.get('itens')
     if not itens_venda_data: return jsonify({'erro': 'A lista de itens não pode estar vazia.'}), 400
     try:
-        nova_venda = Venda(
-            total_venda=dados.get('total_venda'), 
-            forma_pagamento=dados.get('forma_pagamento'), 
-            taxa_entrega=dados.get('taxa_entrega', 0.0), 
-            id_cliente=dados.get('id_cliente'), 
-            id_vendedor=current_user.id, 
-            cupom_utilizado=dados.get('cupom_utilizado'), 
-            valor_desconto=dados.get('valor_desconto', 0.0),
-            parcelas=dados.get('parcelas', 1), # Salva as parcelas
-            itens=[]
-        )
+        nova_venda = Venda(total_venda=dados.get('total_venda'), forma_pagamento=dados.get('forma_pagamento'), taxa_entrega=dados.get('taxa_entrega', 0.0), id_cliente=dados.get('id_cliente'), id_vendedor=current_user.id, cupom_utilizado=dados.get('cupom_utilizado'), valor_desconto=dados.get('valor_desconto', 0.0), parcelas=dados.get('parcelas', 1), itens=[])
         for item_data in itens_venda_data:
-            produto = Produto.query.get(item_data['id_produto'])
+            produto = db.session.get(Produto, item_data['id_produto'])
             if not produto or produto.quantidade < item_data['quantidade']:
                 return jsonify({'erro': f'Estoque insuficiente para {produto.nome if produto else "desconhecido"}.'}), 400
             produto.quantidade -= item_data['quantidade']
@@ -400,34 +372,22 @@ def registrar_venda(current_user):
 @app.route('/api/vendas/<int:venda_id>', methods=['GET'])
 @token_required
 def get_venda_details(current_user, venda_id):
-    venda = Venda.query.get_or_404(venda_id)
+    venda = db.session.get_or_404(Venda, venda_id)
     if current_user.role != 'admin' and venda.id_vendedor != current_user.id:
         return jsonify({'message': 'Acesso não autorizado a esta venda.'}), 403
     itens_list = [{'produto_nome': item.produto.nome, 'quantidade': item.quantidade, 'preco_unitario': item.preco_unitario_momento, 'subtotal': item.quantidade * item.preco_unitario_momento} for item in venda.itens]
-    result = {
-        'id': venda.id, 
-        'data_hora': venda.data_hora.strftime('%d/%m/%Y %H:%M:%S'), 
-        'total_venda': venda.total_venda, 
-        'forma_pagamento': venda.forma_pagamento, 
-        'taxa_entrega': venda.taxa_entrega, 
-        'cliente_nome': venda.cliente.nome if venda.cliente else 'Consumidor Final', 
-        'vendedor_nome': venda.vendedor.nome, 
-        'itens': itens_list, 
-        'cupom_utilizado': venda.cupom_utilizado, 
-        'valor_desconto': venda.valor_desconto,
-        'parcelas': venda.parcelas # Envia as parcelas
-    }
+    result = {'id': venda.id, 'data_hora': venda.data_hora.strftime('%d/%m/%Y %H:%M:%S'), 'total_venda': venda.total_venda, 'forma_pagamento': venda.forma_pagamento, 'taxa_entrega': venda.taxa_entrega, 'cliente_nome': venda.cliente.nome if venda.cliente else 'Consumidor Final', 'vendedor_nome': venda.vendedor.nome, 'itens': itens_list, 'cupom_utilizado': venda.cupom_utilizado, 'valor_desconto': venda.valor_desconto, 'parcelas': venda.parcelas}
     return jsonify(result)
 
 @app.route('/api/vendas/<int:venda_id>/reembolsar', methods=['POST'])
 @token_required
 def reembolsar_venda(current_user, venda_id):
     if current_user.role != 'admin': return jsonify({'erro': 'Apenas administradores podem realizar reembolsos.'}), 403
-    venda = Venda.query.get_or_404(venda_id)
+    venda = db.session.get_or_404(Venda, venda_id)
     if venda.status == 'Reembolsada': return jsonify({'erro': 'Esta venda já foi reembolsada.'}), 400
     try:
         for item in venda.itens:
-            produto = Produto.query.get(item.id_produto)
+            produto = db.session.get(Produto, item.id_produto)
             if produto:
                 produto.quantidade += item.quantidade
         venda.status = 'Reembolsada'
