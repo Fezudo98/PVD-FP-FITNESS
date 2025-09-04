@@ -1,0 +1,15 @@
+# Ambiente Virtual do Python - nunca deve ir para o repositório
+venv/
+__pycache__/
+
+# Banco de dados SQLite - NUNCA sobrescrever o banco da cliente!
+estoque.db
+
+# Pasta de backups - são específicos de cada instalação
+backups/
+
+# Pasta de recibos salvos
+recibos/
+
+# Pasta de imagens de produtos enviadas pela cliente
+uploads/

@@ -1,0 +1,93 @@
+============================================================
+ MANUAL DE INSTALAÇÃO E USO - SISTEMA FP MODA FITNESS
+============================================================
+
+Olá! Bem-vindo(a) ao seu novo sistema de gestão.
+Este guia irá te ajudar a instalar e usar o programa no seu computador.
+
+
+---
+### ETAPA 1: PREPARAÇÃO DO COMPUTADOR (Feito apenas uma vez)
+---
+
+Para o sistema funcionar, seu computador precisa de dois programas gratuitos.
+
+1.  **Instalar o Python:**
+    *   Acesse o site: `python.org`
+    *   Baixe a versão mais recente para Windows.
+    *   Execute o instalador. Na **primeira tela**, marque a caixinha importante que diz **"Add Python to PATH"**.
+    *   Continue a instalação clicando em "Install Now".
+
+2.  **Instalar o Git:**
+    *   Acesse o site: `https://git-scm.com/download/win`
+    *   Baixe e execute o instalador.
+    *   Este programa tem muitas telas, mas você não precisa mudar nada. Apenas clique em **"Next"** em todas as etapas até o final.
+
+
+---
+### ETAPA 2: INSTALANDO O SISTEMA PELA PRIMEIRA VEZ
+---
+
+1.  Abra o menu Iniciar, digite `cmd` e pressione Enter para abrir o **Prompt de Comando** (uma tela preta).
+
+2.  Primeiro, vamos navegar para a sua Área de Trabalho. Digite o comando abaixo e pressione Enter:
+    `cd Desktop`
+
+3.  Agora, copie o comando mágico abaixo, cole na tela preta (clicando com o botão direito do mouse) e pressione Enter.
+    `git clone https://github.com/Fezudo98/pdv-fp-fitness-frontend.git "Sistema FP Fitness"`
+
+    *O que isso faz?* Ele baixa a versão mais recente e oficial do sistema e cria uma pasta chamada **"Sistema FP Fitness"** na sua Área de Trabalho.
+
+4.  Após o download terminar, feche a tela preta.
+
+
+---
+### ETAPA 3: PRIMEIRA EXECUÇÃO E CONFIGURAÇÃO
+---
+
+1.  Na sua Área de Trabalho, entre na nova pasta **"Sistema FP Fitness"**.
+
+2.  Dê um clique duplo no arquivo **`start_server.bat`**.
+
+3.  **AGUARDE.** A primeira execução é mais demorada, pois o sistema está se configurando, criando o banco de dados e instalando as ferramentas necessárias.
+
+4.  **ATENÇÃO AO ALERTA DE FIREWALL:** Durante este processo, o Firewall do Windows pode exibir um alerta de segurança sobre o "Python".
+    *   Clique em **"Permitir acesso"**.
+    *   Se aparecerem caixinhas de seleção, certifique-se de que a opção para **"Redes privadas"** esteja marcada. Isso é essencial para o acesso via celular.
+
+5.  O sistema estará pronto quando você vir as mensagens do servidor, como:
+    `* Running on http://127.0.0.1:5000`
+    `* Running on http://192.168.X.X:5000`
+
+
+---
+### ETAPA 4: USO DIÁRIO DO SISTEMA
+---
+
+*   **PARA LIGAR O SISTEMA:** Dê um clique duplo no arquivo `start_server.bat`.
+
+*   **PARA USAR NO COMPUTADOR:** Abra seu navegador (Chrome, Edge) e acesse: **`http://localhost:5000`**
+
+*   **PARA USAR NO CELULAR/TABLET:**
+    1.  Verifique se o celular está conectado na **mesma rede Wi-Fi** que o computador.
+    2.  Olhe na tela preta do servidor no computador e anote o endereço de IP que aparece (ex: `192.168.0.5`).
+    3.  No navegador do celular, digite esse endereço. Ex: **`192.168.0.5:5000`**
+
+*   **REGRA MAIS IMPORTANTE:** A janela preta do servidor deve permanecer **ABERTA** o tempo todo enquanto você estiver usando o sistema.
+
+*   **PARA DESLIGAR O SISTEMA:** Simplesmente feche a janela preta do servidor.
+
+
+---
+### ETAPA 5: COMO ATUALIZAR O SISTEMA
+---
+
+Quando uma correção de erro ou uma nova funcionalidade estiver pronta, você será avisado(a). Para atualizar, siga os passos:
+
+1.  Primeiro, **feche o sistema** (a janela preta do `start_server.bat`), se ele estiver aberto.
+
+2.  Na pasta "Sistema FP Fitness", dê um clique duplo no arquivo **`atualizar.bat`**.
+
+3.  Aguarde a mensagem **"SISTEMA ATUALIZADO COM SUCESSO!"**.
+
+4.  Pronto! Pode fechar a janela de atualização e iniciar o sistema normalmente pelo `start_server.bat` para usar a nova versão.
