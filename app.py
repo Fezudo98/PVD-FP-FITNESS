@@ -9,9 +9,8 @@ from flask_bcrypt import Bcrypt
 from flask_cors import CORS
 from sqlalchemy import func
 from werkzeug.utils import secure_filename
-import barcode                    
-from barcode.writer import ImageWriter 
-
+import barcode
+from barcode.writer import ImageWriter
 
 # 1. CONFIGURAÇÃO INICIAL
 # ------------------------------------
@@ -68,7 +67,6 @@ class Cupom(db.Model):
     tipo_desconto = db.Column(db.String(20), nullable=False) # 'percentual' ou 'fixo'
     valor_desconto = db.Column(db.Float, nullable=False)
     ativo = db.Column(db.Boolean, default=True)
-
     def to_dict(self):
         return { 'id': self.id, 'codigo': self.codigo, 'tipo_desconto': self.tipo_desconto, 'valor_desconto': self.valor_desconto, 'ativo': self.ativo }
 
@@ -96,8 +94,31 @@ class ItemVenda(db.Model):
     id_produto = db.Column(db.Integer, db.ForeignKey('produto.id'), nullable=False)
     produto = db.relationship('Produto')
 
+## --- NOVO MODELO DE LOG ADICIONADO --- ##
+class Log(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    usuario_nome = db.Column(db.String(100))
+    acao = db.Column(db.String(255), nullable=False)
+    detalhes = db.Column(db.String(500))
+
 # 3. FUNÇÕES AUXILIARES
 # -----------------------------------------------------------
+## --- NOVA FUNÇÃO PARA REGISTRAR LOGS --- ##
+def registrar_log(usuario, acao, detalhes=""):
+    try:
+        # Se for uma ação de sistema ou login falho, o usuário pode ser None
+        user_id = usuario.id if usuario else None
+        user_name = usuario.nome if usuario else "Sistema"
+        
+        novo_log = Log(id_usuario=user_id, usuario_nome=user_name, acao=acao, detalhes=detalhes)
+        db.session.add(novo_log)
+        # O commit será feito pela função principal que chamou o log.
+    except Exception as e:
+        print(f"ERRO CRÍTICO AO REGISTRAR LOG: {e}")
+
+
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -105,7 +126,6 @@ def token_required(f):
         if not token: return jsonify({'message': 'Token está faltando!'}), 401
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            ## CORREÇÃO ##: Substituído db.session.get() pela sintaxe antiga
             current_user = Usuario.query.get(data['id'])
         except Exception: return jsonify({'message': 'Token é inválido!'}), 401
         return f(current_user, *args, **kwargs)
@@ -150,6 +170,10 @@ def index():
 def uploaded_file(filename):
     return send_from_directory(os.path.join(base_dir, 'uploads'), filename)
 
+@app.route('/barcodes/<filename>')
+def serve_barcode_image(filename):
+    return send_from_directory(os.path.join(base_dir, 'barcodes'), filename)
+
 @app.route('/<path:filename>')
 def serve_static_files(filename):
     return send_from_directory('frontend', filename)
@@ -162,12 +186,12 @@ def serve_static_files(filename):
 def register():
     dados = request.get_json()
     is_first_user = Usuario.query.count() == 0
+    current_user = None
     if not is_first_user:
         token = request.headers.get('x-access-token')
         if not token: return jsonify({'erro': 'Apenas um administrador pode criar novos usuários.'}), 401
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            ## CORREÇÃO ##: Substituído db.session.get() pela sintaxe antiga
             current_user = Usuario.query.get(data['id'])
             if current_user.role != 'admin':
                  return jsonify({'erro': 'Apenas um administrador pode criar novos usuários.'}), 403
@@ -178,6 +202,10 @@ def register():
     role_to_set = 'admin' if is_first_user else dados.get('role', 'vendedor')
     novo_usuario = Usuario(nome=dados['nome'], email=dados['email'], senha_hash=senha_hash, role=role_to_set)
     db.session.add(novo_usuario)
+    
+    ## REGISTRO DE LOG ##
+    registrar_log(current_user, "Usuário Criado", f"Novo usuário: {novo_usuario.nome} ({novo_usuario.email}), Cargo: {novo_usuario.role}")
+    
     db.session.commit()
     if is_first_user:
         return jsonify({'mensagem': 'Administrador principal criado com sucesso! Você já pode fazer o login.'}), 201
@@ -190,7 +218,15 @@ def login():
         return jsonify({'message': 'Credenciais não fornecidas'}), 401
     user = Usuario.query.filter_by(email=auth['email']).first()
     if not user or not bcrypt.check_password_hash(user.senha_hash, auth['senha']):
+        ## REGISTRO DE LOG ##
+        registrar_log(None, "Falha de Login", f"Tentativa de login para o email: {auth.get('email')}")
+        db.session.commit()
         return jsonify({'message': 'Credenciais inválidas!'}), 401
+    
+    ## REGISTRO DE LOG ##
+    registrar_log(user, "Login Realizado")
+    db.session.commit()
+
     token = jwt.encode({'id': user.id, 'exp' : datetime.utcnow() + timedelta(hours=24)}, app.config['SECRET_KEY'], algorithm="HS256")
     return jsonify({'token': token, 'user': user.to_dict()})
 
@@ -215,18 +251,26 @@ def gerenciar_produtos(current_user):
             file.save(os.path.join(uploads_dir, filename))
             novo_produto.imagem_url = filename
         db.session.add(novo_produto)
+
+        ## REGISTRO DE LOG ##
+        registrar_log(current_user, "Produto Criado", f"SKU: {novo_produto.sku}, Nome: {novo_produto.nome}")
+
         db.session.commit()
         return jsonify(novo_produto.to_dict()), 201
 
 @app.route('/api/produtos/<int:produto_id>', methods=['GET', 'PUT', 'DELETE'])
 @token_required
 def gerenciar_produto_especifico(current_user, produto_id):
-    ## CORREÇÃO ##: Substituído db.session.get_or_404() pela sintaxe antiga
     produto = Produto.query.get_or_404(produto_id)
     if request.method == 'GET': return jsonify(produto.to_dict())
     if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
     if request.method == 'PUT':
         dados = request.form
+        # Guarda os valores antigos para comparar
+        old_nome = produto.nome
+        old_preco_venda = produto.preco_venda
+        old_quantidade = produto.quantidade
+
         produto.nome = dados.get('nome', produto.nome)
         produto.categoria = dados.get('categoria', produto.categoria)
         produto.cor = dados.get('cor', produto.cor)
@@ -235,6 +279,7 @@ def gerenciar_produto_especifico(current_user, produto_id):
         produto.preco_venda = float(dados.get('preco_venda', produto.preco_venda))
         produto.quantidade = int(dados.get('quantidade', produto.quantidade))
         produto.limite_estoque_baixo = int(dados.get('limite_estoque_baixo', produto.limite_estoque_baixo))
+        
         if 'imagem' in request.files and request.files['imagem'].filename != '':
             uploads_dir = os.path.join(base_dir, 'uploads')
             os.makedirs(uploads_dir, exist_ok=True)
@@ -245,63 +290,57 @@ def gerenciar_produto_especifico(current_user, produto_id):
             filename = f"{secure_filename(produto.sku)}.{extensao}"
             file.save(os.path.join(uploads_dir, filename))
             produto.imagem_url = filename
+
+        ## REGISTRO DE LOG ##
+        detalhes_log = f"SKU: {produto.sku}. Alterações: "
+        if old_nome != produto.nome: detalhes_log += f"Nome ('{old_nome}' -> '{produto.nome}'), "
+        if old_preco_venda != produto.preco_venda: detalhes_log += f"Preço ('{old_preco_venda}' -> '{produto.preco_venda}'), "
+        if old_quantidade != produto.quantidade: detalhes_log += f"Qtd ('{old_quantidade}' -> '{produto.quantidade}'), "
+        registrar_log(current_user, "Produto Atualizado", detalhes_log.strip(', '))
+        
         db.session.commit()
         return jsonify(produto.to_dict())
+
     if request.method == 'DELETE':
+        sku_deletado = produto.sku
+        nome_deletado = produto.nome
+
         if produto.imagem_url and os.path.exists(os.path.join(base_dir, 'uploads', produto.imagem_url)):
             os.remove(os.path.join(base_dir, 'uploads', produto.imagem_url))
+        
         db.session.delete(produto)
+        
+        ## REGISTRO DE LOG ##
+        registrar_log(current_user, "Produto Deletado", f"SKU: {sku_deletado}, Nome: {nome_deletado}")
+        
         db.session.commit()
         return jsonify({'mensagem': 'Produto deletado com sucesso!'})
-    
+
 @app.route('/api/produtos/<int:produto_id>/gerar-barcode', methods=['POST'])
 @token_required
 def gerar_codigo_barras(current_user, produto_id):
     if current_user.role != 'admin':
         return jsonify({'message': 'Ação não permitida!'}), 403
-
     produto = Produto.query.get_or_404(produto_id)
-    
-    # Verifica se o SKU não está vazio
     if not produto.sku:
         return jsonify({'erro': 'O produto precisa ter um SKU definido para gerar o código de barras.'}), 400
-
     try:
-        # Define o tipo de código de barras (EAN13 é um dos mais comuns)
-        EAN = barcode.get_barcode_class('ean13')
-        
-        # Cria a pasta 'barcodes' se ela não existir
         barcodes_dir = os.path.join(base_dir, 'barcodes')
         os.makedirs(barcodes_dir, exist_ok=True)
-        
-        # Prepara o nome do arquivo e o caminho completo
-        # Usamos secure_filename para garantir que o nome do arquivo seja seguro
         filename = f"{secure_filename(produto.sku)}.png"
         filepath = os.path.join(barcodes_dir, filename)
-
-        # Gera o código de barras e salva como imagem PNG
-        # Nota: O SKU para EAN13 precisa ser uma string de 12 dígitos. 
-        # Vamos ajustar para o código 128 que é mais flexível.
         CODE128 = barcode.get_barcode_class('code128')
         codigo_gerado = CODE128(produto.sku, writer=ImageWriter())
         codigo_gerado.write(filepath)
-
-        # Atualiza o produto no banco de dados com o nome do arquivo
         produto.codigo_barras_url = filename
+        
+        ## REGISTRO DE LOG ##
+        registrar_log(current_user, "Código de Barras Gerado", f"SKU: {produto.sku}")
+        
         db.session.commit()
-
-        # Retorna o caminho do arquivo para o frontend
         return jsonify({'mensagem': 'Código de barras gerado com sucesso!', 'url': filename})
-
     except Exception as e:
         return jsonify({'erro': 'Falha ao gerar o código de barras.', 'detalhes': str(e)}), 500
-
-# Adicione esta rota também para servir os arquivos da nova pasta
-@app.route('/barcodes/<filename>')
-def serve_barcode_image(filename):
-    return send_from_directory(os.path.join(base_dir, 'barcodes'), filename)
-
-
 
 # --- Usuários ---
 @app.route('/api/usuarios', methods=['GET'])
@@ -315,17 +354,18 @@ def get_all_users(current_user):
 @token_required
 def manage_specific_user(current_user, user_id):
     if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
-    ## CORREÇÃO ##: Substituído db.session.get_or_404() pela sintaxe antiga
     user = Usuario.query.get_or_404(user_id)
     if request.method == 'PUT':
         dados = request.get_json()
         user.nome = dados.get('nome', user.nome)
         user.email = dados.get('email', user.email)
         user.role = dados.get('role', user.role)
+        registrar_log(current_user, "Usuário Atualizado", f"Usuário ID: {user_id}, Novo Cargo: {user.role}")
         db.session.commit()
         return jsonify(user.to_dict())
     if request.method == 'DELETE':
         if current_user.id == user_id: return jsonify({'erro': 'Você não pode deletar a si mesmo.'}), 400
+        registrar_log(current_user, "Usuário Deletado", f"Usuário ID: {user_id}, Nome: {user.nome}")
         db.session.delete(user)
         db.session.commit()
         return jsonify({'mensagem': 'Usuário deletado com sucesso!'})
@@ -349,7 +389,6 @@ def gerenciar_clientes(current_user):
 @app.route('/api/clientes/<int:cliente_id>', methods=['PUT', 'DELETE'])
 @token_required
 def gerenciar_cliente_especifico(current_user, cliente_id):
-    ## CORREÇÃO ##: Substituído db.session.get_or_404() pela sintaxe antiga
     cliente = Cliente.query.get_or_404(cliente_id)
     if request.method == 'PUT':
         dados = request.get_json()
@@ -377,6 +416,7 @@ def gerenciar_cupons(current_user):
         if Cupom.query.filter_by(codigo=dados['codigo'].upper()).first(): return jsonify({'erro': 'Este código de cupom já existe.'}), 400
         novo_cupom = Cupom(codigo=dados['codigo'].upper(), tipo_desconto=dados['tipo_desconto'], valor_desconto=float(dados['valor_desconto']))
         db.session.add(novo_cupom)
+        registrar_log(current_user, "Cupom Criado", f"Código: {novo_cupom.codigo}")
         db.session.commit()
         return jsonify(novo_cupom.to_dict()), 201
 
@@ -384,14 +424,16 @@ def gerenciar_cupons(current_user):
 @token_required
 def gerenciar_cupom_especifico(current_user, cupom_id):
     if current_user.role != 'admin': return jsonify({'erro': 'Acesso negado.'}), 403
-    ## CORREÇÃO ##: Substituído db.session.get_or_404() pela sintaxe antiga
     cupom = Cupom.query.get_or_404(cupom_id)
     if request.method == 'PUT':
         dados = request.get_json()
         cupom.ativo = dados.get('ativo', cupom.ativo)
+        status = "Ativado" if cupom.ativo else "Desativado"
+        registrar_log(current_user, "Status do Cupom Alterado", f"Código: {cupom.codigo}, Novo Status: {status}")
         db.session.commit()
         return jsonify(cupom.to_dict())
     if request.method == 'DELETE':
+        registrar_log(current_user, "Cupom Deletado", f"Código: {cupom.codigo}")
         db.session.delete(cupom)
         db.session.commit()
         return jsonify({'mensagem': 'Cupom deletado com sucesso!'})
@@ -412,16 +454,27 @@ def registrar_venda(current_user):
     itens_venda_data = dados.get('itens')
     if not itens_venda_data: return jsonify({'erro': 'A lista de itens não pode estar vazia.'}), 400
     try:
+        # A nova venda ainda não tem um ID, então não podemos logar o ID aqui.
+        # O commit() no final irá atribuir o ID.
         nova_venda = Venda(total_venda=dados.get('total_venda'), forma_pagamento=dados.get('forma_pagamento'), taxa_entrega=dados.get('taxa_entrega', 0.0), id_cliente=dados.get('id_cliente'), id_vendedor=current_user.id, cupom_utilizado=dados.get('cupom_utilizado'), valor_desconto=dados.get('valor_desconto', 0.0), parcelas=dados.get('parcelas', 1), itens=[])
+        
         for item_data in itens_venda_data:
-            ## CORREÇÃO ##: Substituído db.session.get() pela sintaxe antiga
             produto = Produto.query.get(item_data['id_produto'])
             if not produto or produto.quantidade < item_data['quantidade']:
+                db.session.rollback()
                 return jsonify({'erro': f'Estoque insuficiente para {produto.nome if produto else "desconhecido"}.'}), 400
             produto.quantidade -= item_data['quantidade']
             item_venda = ItemVenda(id_produto=produto.id, quantidade=item_data['quantidade'], preco_unitario_momento=produto.preco_venda)
             nova_venda.itens.append(item_venda)
+        
         db.session.add(nova_venda)
+        
+        ## REGISTRO DE LOG ##
+        # Usamos uma técnica para obter o ID antes do commit final.
+        db.session.flush()
+        detalhes_log = f"ID da Venda: {nova_venda.id}, Total: R$ {nova_venda.total_venda:.2f}"
+        registrar_log(current_user, "Venda Registrada", detalhes_log)
+
         db.session.commit()
         salvar_recibo_html(nova_venda)
         return jsonify({'mensagem': 'Venda registrada com sucesso!', 'id_venda': nova_venda.id}), 201
@@ -432,7 +485,6 @@ def registrar_venda(current_user):
 @app.route('/api/vendas/<int:venda_id>', methods=['GET'])
 @token_required
 def get_venda_details(current_user, venda_id):
-    ## CORREÇÃO ##: Substituído db.session.get_or_404() pela sintaxe antiga
     venda = Venda.query.get_or_404(venda_id)
     if current_user.role != 'admin' and venda.id_vendedor != current_user.id:
         return jsonify({'message': 'Acesso não autorizado a esta venda.'}), 403
@@ -444,16 +496,18 @@ def get_venda_details(current_user, venda_id):
 @token_required
 def reembolsar_venda(current_user, venda_id):
     if current_user.role != 'admin': return jsonify({'erro': 'Apenas administradores podem realizar reembolsos.'}), 403
-    ## CORREÇÃO ##: Substituído db.session.get_or_404() pela sintaxe antiga
     venda = Venda.query.get_or_404(venda_id)
     if venda.status == 'Reembolsada': return jsonify({'erro': 'Esta venda já foi reembolsada.'}), 400
     try:
         for item in venda.itens:
-            ## CORREÇÃO ##: Substituído db.session.get() pela sintaxe antiga
             produto = Produto.query.get(item.id_produto)
             if produto:
                 produto.quantidade += item.quantidade
         venda.status = 'Reembolsada'
+
+        ## REGISTRO DE LOG ##
+        registrar_log(current_user, "Venda Reembolsada", f"ID da Venda: {venda.id}")
+
         db.session.commit()
         return jsonify({'mensagem': f'Venda {venda_id} reembolsada com sucesso! O estoque foi atualizado.'})
     except Exception as e:
@@ -487,6 +541,29 @@ def get_dashboard_data(current_user):
     vendas_no_periodo_total = Venda.query.filter(Venda.data_hora >= data_inicio, Venda.data_hora < data_fim).order_by(Venda.data_hora.desc()).all()
     lista_vendas = [{'id': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Consumidor Final', 'vendedor': v.vendedor.nome, 'total': v.total_venda, 'pagamento': v.forma_pagamento, 'status': v.status} for v in vendas_no_periodo_total]
     return jsonify({'kpis': kpis, 'grafico_vendas_tempo': grafico_vendas_tempo, 'grafico_forma_pagamento': grafico_forma_pagamento, 'ranking_produtos': ranking_produtos, 'ranking_vendedores': ranking_vendedores, 'lista_vendas': lista_vendas})
+
+## --- NOVA ROTA PARA BUSCAR OS LOGS --- ##
+@app.route('/api/logs', methods=['GET'])
+@token_required
+def get_logs(current_user):
+    if current_user.role != 'admin':
+        return jsonify({'message': 'Acesso negado.'}), 403
+    
+    query = Log.query.order_by(Log.timestamp.desc())
+    
+    logs = query.limit(200).all() # Limita aos últimos 200 logs para não sobrecarregar
+    logs_data = []
+    for log in logs:
+        logs_data.append({
+            'id': log.id,
+            'timestamp': log.timestamp.strftime('%d/%m/%Y %H:%M:%S'),
+            'usuario_nome': log.usuario_nome,
+            'acao': log.acao,
+            'detalhes': log.detalhes
+        })
+    
+    return jsonify(logs_data)
+
 
 # 6. INICIALIZAÇÃO DO SERVIDOR
 # -----------------------------------------------------------
