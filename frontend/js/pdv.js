@@ -286,6 +286,39 @@ document.addEventListener('DOMContentLoaded', () => {
     applyCupomBtn.addEventListener('click', applyCoupon);
     removeCupomBtn.addEventListener('click', removeCoupon);
 
+
+// NOVO CÓDIGO PARA O LEITOR DE CÓDIGO DE BARRAS
+    searchInput.addEventListener('keydown', (event) => {
+        // Verifica se a tecla pressionada foi "Enter"
+        if (event.key === 'Enter') {
+            event.preventDefault(); // Impede o comportamento padrão do Enter (como submeter um formulário)
+
+            const scannedSKU = searchInput.value.trim();
+
+            if (scannedSKU === '') {
+                return; // Se o campo estiver vazio, não faz nada
+            }
+
+            // Procura por uma CORRESPONDÊNCIA EXATA do SKU na lista de produtos
+            // Isso é diferente da busca por nome, que busca por partes do texto.
+            const matchedProduct = allProducts.find(p => p.sku.toLowerCase() === scannedSKU.toLowerCase());
+
+            if (matchedProduct) {
+                // Se encontrou o produto, adiciona ao carrinho
+                addToCart(matchedProduct.id);
+
+                // Limpa o campo de busca para o próximo scan
+                searchInput.value = '';
+                searchResults.innerHTML = ''; // Limpa também a lista de sugestões
+            } else {
+                // Se não encontrou, avisa o usuário
+                alert(`Produto com código de barras "${scannedSKU}" não encontrado.`);
+                // Opcional: você pode adicionar um efeito visual, como tremer o campo de busca
+                searchInput.select(); // Seleciona o texto para fácil correção
+            }
+        }
+    });
+
     // ===== ALTERAÇÃO AQUI: Listener para mostrar/esconder campo de parcelas =====
     paymentMethodSelect.addEventListener('change', () => {
         if (paymentMethodSelect.value === 'Cartão de Crédito') {
