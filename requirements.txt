@@ -3,3 +3,5 @@ Flask-SQLAlchemy==2.5.1
 Flask-Bcrypt==1.0.1
 Flask-Cors==3.0.10
 PyJWT==2.6.0
+Werkzeug==2.2.2
+SQLAlchemy==1.4.46
