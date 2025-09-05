@@ -101,7 +101,8 @@ def token_required(f):
         if not token: return jsonify({'message': 'Token está faltando!'}), 401
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = db.session.get(Usuario, data['id'])
+            ## CORREÇÃO ##: Substituído db.session.get() pela sintaxe antiga
+            current_user = Usuario.query.get(data['id'])
         except Exception: return jsonify({'message': 'Token é inválido!'}), 401
         return f(current_user, *args, **kwargs)
     return decorated
@@ -162,7 +163,8 @@ def register():
         if not token: return jsonify({'erro': 'Apenas um administrador pode criar novos usuários.'}), 401
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = db.session.get(Usuario, data['id'])
+            ## CORREÇÃO ##: Substituído db.session.get() pela sintaxe antiga
+            current_user = Usuario.query.get(data['id'])
             if current_user.role != 'admin':
                  return jsonify({'erro': 'Apenas um administrador pode criar novos usuários.'}), 403
         except Exception: return jsonify({'message': 'Token inválido!'}), 401
@@ -215,7 +217,8 @@ def gerenciar_produtos(current_user):
 @app.route('/api/produtos/<int:produto_id>', methods=['GET', 'PUT', 'DELETE'])
 @token_required
 def gerenciar_produto_especifico(current_user, produto_id):
-    produto = db.session.get_or_404(Produto, produto_id)
+    ## CORREÇÃO ##: Substituído db.session.get_or_404() pela sintaxe antiga
+    produto = Produto.query.get_or_404(produto_id)
     if request.method == 'GET': return jsonify(produto.to_dict())
     if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
     if request.method == 'PUT':
@@ -259,7 +262,8 @@ def get_all_users(current_user):
 @token_required
 def manage_specific_user(current_user, user_id):
     if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
-    user = db.session.get_or_404(Usuario, user_id)
+    ## CORREÇÃO ##: Substituído db.session.get_or_404() pela sintaxe antiga
+    user = Usuario.query.get_or_404(user_id)
     if request.method == 'PUT':
         dados = request.get_json()
         user.nome = dados.get('nome', user.nome)
@@ -292,7 +296,8 @@ def gerenciar_clientes(current_user):
 @app.route('/api/clientes/<int:cliente_id>', methods=['PUT', 'DELETE'])
 @token_required
 def gerenciar_cliente_especifico(current_user, cliente_id):
-    cliente = db.session.get_or_404(Cliente, cliente_id)
+    ## CORREÇÃO ##: Substituído db.session.get_or_404() pela sintaxe antiga
+    cliente = Cliente.query.get_or_404(cliente_id)
     if request.method == 'PUT':
         dados = request.get_json()
         cliente.nome = dados.get('nome', cliente.nome)
@@ -326,7 +331,8 @@ def gerenciar_cupons(current_user):
 @token_required
 def gerenciar_cupom_especifico(current_user, cupom_id):
     if current_user.role != 'admin': return jsonify({'erro': 'Acesso negado.'}), 403
-    cupom = db.session.get_or_404(Cupom, cupom_id)
+    ## CORREÇÃO ##: Substituído db.session.get_or_404() pela sintaxe antiga
+    cupom = Cupom.query.get_or_404(cupom_id)
     if request.method == 'PUT':
         dados = request.get_json()
         cupom.ativo = dados.get('ativo', cupom.ativo)
@@ -355,7 +361,8 @@ def registrar_venda(current_user):
     try:
         nova_venda = Venda(total_venda=dados.get('total_venda'), forma_pagamento=dados.get('forma_pagamento'), taxa_entrega=dados.get('taxa_entrega', 0.0), id_cliente=dados.get('id_cliente'), id_vendedor=current_user.id, cupom_utilizado=dados.get('cupom_utilizado'), valor_desconto=dados.get('valor_desconto', 0.0), parcelas=dados.get('parcelas', 1), itens=[])
         for item_data in itens_venda_data:
-            produto = db.session.get(Produto, item_data['id_produto'])
+            ## CORREÇÃO ##: Substituído db.session.get() pela sintaxe antiga
+            produto = Produto.query.get(item_data['id_produto'])
             if not produto or produto.quantidade < item_data['quantidade']:
                 return jsonify({'erro': f'Estoque insuficiente para {produto.nome if produto else "desconhecido"}.'}), 400
             produto.quantidade -= item_data['quantidade']
@@ -372,7 +379,8 @@ def registrar_venda(current_user):
 @app.route('/api/vendas/<int:venda_id>', methods=['GET'])
 @token_required
 def get_venda_details(current_user, venda_id):
-    venda = db.session.get_or_404(Venda, venda_id)
+    ## CORREÇÃO ##: Substituído db.session.get_or_404() pela sintaxe antiga
+    venda = Venda.query.get_or_404(venda_id)
     if current_user.role != 'admin' and venda.id_vendedor != current_user.id:
         return jsonify({'message': 'Acesso não autorizado a esta venda.'}), 403
     itens_list = [{'produto_nome': item.produto.nome, 'quantidade': item.quantidade, 'preco_unitario': item.preco_unitario_momento, 'subtotal': item.quantidade * item.preco_unitario_momento} for item in venda.itens]
@@ -383,11 +391,13 @@ def get_venda_details(current_user, venda_id):
 @token_required
 def reembolsar_venda(current_user, venda_id):
     if current_user.role != 'admin': return jsonify({'erro': 'Apenas administradores podem realizar reembolsos.'}), 403
-    venda = db.session.get_or_404(Venda, venda_id)
+    ## CORREÇÃO ##: Substituído db.session.get_or_404() pela sintaxe antiga
+    venda = Venda.query.get_or_404(venda_id)
     if venda.status == 'Reembolsada': return jsonify({'erro': 'Esta venda já foi reembolsada.'}), 400
     try:
         for item in venda.itens:
-            produto = db.session.get(Produto, item.id_produto)
+            ## CORREÇÃO ##: Substituído db.session.get() pela sintaxe antiga
+            produto = Produto.query.get(item.id_produto)
             if produto:
                 produto.quantidade += item.quantidade
         venda.status = 'Reembolsada'

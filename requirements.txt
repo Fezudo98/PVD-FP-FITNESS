@@ -1,5 +1,5 @@
-Flask
-Flask-SQLAlchemy
-Flask-Bcrypt
-Flask-Cors
-PyJWT
+Flask==2.2.2
+Flask-SQLAlchemy==2.5.1
+Flask-Bcrypt==1.0.1
+Flask-Cors==3.0.10
+PyJWT==2.6.0
