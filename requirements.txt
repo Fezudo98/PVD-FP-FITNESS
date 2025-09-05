@@ -5,3 +5,4 @@ Flask-Cors==3.0.10
 PyJWT==2.6.0
 Werkzeug==2.2.2
 SQLAlchemy==1.4.46
+python-barcode==0.15.1

@@ -1,85 +1,106 @@
-// CORRIGIDO: Atualizado para o IP da rede local. Substitua pelo IP real.
-const API_URL = ''; // Deixe vazio // Exemplo, use o IP correto
+// Define a URL base da sua API. Deixe vazio para rodar no mesmo local.
+const API_URL = '';
 const token = localStorage.getItem('authToken');
 
-// CORRIGIDO: Caminho absoluto para a página de login
-if (!token) window.location.href = '/login.html';
+// Se não houver token, o usuário não está logado. Redireciona para a tela de login.
+if (!token) {
+    window.location.href = '/login.html';
+}
 
-let allProducts = []; // Guarda a lista completa de produtos para o filtro
+// Variável global para armazenar a lista completa de produtos, facilitando a busca.
+let allProducts = [];
 
+// Garante que o script só será executado após a página HTML ser totalmente carregada.
 document.addEventListener('DOMContentLoaded', () => {
     const estoqueTableBody = document.getElementById('estoqueTableBody');
     const searchInput = document.getElementById('searchInput');
 
-    // Função para buscar todos os produtos da API
+    /**
+     * Busca todos os produtos da API e inicia a renderização da tabela.
+     */
     async function fetchEstoque() {
         try {
             const response = await fetch(`${API_URL}/api/produtos`, {
                 headers: { 'x-access-token': token }
             });
-            if (!response.ok) throw new Error('Falha ao carregar estoque.');
+            if (!response.ok) {
+                throw new Error('Falha ao carregar o estoque. Verifique sua conexão e login.');
+            }
             
             allProducts = await response.json();
-            renderTable(allProducts); // Renderiza a tabela com todos os produtos
+            renderTable(allProducts); // Renderiza a tabela inicial com todos os produtos.
         } catch (error) {
             console.error('Erro ao buscar estoque:', error);
+            estoqueTableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
         }
     }
 
-    // Função para renderizar (ou re-renderizar) a tabela com os dados
+    /**
+     * Renderiza a tabela de estoque com uma lista de produtos.
+     * @param {Array} productsToRender - A lista de produtos a ser exibida.
+     */
     function renderTable(productsToRender) {
-        estoqueTableBody.innerHTML = '';
+        estoqueTableBody.innerHTML = ''; // Limpa a tabela antes de adicionar novas linhas.
 
-        // --- CÓDIGO NOVO ADICIONADO AQUI ---
-    if (productsToRender.length === 0) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="7" class="text-center text-muted">Nenhum produto encontrado.</td>';
-        estoqueTableBody.appendChild(tr);
-        return;
-    }
-    // --- FIM DO CÓDIGO NOVO ---
+        // Se a lista de produtos estiver vazia, exibe uma mensagem amigável.
+        if (productsToRender.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="8" class="text-center text-muted">Nenhum produto encontrado.</td>';
+            estoqueTableBody.appendChild(tr);
+            return;
+        }
 
+        // Itera sobre cada produto para criar uma linha na tabela.
         productsToRender.forEach(produto => {
             const tr = document.createElement('tr');
             
-            // Verifica se o estoque está baixo e aplica uma classe de destaque
+            // Verifica se o estoque está baixo para destacar a linha.
             const isLowStock = produto.quantidade <= produto.limite_estoque_baixo;
             if (isLowStock) {
-                tr.classList.add('table-danger'); // Classe do Bootstrap para destaque
+                tr.classList.add('table-danger'); // Classe do Bootstrap para linhas vermelhas.
             }
 
-            // CORRIGIDO: Removida a coluna SKU duplicada
+            // Gera o botão para ver o código de barras, se ele existir.
+            const barcodeButton = produto.codigo_barras_url 
+                ? `<a href="${API_URL}/barcodes/${produto.codigo_barras_url}" target="_blank" class="btn btn-sm btn-outline-light">Ver</a>` 
+                : 'N/A'; // Se não houver código de barras, exibe 'N/A'.
+
+            // Define o conteúdo HTML da linha da tabela com todos os dados do produto.
             tr.innerHTML = `
                 <td><img src="${API_URL}/uploads/${produto.imagem_url || 'default.png'}" alt="${produto.nome}" width="50" class="rounded"></td>
                 <td>${produto.sku}</td>
                 <td>${produto.nome}</td>
-                <td>${produto.categoria}</td>
-                <td>${produto.cor} / ${produto.tamanho}</td>
+                <td>${produto.categoria || 'N/A'}</td>
+                <td>${produto.cor || ''} / ${produto.tamanho || ''}</td>
                 <td>R$ ${produto.preco_venda.toFixed(2)}</td>
                 <td><strong>${produto.quantidade}</strong></td>
+                <td>${barcodeButton}</td>
             `;
-            estoqueTableBody.appendChild(tr);
+            estoqueTableBody.appendChild(tr); // Adiciona a linha pronta à tabela.
         });
     }
 
-    // Função para filtrar a tabela com base na busca
+    /**
+     * Filtra a lista de produtos com base no texto digitado no campo de busca.
+     */
     function filterTable() {
         const query = searchInput.value.toLowerCase();
         const filteredProducts = allProducts.filter(p => 
             p.nome.toLowerCase().includes(query) ||
             p.sku.toLowerCase().includes(query)
         );
-        renderTable(filteredProducts);
+        renderTable(filteredProducts); // Re-renderiza a tabela com os produtos filtrados.
     }
 
-    // Event Listeners
+    // Adiciona o "escutador" de eventos ao campo de busca.
     searchInput.addEventListener('input', filterTable);
+
+    // Adiciona a funcionalidade de logout ao botão de sair.
     document.getElementById('logoutButton').addEventListener('click', () => {
-        localStorage.clear();
-        // CORRIGIDO: Caminho absoluto para a página de login
-        window.location.href = '/login.html';
+        localStorage.clear(); // Limpa os dados de login.
+        window.location.href = '/login.html'; // Redireciona para a tela de login.
     });
 
-    // Inicia a página buscando o estoque
+    // Inicia o processo buscando o estoque assim que a página carrega.
     fetchEstoque();
 });

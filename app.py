@@ -9,6 +9,9 @@ from flask_bcrypt import Bcrypt
 from flask_cors import CORS
 from sqlalchemy import func
 from werkzeug.utils import secure_filename
+import barcode                    
+from barcode.writer import ImageWriter 
+
 
 # 1. CONFIGURAÇÃO INICIAL
 # ------------------------------------
@@ -37,9 +40,10 @@ class Produto(db.Model):
     quantidade = db.Column(db.Integer, default=0)
     imagem_url = db.Column(db.String(200), nullable=True)
     limite_estoque_baixo = db.Column(db.Integer, default=5)
+    codigo_barras_url = db.Column(db.String(200), nullable=True)
     
     def to_dict(self):
-        return { 'id': self.id, 'sku': self.sku, 'nome': self.nome, 'categoria': self.categoria, 'cor': self.cor, 'tamanho': self.tamanho, 'preco_custo': self.preco_custo, 'preco_venda': self.preco_venda, 'quantidade': self.quantidade, 'imagem_url': self.imagem_url, 'limite_estoque_baixo': self.limite_estoque_baixo }
+        return { 'id': self.id, 'sku': self.sku, 'nome': self.nome, 'categoria': self.categoria, 'cor': self.cor, 'tamanho': self.tamanho, 'preco_custo': self.preco_custo, 'preco_venda': self.preco_venda, 'quantidade': self.quantidade, 'imagem_url': self.imagem_url, 'limite_estoque_baixo': self.limite_estoque_baixo, 'codigo_barras_url': self.codigo_barras_url }
 
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -249,6 +253,55 @@ def gerenciar_produto_especifico(current_user, produto_id):
         db.session.delete(produto)
         db.session.commit()
         return jsonify({'mensagem': 'Produto deletado com sucesso!'})
+    
+@app.route('/api/produtos/<int:produto_id>/gerar-barcode', methods=['POST'])
+@token_required
+def gerar_codigo_barras(current_user, produto_id):
+    if current_user.role != 'admin':
+        return jsonify({'message': 'Ação não permitida!'}), 403
+
+    produto = Produto.query.get_or_404(produto_id)
+    
+    # Verifica se o SKU não está vazio
+    if not produto.sku:
+        return jsonify({'erro': 'O produto precisa ter um SKU definido para gerar o código de barras.'}), 400
+
+    try:
+        # Define o tipo de código de barras (EAN13 é um dos mais comuns)
+        EAN = barcode.get_barcode_class('ean13')
+        
+        # Cria a pasta 'barcodes' se ela não existir
+        barcodes_dir = os.path.join(base_dir, 'barcodes')
+        os.makedirs(barcodes_dir, exist_ok=True)
+        
+        # Prepara o nome do arquivo e o caminho completo
+        # Usamos secure_filename para garantir que o nome do arquivo seja seguro
+        filename = f"{secure_filename(produto.sku)}.png"
+        filepath = os.path.join(barcodes_dir, filename)
+
+        # Gera o código de barras e salva como imagem PNG
+        # Nota: O SKU para EAN13 precisa ser uma string de 12 dígitos. 
+        # Vamos ajustar para o código 128 que é mais flexível.
+        CODE128 = barcode.get_barcode_class('code128')
+        codigo_gerado = CODE128(produto.sku, writer=ImageWriter())
+        codigo_gerado.write(filepath)
+
+        # Atualiza o produto no banco de dados com o nome do arquivo
+        produto.codigo_barras_url = filename
+        db.session.commit()
+
+        # Retorna o caminho do arquivo para o frontend
+        return jsonify({'mensagem': 'Código de barras gerado com sucesso!', 'url': filename})
+
+    except Exception as e:
+        return jsonify({'erro': 'Falha ao gerar o código de barras.', 'detalhes': str(e)}), 500
+
+# Adicione esta rota também para servir os arquivos da nova pasta
+@app.route('/barcodes/<filename>')
+def serve_barcode_image(filename):
+    return send_from_directory(os.path.join(base_dir, 'barcodes'), filename)
+
+
 
 # --- Usuários ---
 @app.route('/api/usuarios', methods=['GET'])

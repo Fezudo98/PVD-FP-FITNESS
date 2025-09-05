@@ -17,6 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const imagemInput = document.getElementById('imagem');
     const imagePreview = document.getElementById('imagePreview');
 
+    // --- NOVA LÓGICA: Referências aos elementos do código de barras ---
+    const generateBarcodeBtn = document.getElementById('generateBarcodeBtn');
+    const barcodePreviewContainer = document.getElementById('barcodePreviewContainer');
+    const barcodePreview = document.getElementById('barcodePreview');
+
     // Função para buscar e exibir os produtos na tabela
     async function fetchProdutos() {
         try {
@@ -24,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'x-access-token': token }
             });
             if (response.status === 401) {
-                // CORRIGIDO: Caminho absoluto para a página de login.
                 window.location.href = '/login.html';
             }
             const produtos = await response.json();
@@ -32,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
             produtosTableBody.innerHTML = '';
             produtos.forEach(produto => {
                 const tr = document.createElement('tr');
-                // CORRIGIDO: Removida a coluna SKU duplicada
                 tr.innerHTML = `
                     <td><img src="${API_URL}/uploads/${produto.imagem_url || 'default.png'}" alt="${produto.nome}" width="50" class="rounded"></td>
                     <td>${produto.sku}</td>
@@ -43,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>
                         <button class="btn btn-sm btn-info edit-btn" data-id="${produto.id}">Editar</button>
                         <button class="btn btn-sm btn-danger delete-btn" data-id="${produto.id}">Excluir</button>
+                        ${produto.codigo_barras_url ? `<a href="${API_URL}/barcodes/${produto.codigo_barras_url}" target="_blank" class="btn btn-sm btn-outline-light mt-1">Ver Cód.</a>` : ''}
                     </td>
                 `;
                 produtosTableBody.appendChild(tr);
@@ -52,25 +56,69 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Função para abrir o modal no modo de edição
+    async function openEditModal(produtoId) {
+        const response = await fetch(`${API_URL}/api/produtos/${produtoId}`, {
+            headers: { 'x-access-token': token }
+        });
+        const produto = await response.json();
+        
+        document.getElementById('produtoId').value = produto.id;
+        document.getElementById('sku').value = produto.sku;
+        document.getElementById('nome').value = produto.nome;
+        document.getElementById('categoria').value = produto.categoria;
+        document.getElementById('cor').value = produto.cor;
+        document.getElementById('tamanho').value = produto.tamanho;
+        document.getElementById('preco_custo').value = produto.preco_custo;
+        document.getElementById('preco_venda').value = produto.preco_venda;
+        document.getElementById('quantidade').value = produto.quantidade;
+
+        if (produto.imagem_url) {
+            imagePreview.src = `${API_URL}/uploads/${produto.imagem_url}`;
+            imagePreview.style.display = 'block';
+        } else {
+            imagePreview.style.display = 'none';
+        }
+
+        modalTitle.textContent = 'Editar Produto';
+        
+        // --- NOVA LÓGICA: Habilita o botão e mostra o preview do código de barras ---
+        generateBarcodeBtn.disabled = false;
+        if (produto.codigo_barras_url) {
+            barcodePreview.src = `${API_URL}/barcodes/${produto.codigo_barras_url}`;
+            barcodePreviewContainer.style.display = 'block';
+        } else {
+            barcodePreviewContainer.style.display = 'none';
+        }
+
+        produtoModal.show();
+    }
+
+
     // Abre o modal para ADICIONAR um novo produto
     addProdutoBtn.addEventListener('click', () => {
         produtoForm.reset();
         document.getElementById('produtoId').value = '';
-        imagePreview.style.display = 'none'; // Esconde a preview da imagem
+        imagePreview.style.display = 'none';
         modalTitle.textContent = 'Adicionar Novo Produto';
+        
+        // --- NOVA LÓGICA: Garante que o botão e o preview estejam escondidos/desabilitados ---
+        generateBarcodeBtn.disabled = true;
+        barcodePreviewContainer.style.display = 'none';
+        
         produtoModal.show();
     });
 
-    // Event listener para o formulário (tanto para criar quanto para editar)
+    // Event listener para o formulário (CRIAR e EDITAR)
     produtoForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const id = document.getElementById('produtoId').value;
+        const isNewProduct = !id; // Verifica se é um produto novo
+        
         const url = id ? `${API_URL}/api/produtos/${id}` : `${API_URL}/api/produtos`;
         const method = id ? 'PUT' : 'POST';
 
-        const formData = new FormData(produtoForm);
-        // Os campos já são adicionados automaticamente pelo FormData se tiverem o atributo 'name'
-        // Mas para garantir, podemos adicionar manualmente.
+        const formData = new FormData();
         formData.append('sku', document.getElementById('sku').value);
         formData.append('nome', document.getElementById('nome').value);
         formData.append('categoria', document.getElementById('categoria').value);
@@ -79,9 +127,9 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('preco_custo', document.getElementById('preco_custo').value);
         formData.append('preco_venda', document.getElementById('preco_venda').value);
         formData.append('quantidade', document.getElementById('quantidade').value);
-        // Opcional: Adicione outros campos se necessário
-        // formData.append('limite_estoque_baixo', document.getElementById('limite_estoque_baixo').value);
-
+        if (imagemInput.files[0]) {
+            formData.append('imagem', imagemInput.files[0]);
+        }
 
         try {
             const response = await fetch(url, {
@@ -90,12 +138,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: formData
             });
 
+            const result = await response.json();
+
             if (response.ok) {
-                produtoModal.hide();
-                fetchProdutos();
+                await fetchProdutos(); // Atualiza a tabela principal
+                
+                // --- NOVA LÓGICA: Se for um produto novo, reabre no modo de edição ---
+                if (isNewProduct) {
+                    alert('Produto criado com sucesso! Agora você já pode gerar o código de barras.');
+                    openEditModal(result.id); // Reabre o modal com o produto recém-criado
+                } else {
+                    produtoModal.hide(); // Se for edição, apenas fecha o modal
+                }
+
             } else {
-                const errorData = await response.json();
-                alert(`Erro: ${errorData.erro || errorData.message}`);
+                alert(`Erro: ${result.erro || result.message}`);
             }
         } catch (error) {
             console.error('Erro ao salvar produto:', error);
@@ -120,31 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = target.dataset.id;
 
         if (target.classList.contains('edit-btn')) {
-            const response = await fetch(`${API_URL}/api/produtos/${id}`, {
-                headers: { 'x-access-token': token }
-            });
-            const produto = await response.json();
-            
-            document.getElementById('produtoId').value = produto.id;
-            document.getElementById('sku').value = produto.sku;
-            document.getElementById('nome').value = produto.nome;
-            document.getElementById('categoria').value = produto.categoria;
-            document.getElementById('cor').value = produto.cor;
-            document.getElementById('tamanho').value = produto.tamanho;
-            document.getElementById('preco_custo').value = produto.preco_custo;
-            document.getElementById('preco_venda').value = produto.preco_venda;
-            document.getElementById('quantidade').value = produto.quantidade;
-
-            // Lógica da preview da imagem ao editar
-            if (produto.imagem_url) {
-                imagePreview.src = `${API_URL}/uploads/${produto.imagem_url}`;
-                imagePreview.style.display = 'block';
-            } else {
-                imagePreview.style.display = 'none';
-            }
-
-            modalTitle.textContent = 'Editar Produto';
-            produtoModal.show();
+            openEditModal(id);
         }
 
         if (target.classList.contains('delete-btn')) {
@@ -158,10 +191,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Logout (reutilizando a lógica)
+    // --- NOVA LÓGICA: Event Listener para o botão de gerar código de barras ---
+    generateBarcodeBtn.addEventListener('click', async () => {
+        const id = document.getElementById('produtoId').value;
+        if (!id) return; // Segurança extra, mas não deve acontecer
+
+        try {
+            const response = await fetch(`${API_URL}/api/produtos/${id}/gerar-barcode`, {
+                method: 'POST',
+                headers: { 'x-access-token': token },
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                alert(result.mensagem);
+                barcodePreview.src = `${API_URL}/barcodes/${result.url}?t=${new Date().getTime()}`;
+                barcodePreviewContainer.style.display = 'block';
+                fetchProdutos(); 
+            } else {
+                alert(`Erro: ${result.erro || 'Ocorreu um problema.'}`);
+            }
+        } catch (error) {
+            console.error('Erro ao gerar código de barras:', error);
+        }
+    });
+
+
+    // Logout
     document.getElementById('logoutButton').addEventListener('click', () => {
         localStorage.clear();
-        // CORRIGIDO: Caminho absoluto para a página de login
         window.location.href = '/login.html';
     });
 
