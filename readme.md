@@ -18,11 +18,11 @@ Um sistema completo de Ponto de Venda (PDV) e Gestão de Estoque desenvolvido pa
 
 | Tela de Login                                      | Painel Principal (Admin)                           |
 | -------------------------------------------------- | -------------------------------------------------- |
-| ![Tela de Login](caminho/para/screenshot_login.png) | ![Painel Principal](caminho/para/screenshot_painel.png) |
+| ![Tela de Login](frontend/login.png) | ![Painel Principal](frontend/painel.png) |
 
 | Ponto de Venda (PDV)                               | Relatórios e Dashboards                            |
 | -------------------------------------------------- | -------------------------------------------------- |
-| ![Tela do PDV](caminho/para/screenshot_pdv.png)   | ![Tela de Relatórios](caminho/para/screenshot_reports.png) |
+| ![Tela do PDV](frontend/pvd.png)   | ![Tela de Relatórios](frontend/relatorios.png) |
 
 ---
 
