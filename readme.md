@@ -14,7 +14,6 @@ Um sistema completo de Ponto de Venda (PDV) e Gestão de Estoque desenvolvido pa
 
 ## 📸 Screenshots
 
-*(Sugestão: Tire screenshots das telas abaixo e substitua os links)*
 
 | Tela de Login                                      | Painel Principal (Admin)                           |
 | -------------------------------------------------- | -------------------------------------------------- |
