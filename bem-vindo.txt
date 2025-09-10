@@ -1,0 +1,40 @@
+=====================================================
+  SEJA BEM-VINDA AO SEU NOVO SISTEMA DE GESTÃO!
+=====================================================
+
+Olá, Michele!
+
+É com grande alegria que entrego o seu novo sistema, pensado e desenvolvido especialmente para as necessidades da FP Moda Fitness. O objetivo desta ferramenta é um só: tornar o seu dia a dia mais simples, organizado e lucrativo.
+
+Chega de planilhas complicadas e anotações em cadernos! A partir de agora, você terá:
+
+  ✔ VENDAS MAIS RÁPIDAS: Registre uma venda em segundos, com ou sem leitor de código de barras.
+  ✔ ESTOQUE SEMPRE ATUALIZADO: Cada venda dá baixa automática no estoque. Chega de furos!
+  ✔ CONTROLE TOTAL: Cadastre clientes, gerencie produtos e crie cupons de desconto facilmente.
+  ✔ DECISÕES INTELIGENTES: Com os relatórios, você saberá exatamente quais produtos mais vendem, qual o seu lucro e como estão suas finanças.
+
+Tudo isso em um só lugar, seguro e fácil de usar.
+
+
+---------------------------------
+COMO COMEÇAR EM 3 PASSOS SIMPLES
+---------------------------------
+
+Sei que um programa novo pode parecer intimidante, mas garanto que você pega o jeito rapidinho. Para o primeiro uso, o caminho é este:
+
+1.  **PREPARE O COMPUTADOR:** Siga a "ETAPA 1" e a "ETAPA 2" do arquivo `manual.txt`. É um processo rápido, feito apenas uma vez, para instalar o sistema na sua Área de Trabalho.
+
+2.  **LIGUE O SISTEMA:** Dê um clique duplo no arquivo `start_server.bat` que está dentro da nova pasta. A "janelinha preta" que vai abrir é o coração do sistema, ela precisa ficar aberta enquanto você usa.
+
+3.  **CRIE SEU ACESSO:** Com o sistema ligado, siga a "ETAPA 3.5" do `manual.txt` para criar sua conta principal de Administradora.
+
+
+Pronto! Depois disso, o sistema é todo seu.
+
+Explore sem medo, cadastre alguns produtos para testar e navegue pelos relatórios. O `manual.txt` será seu guia para qualquer dúvida mais detalhada.
+
+Espero que esta ferramenta ajude a FP Moda Fitness a crescer ainda mais!
+
+Um grande abraço e ótimas vendas!
+
+- Fernando Sérgio
