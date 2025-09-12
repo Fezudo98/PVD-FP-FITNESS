@@ -19,21 +19,22 @@ document.addEventListener('DOMContentLoaded', () => {
      * Busca todos os produtos da API e inicia a renderização da tabela.
      */
     async function fetchEstoque() {
-        try {
-            const response = await fetch(`${API_URL}/api/produtos`, {
-                headers: { 'x-access-token': token }
-            });
-            if (!response.ok) {
-                throw new Error('Falha ao carregar o estoque. Verifique sua conexão e login.');
-            }
-            
-            allProducts = await response.json();
-            renderTable(allProducts); // Renderiza a tabela inicial com todos os produtos.
-        } catch (error) {
-            console.error('Erro ao buscar estoque:', error);
-            estoqueTableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+    try {
+        const response = await fetch(`${API_URL}/api/produtos`, {
+            headers: { 'x-access-token': token }
+        });
+        if (!response.ok) {
+            throw new Error('Falha ao carregar o estoque. Verifique sua conexão e login.');
         }
+        
+        allProducts = await response.json();
+        filterTable(); // Em vez de renderTable, chamamos filterTable que já usa o searchInput
+    
+    } catch (error) {
+        console.error('Erro ao buscar estoque:', error);
+        estoqueTableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
     }
+}
 
     /**
      * Renderiza a tabela de estoque com uma lista de produtos.
@@ -104,3 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicia o processo buscando o estoque assim que a página carrega.
     fetchEstoque();
 });
+
+// Inicia a atualização automática a cada 20 segundos
+setInterval(fetchEstoque, 20000);

@@ -51,12 +51,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNÇÕES ---
 
     async function fetchAllProducts() {
-        try {
-            const response = await fetch(`${API_URL}/api/produtos`, { headers: { 'x-access-token': token } });
-            if (!response.ok) throw new Error('Falha ao carregar produtos.');
-            allProducts = await response.json();
-        } catch (error) { console.error(error); alert('Não foi possível carregar os produtos.'); }
+    try {
+        // Guarda o que a vendedora está digitando no campo de busca
+        const currentSearchQuery = searchInput.value;
+
+        const response = await fetch(`${API_URL}/api/produtos`, { headers: { 'x-access-token': token } });
+        if (!response.ok) throw new Error('Falha ao recarregar produtos.');
+        
+        allProducts = await response.json(); // Atualiza a lista principal de produtos
+
+        // Se havia algo na busca, re-renderiza os resultados com a nova lista
+        if (currentSearchQuery) {
+            renderSearchResults(currentSearchQuery);
+        }
+
+    } catch (error) { 
+        console.error(error); 
+        // Podemos optar por não mostrar um alerta aqui para não interromper a vendedora
     }
+}
 
     async function fetchAllClients() {
         try {
@@ -344,3 +357,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function printReceipt() { window.print(); }
+
+// Inicia a atualização automática a cada 20 segundos
+setInterval(fetchAllProducts, 20000);

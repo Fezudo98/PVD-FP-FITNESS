@@ -226,3 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Carrega os produtos assim que a página é aberta
     fetchProdutos();
 });
+
+// Inicia a atualização automática a cada 20 segundos
+setInterval(fetchProdutos, 20000);
