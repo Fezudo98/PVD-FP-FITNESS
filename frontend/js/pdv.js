@@ -289,6 +289,44 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { console.error('Erro ao mostrar o recibo:', error); alert(error.message); }
     }
 
+    function renderClientSearchResults(query) {
+    clientSearchResults.innerHTML = '';
+    if (!query || query.length < 2) { // Só busca com 2+ caracteres
+        return;
+    }
+
+    const filtered = allClients.filter(c => 
+        c.nome.toLowerCase().includes(query.toLowerCase()) || 
+        (c.cpf && c.cpf.includes(query))
+    );
+
+    if (filtered.length === 0) {
+        clientSearchResults.innerHTML = '<div class="list-group-item text-muted">Nenhum cliente encontrado.</div>';
+        return;
+    }
+
+    filtered.slice(0, 5).forEach(c => { // Mostra no máximo 5 resultados
+        const item = document.createElement('a');
+        item.href = '#';
+        item.className = 'list-group-item list-group-item-action';
+        item.textContent = `${c.nome} ${c.cpf ? `(${c.cpf})` : ''}`;
+        item.dataset.clientId = c.id;
+        clientSearchResults.appendChild(item);
+    });
+}
+
+function selectClient(clientId) {
+    const client = allClients.find(c => c.id === clientId);
+    if (client) {
+        selectedClientId.value = client.id;
+        selectedClientName.textContent = client.nome;
+        selectedClientDisplay.classList.remove('d-none');
+        clientSearchWrapper.classList.add('d-none');
+        clientSearchInput.value = '';
+        clientSearchResults.innerHTML = '';
+    }
+}
+
     // --- EVENT LISTENERS ---
     searchInput.addEventListener('input', () => renderSearchResults(searchInput.value));
     searchResults.addEventListener('click', (e) => { e.preventDefault(); const item = e.target.closest('[data-product-id]'); if(item) { addToCart(parseInt(item.dataset.productId)); searchInput.value=''; searchResults.innerHTML=''; } });

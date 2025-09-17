@@ -13,3 +13,6 @@ recibos/
 
 # Pasta de imagens de produtos enviadas pela cliente
 uploads/
+
+# Pasta de códigos de barras gerados
+barcodes/

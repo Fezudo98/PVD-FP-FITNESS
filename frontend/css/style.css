@@ -149,3 +149,10 @@ h2, h4 {
 .receipt-modal-content {
     color: #000;
 }
+
+/* --- Correção de Contraste na Tela de Login --- */
+.login-card .card-title,
+.login-card .form-label {
+    color: rgba(255, 255, 255, 0.6); /* Define a cor como um branco com 60% de opacidade */
+    font-weight: normal; /* Garante que a fonte não seja excessivamente grossa */
+}
