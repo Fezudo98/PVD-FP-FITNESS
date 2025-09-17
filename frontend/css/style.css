@@ -159,8 +159,8 @@ h2, h4 {
 
 /* --- Estilos para a pré-visualização da imagem no PDV --- */
 #last-item-preview img {
-    max-height: 180px;
-    max-width: 180px;
+    max-height: 280px; /* Aumentado de 180px */
+    max-width: 280px;  /* Aumentado de 180px */
     border-radius: 10px;
     border: 2px solid var(--cor-principal);
     background-color: #333;
