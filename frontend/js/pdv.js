@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartTotalSpan = document.getElementById('cartTotal');
     const finalizeSaleBtn = document.getElementById('finalizeSaleBtn');
     const taxaEntregaInput = document.getElementById('taxaEntregaInput');
+    const lastItemPreview = document.getElementById('last-item-preview');
+    const previewImage = document.getElementById('preview-image');
+
     
     // Elementos do Cupom
     const cupomInput = document.getElementById('cupomInput');
@@ -98,9 +101,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addToCart(productId) {
-        const product = allProducts.find(p => p.id === productId);
-        if (!product || product.quantidade <= 0) { alert('Produto sem estoque!'); return; }
-        const cartItem = cart.find(item => item.id === productId);
+    const product = allProducts.find(p => p.id === productId);
+    if (!product || product.quantidade <= 0) { alert('Produto sem estoque!'); return; }
+    
+    // =============== CÓDIGO NOVO ADICIONADO AQUI ===============
+    // Mostra a imagem do produto que acabou de ser adicionado
+    previewImage.src = `${API_URL}/uploads/${product.imagem_url || 'default.png'}`;
+    lastItemPreview.style.display = 'block';
+    // ==========================================================
+
+    const cartItem = cart.find(item => item.id === productId);
         if (cartItem) {
             if (cartItem.quantidade < product.quantidade) {
                 cartItem.quantidade++;
@@ -220,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(result.erro || 'Erro desconhecido ao finalizar a venda.');
             
             await showReceipt(result.id_venda);
+            lastItemPreview.style.display = 'none';
             
             cart = [];
             taxaEntregaInput.value = 0;

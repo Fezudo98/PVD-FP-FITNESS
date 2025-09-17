@@ -156,3 +156,18 @@ h2, h4 {
     color: rgba(255, 255, 255, 0.6); /* Define a cor como um branco com 60% de opacidade */
     font-weight: normal; /* Garante que a fonte não seja excessivamente grossa */
 }
+
+/* --- Estilos para a pré-visualização da imagem no PDV --- */
+#last-item-preview img {
+    max-height: 180px;
+    max-width: 180px;
+    border-radius: 10px;
+    border: 2px solid var(--cor-principal);
+    background-color: #333;
+    object-fit: cover;
+    transition: transform 0.2s ease-in-out;
+}
+
+#last-item-preview img:hover {
+    transform: scale(1.05);
+}
