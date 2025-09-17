@@ -6,3 +6,4 @@ PyJWT==2.6.0
 Werkzeug==2.2.2
 SQLAlchemy<2.0
 python-barcode==0.15.1
+Pillow
