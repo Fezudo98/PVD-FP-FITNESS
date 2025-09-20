@@ -2,9 +2,6 @@
 venv/
 __pycache__/
 
-
-estoque.db
-
 # Pasta de backups - são específicos de cada instalação
 backups/
 
@@ -16,3 +13,6 @@ uploads/
 
 # Pasta de códigos de barras gerados
 barcodes/
+
+
+estoque.db

@@ -1,72 +1,70 @@
-// Define a URL base da sua API. Deixe vazio para rodar no mesmo local.
-const API_URL = '';
+const API_URL = ''; // Deixe vazio
 const token = localStorage.getItem('authToken');
 
-// Se não houver token, o usuário não está logado. Redireciona para a tela de login.
 if (!token) {
     window.location.href = '/login.html';
 }
 
-// Variável global para armazenar a lista completa de produtos, facilitando a busca.
-let allProducts = [];
+// Variáveis globais para controlar o estado
+let currentPage = 1;
+let currentSearch = '';
 
-// Garante que o script só será executado após a página HTML ser totalmente carregada.
 document.addEventListener('DOMContentLoaded', () => {
     const estoqueTableBody = document.getElementById('estoqueTableBody');
     const searchInput = document.getElementById('searchInput');
 
     /**
-     * Busca todos os produtos da API e inicia a renderização da tabela.
+     * Busca os produtos da API, aplicando paginação e filtro de busca.
+     * @param {number} page - O número da página a ser buscada.
+     * @param {string} searchQuery - O termo de busca a ser enviado para a API.
      */
-    async function fetchEstoque() {
-    try {
-        const response = await fetch(`${API_URL}/api/produtos`, {
-            headers: { 'x-access-token': token }
-        });
-        if (!response.ok) {
-            throw new Error('Falha ao carregar o estoque. Verifique sua conexão e login.');
+    async function fetchEstoque(page = 1, searchQuery = '') {
+        try {
+            // Constrói a URL com os parâmetros de página e busca
+            const url = `${API_URL}/api/produtos?page=${page}&q=${searchQuery}`;
+            const response = await fetch(url, {
+                headers: { 'x-access-token': token }
+            });
+            if (!response.ok) {
+                throw new Error('Falha ao carregar o estoque.');
+            }
+            
+            const data = await response.json();
+            renderTable(data.produtos); // Renderiza os produtos da página
+            renderPagination(data.pagina_atual, data.total_paginas); // Renderiza a paginação
+
+            // Atualiza o estado global
+            currentPage = data.pagina_atual;
+            currentSearch = searchQuery;
+
+        } catch (error) {
+            console.error('Erro ao buscar estoque:', error);
+            estoqueTableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
         }
-        
-        allProducts = await response.json();
-        filterTable(); // Em vez de renderTable, chamamos filterTable que já usa o searchInput
-    
-    } catch (error) {
-        console.error('Erro ao buscar estoque:', error);
-        estoqueTableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
     }
-}
 
     /**
      * Renderiza a tabela de estoque com uma lista de produtos.
      * @param {Array} productsToRender - A lista de produtos a ser exibida.
      */
     function renderTable(productsToRender) {
-        estoqueTableBody.innerHTML = ''; // Limpa a tabela antes de adicionar novas linhas.
-
-        // Se a lista de produtos estiver vazia, exibe uma mensagem amigável.
+        estoqueTableBody.innerHTML = '';
         if (productsToRender.length === 0) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = '<td colspan="8" class="text-center text-muted">Nenhum produto encontrado.</td>';
-            estoqueTableBody.appendChild(tr);
+            estoqueTableBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Nenhum produto encontrado.</td></tr>';
             return;
         }
 
-        // Itera sobre cada produto para criar uma linha na tabela.
         productsToRender.forEach(produto => {
             const tr = document.createElement('tr');
-            
-            // Verifica se o estoque está baixo para destacar a linha.
             const isLowStock = produto.quantidade <= produto.limite_estoque_baixo;
             if (isLowStock) {
-                tr.classList.add('table-danger'); // Classe do Bootstrap para linhas vermelhas.
+                tr.classList.add('table-danger');
             }
 
-            // Gera o botão para ver o código de barras, se ele existir.
             const barcodeButton = produto.codigo_barras_url 
-                ? `<a href="${API_URL}/barcodes/${produto.codigo_barras_url}" target="_blank" class="btn btn-sm btn-outline-light">Ver</a>` 
-                : 'N/A'; // Se não houver código de barras, exibe 'N/A'.
+                ? `<a href="/barcodes/${produto.codigo_barras_url}" target="_blank" class="btn btn-sm btn-outline-light">Ver</a>` 
+                : 'N/A';
 
-            // Define o conteúdo HTML da linha da tabela com todos os dados do produto.
             tr.innerHTML = `
                 <td><img src="${API_URL}/uploads/${produto.imagem_url || 'default.png'}" alt="${produto.nome}" width="50" class="rounded"></td>
                 <td>${produto.sku}</td>
@@ -77,34 +75,72 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><strong>${produto.quantidade}</strong></td>
                 <td>${barcodeButton}</td>
             `;
-            estoqueTableBody.appendChild(tr); // Adiciona a linha pronta à tabela.
+            estoqueTableBody.appendChild(tr);
         });
     }
 
     /**
-     * Filtra a lista de produtos com base no texto digitado no campo de busca.
+     * Cria e exibe os botões de navegação da paginação.
+     * (Esta função é idêntica à do produtos.js)
      */
-    function filterTable() {
-        const query = searchInput.value.toLowerCase();
-        const filteredProducts = allProducts.filter(p => 
-            p.nome.toLowerCase().includes(query) ||
-            p.sku.toLowerCase().includes(query)
-        );
-        renderTable(filteredProducts); // Re-renderiza a tabela com os produtos filtrados.
+    function renderPagination(paginaAtual, totalPaginas) {
+        const oldPagination = document.querySelector('.pagination-nav');
+        if (oldPagination) oldPagination.remove();
+        if (totalPaginas <= 1) return;
+
+        const nav = document.createElement('nav');
+        nav.className = 'pagination-nav d-flex justify-content-center mt-4';
+        const ul = document.createElement('ul');
+        ul.className = 'pagination';
+
+        const prevLi = document.createElement('li');
+        prevLi.className = `page-item ${paginaAtual === 1 ? 'disabled' : ''}`;
+        prevLi.innerHTML = `<a class="page-link" href="#" data-page="${paginaAtual - 1}">Anterior</a>`;
+        ul.appendChild(prevLi);
+
+        for (let i = 1; i <= totalPaginas; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === paginaAtual ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+            ul.appendChild(li);
+        }
+
+        const nextLi = document.createElement('li');
+        nextLi.className = `page-item ${paginaAtual === totalPaginas ? 'disabled' : ''}`;
+        nextLi.innerHTML = `<a class="page-link" href="#" data-page="${paginaAtual + 1}">Próximo</a>`;
+        ul.appendChild(nextLi);
+
+        nav.appendChild(ul);
+        document.querySelector('.table-responsive').after(nav);
     }
 
-    // Adiciona o "escutador" de eventos ao campo de busca.
-    searchInput.addEventListener('input', filterTable);
+    // --- EVENT LISTENERS ---
 
-    // Adiciona a funcionalidade de logout ao botão de sair.
-    document.getElementById('logoutButton').addEventListener('click', () => {
-        localStorage.clear(); // Limpa os dados de login.
-        window.location.href = '/login.html'; // Redireciona para a tela de login.
+    // Listener para o campo de busca (aciona a busca ao digitar)
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            fetchEstoque(1, searchInput.value); // Sempre busca da página 1 ao iniciar uma nova pesquisa
+        }, 300); // Debounce de 300ms para não fazer requisições a cada tecla
     });
 
-    // Inicia o processo buscando o estoque assim que a página carrega.
-    fetchEstoque();
-});
+    // Listener para os cliques nos botões de paginação
+    document.addEventListener('click', (event) => {
+        const target = event.target;
+        if (target.matches('.page-link') && target.dataset.page) {
+            event.preventDefault();
+            const pageNumber = parseInt(target.dataset.page);
+            // Busca a nova página mantendo o termo de busca atual
+            fetchEstoque(pageNumber, currentSearch);
+        }
+    });
 
-// Inicia a atualização automática a cada 20 segundos
-setInterval(fetchEstoque, 20000);
+    document.getElementById('logoutButton').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = '/login.html';
+    });
+
+    // --- INICIALIZAÇÃO ---
+    fetchEstoque(1, ''); // Carrega a primeira página sem busca ao iniciar
+});

@@ -7,10 +7,11 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from werkzeug.utils import secure_filename
 import barcode
 from barcode.writer import ImageWriter
+from flask_migrate import Migrate
 
 # 1. CONFIGURAÇÃO INICIAL
 # ------------------------------------
@@ -23,8 +24,6 @@ app.config['SECRET_KEY'] = 'my-super-secret-key-12345'
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
-
-from flask_migrate import Migrate
 migrate = Migrate(app, db)
 
 
@@ -64,20 +63,23 @@ class Cliente(db.Model):
     def to_dict(self):
         return {'id': self.id, 'nome': self.nome, 'telefone': self.telefone, 'cpf': self.cpf}
 
+# Tabela de associação para cupons e produtos
+cupom_produtos = db.Table('cupom_produtos',
+    db.Column('cupom_id', db.Integer, db.ForeignKey('cupom.id'), primary_key=True),
+    db.Column('produto_id', db.Integer, db.ForeignKey('produto.id'), primary_key=True)
+)
+
 class Cupom(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     codigo = db.Column(db.String(50), unique=True, nullable=False)
     tipo_desconto = db.Column(db.String(20), nullable=False) # 'percentual' ou 'fixo'
     valor_desconto = db.Column(db.Float, nullable=False)
     ativo = db.Column(db.Boolean, default=True)
-    
-    # --- NOVOS CAMPOS ADICIONADOS ---
     aplicacao = db.Column(db.String(20), nullable=False, default='total') # 'total' ou 'produto_especifico'
-    produtos = db.relationship('Produto', secondary='cupom_produtos', lazy='subquery',
+    produtos = db.relationship('Produto', secondary=cupom_produtos, lazy='subquery',
                                backref=db.backref('cupons', lazy=True))
 
     def to_dict(self):
-        # --- to_dict ATUALIZADO ---
         return { 
             'id': self.id, 
             'codigo': self.codigo, 
@@ -85,7 +87,7 @@ class Cupom(db.Model):
             'valor_desconto': self.valor_desconto, 
             'ativo': self.ativo,
             'aplicacao': self.aplicacao,
-            'produtos_validos_ids': [p.id for p in self.produtos] # Envia os IDs dos produtos válidos
+            'produtos_validos_ids': [p.id for p in self.produtos]
         }
 
 class Venda(db.Model):
@@ -112,15 +114,6 @@ class ItemVenda(db.Model):
     id_produto = db.Column(db.Integer, db.ForeignKey('produto.id'), nullable=False)
     produto = db.relationship('Produto')
 
-# =============== CÓDIGO NOVO ADICIONADO AQUI ===============
-# Tabela de associação para cupons e produtos
-cupom_produtos = db.Table('cupom_produtos',
-    db.Column('cupom_id', db.Integer, db.ForeignKey('cupom.id'), primary_key=True),
-    db.Column('produto_id', db.Integer, db.ForeignKey('produto.id'), primary_key=True)
-)
-# =======================================================
-
-## --- NOVO MODELO DE LOG ADICIONADO --- ##
 class Log(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -131,19 +124,14 @@ class Log(db.Model):
 
 # 3. FUNÇÕES AUXILIARES
 # -----------------------------------------------------------
-## --- NOVA FUNÇÃO PARA REGISTRAR LOGS --- ##
 def registrar_log(usuario, acao, detalhes=""):
     try:
-        # Se for uma ação de sistema ou login falho, o usuário pode ser None
         user_id = usuario.id if usuario else None
         user_name = usuario.nome if usuario else "Sistema"
-        
         novo_log = Log(id_usuario=user_id, usuario_nome=user_name, acao=acao, detalhes=detalhes)
         db.session.add(novo_log)
-        # O commit será feito pela função principal que chamou o log.
     except Exception as e:
         print(f"ERRO CRÍTICO AO REGISTRAR LOG: {e}")
-
 
 def token_required(f):
     @wraps(f)
@@ -228,10 +216,7 @@ def register():
     role_to_set = 'admin' if is_first_user else dados.get('role', 'vendedor')
     novo_usuario = Usuario(nome=dados['nome'], email=dados['email'], senha_hash=senha_hash, role=role_to_set)
     db.session.add(novo_usuario)
-    
-    ## REGISTRO DE LOG ##
     registrar_log(current_user, "Usuário Criado", f"Novo usuário: {novo_usuario.nome} ({novo_usuario.email}), Cargo: {novo_usuario.role}")
-    
     db.session.commit()
     if is_first_user:
         return jsonify({'mensagem': 'Administrador principal criado com sucesso! Você já pode fazer o login.'}), 201
@@ -244,15 +229,11 @@ def login():
         return jsonify({'message': 'Credenciais não fornecidas'}), 401
     user = Usuario.query.filter_by(email=auth['email']).first()
     if not user or not bcrypt.check_password_hash(user.senha_hash, auth['senha']):
-        ## REGISTRO DE LOG ##
         registrar_log(None, "Falha de Login", f"Tentativa de login para o email: {auth.get('email')}")
         db.session.commit()
         return jsonify({'message': 'Credenciais inválidas!'}), 401
-    
-    ## REGISTRO DE LOG ##
     registrar_log(user, "Login Realizado")
     db.session.commit()
-
     token = jwt.encode({'id': user.id, 'exp' : datetime.utcnow() + timedelta(hours=24)}, app.config['SECRET_KEY'], algorithm="HS256")
     return jsonify({'token': token, 'user': user.to_dict()})
 
@@ -261,8 +242,32 @@ def login():
 @token_required
 def gerenciar_produtos(current_user):
     if request.method == 'GET':
-        todos_os_produtos = Produto.query.order_by(Produto.nome).all()
-        return jsonify([produto.to_dict() for produto in todos_os_produtos])
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 15, type=int)
+        search_query = request.args.get('q', '', type=str)
+
+        query = Produto.query.order_by(Produto.nome)
+
+        if search_query:
+            termo_busca = f"%{search_query}%"
+            query = query.filter(
+                or_(
+                    Produto.nome.ilike(termo_busca),
+                    Produto.sku.ilike(termo_busca)
+                )
+            )
+
+        paginacao = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        produtos_da_pagina = paginacao.items
+        
+        return jsonify({
+            'produtos': [produto.to_dict() for produto in produtos_da_pagina],
+            'total_paginas': paginacao.pages,
+            'pagina_atual': paginacao.page,
+            'total_produtos': paginacao.total
+        })
+
     if request.method == 'POST':
         if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
         dados = request.form
@@ -277,10 +282,7 @@ def gerenciar_produtos(current_user):
             file.save(os.path.join(uploads_dir, filename))
             novo_produto.imagem_url = filename
         db.session.add(novo_produto)
-
-        ## REGISTRO DE LOG ##
         registrar_log(current_user, "Produto Criado", f"SKU: {novo_produto.sku}, Nome: {novo_produto.nome}")
-
         db.session.commit()
         return jsonify(novo_produto.to_dict()), 201
 
@@ -292,11 +294,9 @@ def gerenciar_produto_especifico(current_user, produto_id):
     if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
     if request.method == 'PUT':
         dados = request.form
-        # Guarda os valores antigos para comparar
         old_nome = produto.nome
         old_preco_venda = produto.preco_venda
         old_quantidade = produto.quantidade
-
         produto.nome = dados.get('nome', produto.nome)
         produto.categoria = dados.get('categoria', produto.categoria)
         produto.cor = dados.get('cor', produto.cor)
@@ -305,7 +305,6 @@ def gerenciar_produto_especifico(current_user, produto_id):
         produto.preco_venda = float(dados.get('preco_venda', produto.preco_venda))
         produto.quantidade = int(dados.get('quantidade', produto.quantidade))
         produto.limite_estoque_baixo = int(dados.get('limite_estoque_baixo', produto.limite_estoque_baixo))
-        
         if 'imagem' in request.files and request.files['imagem'].filename != '':
             uploads_dir = os.path.join(base_dir, 'uploads')
             os.makedirs(uploads_dir, exist_ok=True)
@@ -316,29 +315,21 @@ def gerenciar_produto_especifico(current_user, produto_id):
             filename = f"{secure_filename(produto.sku)}.{extensao}"
             file.save(os.path.join(uploads_dir, filename))
             produto.imagem_url = filename
-
-        ## REGISTRO DE LOG ##
         detalhes_log = f"SKU: {produto.sku}. Alterações: "
         if old_nome != produto.nome: detalhes_log += f"Nome ('{old_nome}' -> '{produto.nome}'), "
         if old_preco_venda != produto.preco_venda: detalhes_log += f"Preço ('{old_preco_venda}' -> '{produto.preco_venda}'), "
         if old_quantidade != produto.quantidade: detalhes_log += f"Qtd ('{old_quantidade}' -> '{produto.quantidade}'), "
         registrar_log(current_user, "Produto Atualizado", detalhes_log.strip(', '))
-        
         db.session.commit()
         return jsonify(produto.to_dict())
 
     if request.method == 'DELETE':
         sku_deletado = produto.sku
         nome_deletado = produto.nome
-
         if produto.imagem_url and os.path.exists(os.path.join(base_dir, 'uploads', produto.imagem_url)):
             os.remove(os.path.join(base_dir, 'uploads', produto.imagem_url))
-        
         db.session.delete(produto)
-        
-        ## REGISTRO DE LOG ##
         registrar_log(current_user, "Produto Deletado", f"SKU: {sku_deletado}, Nome: {nome_deletado}")
-        
         db.session.commit()
         return jsonify({'mensagem': 'Produto deletado com sucesso!'})
 
@@ -359,10 +350,7 @@ def gerar_codigo_barras(current_user, produto_id):
         codigo_gerado = CODE128(produto.sku, writer=ImageWriter())
         codigo_gerado.write(filepath)
         produto.codigo_barras_url = filename
-        
-        ## REGISTRO DE LOG ##
         registrar_log(current_user, "Código de Barras Gerado", f"SKU: {produto.sku}")
-        
         db.session.commit()
         return jsonify({'mensagem': 'Código de barras gerado com sucesso!', 'url': filename})
     except Exception as e:
@@ -440,7 +428,15 @@ def gerenciar_cupons(current_user):
         dados = request.get_json()
         if not dados.get('codigo'): return jsonify({'erro': 'O código do cupom é obrigatório.'}), 400
         if Cupom.query.filter_by(codigo=dados['codigo'].upper()).first(): return jsonify({'erro': 'Este código de cupom já existe.'}), 400
-        novo_cupom = Cupom(codigo=dados['codigo'].upper(), tipo_desconto=dados['tipo_desconto'], valor_desconto=float(dados['valor_desconto']))
+        novo_cupom = Cupom(
+            codigo=dados['codigo'].upper(), 
+            tipo_desconto=dados['tipo_desconto'], 
+            valor_desconto=float(dados['valor_desconto']),
+            aplicacao=dados.get('aplicacao', 'total')
+        )
+        if novo_cupom.aplicacao == 'produto_especifico' and dados.get('produtos_ids'):
+            produtos_associados = Produto.query.filter(Produto.id.in_(dados['produtos_ids'])).all()
+            novo_cupom.produtos = produtos_associados
         db.session.add(novo_cupom)
         registrar_log(current_user, "Cupom Criado", f"Código: {novo_cupom.codigo}")
         db.session.commit()
@@ -453,9 +449,21 @@ def gerenciar_cupom_especifico(current_user, cupom_id):
     cupom = Cupom.query.get_or_404(cupom_id)
     if request.method == 'PUT':
         dados = request.get_json()
-        cupom.ativo = dados.get('ativo', cupom.ativo)
-        status = "Ativado" if cupom.ativo else "Desativado"
-        registrar_log(current_user, "Status do Cupom Alterado", f"Código: {cupom.codigo}, Novo Status: {status}")
+        if 'ativo' in dados and len(dados) == 1:
+            cupom.ativo = dados.get('ativo', cupom.ativo)
+            status = "Ativado" if cupom.ativo else "Desativado"
+            registrar_log(current_user, "Status do Cupom Alterado", f"Código: {cupom.codigo}, Novo Status: {status}")
+        else:
+            cupom.codigo = dados.get('codigo', cupom.codigo).upper()
+            cupom.tipo_desconto = dados.get('tipo_desconto', cupom.tipo_desconto)
+            cupom.valor_desconto = float(dados.get('valor_desconto', cupom.valor_desconto))
+            cupom.aplicacao = dados.get('aplicacao', cupom.aplicacao)
+            if cupom.aplicacao == 'produto_especifico' and 'produtos_ids' in dados:
+                produtos_associados = Produto.query.filter(Produto.id.in_(dados['produtos_ids'])).all()
+                cupom.produtos = produtos_associados
+            else:
+                cupom.produtos = []
+            registrar_log(current_user, "Cupom Atualizado", f"Código: {cupom.codigo}")
         db.session.commit()
         return jsonify(cupom.to_dict())
     if request.method == 'DELETE':
@@ -479,60 +487,48 @@ def registrar_venda(current_user):
     dados = request.get_json()
     itens_venda_data = dados.get('itens')
     if not itens_venda_data: return jsonify({'erro': 'A lista de itens não pode estar vazia.'}), 400
-
     try:
-        # --- NOVA LÓGICA DE CÁLCULO DE DESCONTO ---
         subtotal_produtos = 0
         desconto_calculado = 0
         cupom_codigo = dados.get('cupom_utilizado')
         cupom = None
-
-        # 1. Calcula o subtotal primeiro, baseado nos preços do banco de dados
         for item_data in itens_venda_data:
             produto = Produto.query.get(item_data['id_produto'])
             if not produto:
                 db.session.rollback()
                 return jsonify({'erro': 'Produto não encontrado.'}), 400
             subtotal_produtos += produto.preco_venda * item_data['quantidade']
-
-        # 2. Se um cupom foi usado, busca no DB e calcula o desconto
         if cupom_codigo:
             cupom = Cupom.query.filter_by(codigo=cupom_codigo.upper(), ativo=True).first()
             if cupom:
                 base_de_calculo_desconto = 0
                 if cupom.aplicacao == 'total':
                     base_de_calculo_desconto = subtotal_produtos
-                else: # 'produto_especifico'
+                else:
                     ids_produtos_validos = [p.id for p in cupom.produtos]
                     for item_data in itens_venda_data:
                         if item_data['id_produto'] in ids_produtos_validos:
                             produto = Produto.query.get(item_data['id_produto'])
                             base_de_calculo_desconto += produto.preco_venda * item_data['quantidade']
-                
                 if cupom.tipo_desconto == 'percentual':
                     desconto_calculado = (base_de_calculo_desconto * cupom.valor_desconto) / 100
-                else: # 'fixo'
+                else:
                     desconto_calculado = cupom.valor_desconto
-                
                 if desconto_calculado > base_de_calculo_desconto:
                     desconto_calculado = base_de_calculo_desconto
-
         taxa_entrega = dados.get('taxa_entrega', 0.0)
         total_venda_calculado = subtotal_produtos - desconto_calculado + taxa_entrega
-        # --- FIM DA NOVA LÓGICA ---
-
         nova_venda = Venda(
-            total_venda=round(total_venda_calculado, 2), # Usa o total seguro calculado aqui
+            total_venda=round(total_venda_calculado, 2),
             forma_pagamento=dados.get('forma_pagamento'), 
             taxa_entrega=taxa_entrega, 
             id_cliente=dados.get('id_cliente'), 
             id_vendedor=current_user.id, 
             cupom_utilizado=cupom.codigo if cupom else None, 
-            valor_desconto=round(desconto_calculado, 2), # Usa o desconto seguro calculado aqui
+            valor_desconto=round(desconto_calculado, 2),
             parcelas=dados.get('parcelas', 1), 
             itens=[]
         )
-        
         for item_data in itens_venda_data:
             produto = Produto.query.get(item_data['id_produto'])
             if not produto or produto.quantidade < item_data['quantidade']:
@@ -541,20 +537,16 @@ def registrar_venda(current_user):
             produto.quantidade -= item_data['quantidade']
             item_venda = ItemVenda(id_produto=produto.id, quantidade=item_data['quantidade'], preco_unitario_momento=produto.preco_venda)
             nova_venda.itens.append(item_venda)
-        
         db.session.add(nova_venda)
-        
         db.session.flush()
         detalhes_log = f"ID da Venda: {nova_venda.id}, Total: R$ {nova_venda.total_venda:.2f}"
         registrar_log(current_user, "Venda Registrada", detalhes_log)
-
         db.session.commit()
         salvar_recibo_html(nova_venda)
         return jsonify({'mensagem': 'Venda registrada com sucesso!', 'id_venda': nova_venda.id}), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': 'Ocorreu um erro interno.', 'detalhes': str(e)}), 500
-
 
 @app.route('/api/vendas/<int:venda_id>', methods=['GET'])
 @token_required
@@ -578,10 +570,7 @@ def reembolsar_venda(current_user, venda_id):
             if produto:
                 produto.quantidade += item.quantidade
         venda.status = 'Reembolsada'
-
-        ## REGISTRO DE LOG ##
         registrar_log(current_user, "Venda Reembolsada", f"ID da Venda: {venda.id}")
-
         db.session.commit()
         return jsonify({'mensagem': f'Venda {venda_id} reembolsada com sucesso! O estoque foi atualizado.'})
     except Exception as e:
@@ -616,16 +605,13 @@ def get_dashboard_data(current_user):
     lista_vendas = [{'id': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Consumidor Final', 'vendedor': v.vendedor.nome, 'total': v.total_venda, 'pagamento': v.forma_pagamento, 'status': v.status} for v in vendas_no_periodo_total]
     return jsonify({'kpis': kpis, 'grafico_vendas_tempo': grafico_vendas_tempo, 'grafico_forma_pagamento': grafico_forma_pagamento, 'ranking_produtos': ranking_produtos, 'ranking_vendedores': ranking_vendedores, 'lista_vendas': lista_vendas})
 
-## --- NOVA ROTA PARA BUSCAR OS LOGS --- ##
 @app.route('/api/logs', methods=['GET'])
 @token_required
 def get_logs(current_user):
     if current_user.role != 'admin':
         return jsonify({'message': 'Acesso negado.'}), 403
-    
     query = Log.query.order_by(Log.timestamp.desc())
-    
-    logs = query.limit(200).all() # Limita aos últimos 200 logs para não sobrecarregar
+    logs = query.limit(200).all()
     logs_data = []
     for log in logs:
         logs_data.append({
@@ -635,7 +621,6 @@ def get_logs(current_user):
             'acao': log.acao,
             'detalhes': log.detalhes
         })
-    
     return jsonify(logs_data)
 
 
@@ -643,5 +628,6 @@ def get_logs(current_user):
 # -----------------------------------------------------------
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        # A linha db.create_all() não é mais necessária aqui se estivermos usando migrações
+        pass
     app.run(host='0.0.0.0', port=5000, debug=True)
