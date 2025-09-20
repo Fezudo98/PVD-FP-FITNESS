@@ -591,7 +591,7 @@ def get_dashboard_data(current_user):
     receita_total = sum(v.total_venda for v in vendas_validas)
     total_taxas_entrega = sum(v.taxa_entrega for v in vendas_validas)
     total_descontos = sum(v.valor_desconto for v in vendas_validas)
-    custo_total_produtos = sum(item.quantidade * item.produto.preco_custo for v in vendas_validas for item in v.itens)
+    custo_total_produtos = sum(item.quantidade * (item.produto.preco_custo if item.produto else 0) for v in vendas_validas for item in v.itens)
     kpis = {'receita_total': round(receita_total, 2), 'total_vendas': len(vendas_validas), 'ticket_medio': round(receita_total / len(vendas_validas) if vendas_validas else 0, 2), 'total_descontos': round(total_descontos, 2), 'lucro_bruto': round(receita_total - custo_total_produtos, 2), 'total_taxas_entrega': round(total_taxas_entrega, 2)}
     vendas_por_dia_query = base_query.with_entities(func.date(Venda.data_hora).label('dia'), func.sum(Venda.total_venda).label('total')).group_by('dia').order_by('dia').all()
     grafico_vendas_tempo = [{'data': datetime.strptime(r.dia, '%Y-%m-%d').strftime('%d/%m'), 'total': r.total} for r in vendas_por_dia_query]
