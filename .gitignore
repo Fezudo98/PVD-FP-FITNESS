@@ -2,8 +2,6 @@
 venv/
 __pycache__/
 
-# Banco de dados SQLite - NUNCA sobrescrever o banco da cliente!
-estoque.db
 
 # Pasta de backups - são específicos de cada instalação
 backups/
