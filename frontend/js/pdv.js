@@ -22,7 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const taxaEntregaInput = document.getElementById('taxaEntregaInput');
     const lastItemPreview = document.getElementById('last-item-preview');
     const previewImage = document.getElementById('preview-image');
-
     
     // Elementos do Cupom
     const cupomInput = document.getElementById('cupomInput');
@@ -54,25 +53,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNÇÕES ---
 
     async function fetchAllProducts() {
-    try {
-        // Guarda o que a vendedora está digitando no campo de busca
-        const currentSearchQuery = searchInput.value;
-
-        const response = await fetch(`${API_URL}/api/produtos`, { headers: { 'x-access-token': token } });
-        if (!response.ok) throw new Error('Falha ao recarregar produtos.');
-        
-        allProducts = await response.json(); // Atualiza a lista principal de produtos
-
-        // Se havia algo na busca, re-renderiza os resultados com a nova lista
-        if (currentSearchQuery) {
-            renderSearchResults(currentSearchQuery);
+        try {
+            const currentSearchQuery = searchInput.value;
+            const response = await fetch(`${API_URL}/api/produtos`, { headers: { 'x-access-token': token } });
+            if (!response.ok) throw new Error('Falha ao recarregar produtos.');
+            allProducts = await response.json();
+            if (currentSearchQuery) {
+                renderSearchResults(currentSearchQuery);
+            }
+        } catch (error) { 
+            console.error(error); 
         }
-
-    } catch (error) { 
-        console.error(error); 
-        // Podemos optar por não mostrar um alerta aqui para não interromper a vendedora
     }
-}
 
     async function fetchAllClients() {
         try {
@@ -101,16 +93,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addToCart(productId) {
-    const product = allProducts.find(p => p.id === productId);
-    if (!product || product.quantidade <= 0) { alert('Produto sem estoque!'); return; }
-    
-    // =============== CÓDIGO NOVO ADICIONADO AQUI ===============
-    // Mostra a imagem do produto que acabou de ser adicionado
-    previewImage.src = `${API_URL}/uploads/${product.imagem_url || 'default.png'}`;
-    lastItemPreview.style.display = 'block';
-    // ==========================================================
+        const product = allProducts.find(p => p.id === productId);
+        if (!product || product.quantidade <= 0) { alert('Produto sem estoque!'); return; }
+        
+        previewImage.src = `${API_URL}/uploads/${product.imagem_url || 'default.png'}`;
+        lastItemPreview.style.display = 'block';
 
-    const cartItem = cart.find(item => item.id === productId);
+        const cartItem = cart.find(item => item.id === productId);
         if (cartItem) {
             if (cartItem.quantidade < product.quantidade) {
                 cartItem.quantidade++;
@@ -137,19 +126,38 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTotals();
     }
     
+    // =============== FUNÇÃO TOTALMENTE ATUALIZADA ===============
     function updateTotals() {
         let subtotal = cart.reduce((sum, item) => sum + (item.quantidade * item.preco_venda), 0);
         let discountAmount = 0;
 
         if (appliedCoupon) {
+            let discountBase = 0;
+            // Verifica se o cupom é para o total ou para produtos específicos
+            if (appliedCoupon.aplicacao === 'total') {
+                discountBase = subtotal;
+            } else if (appliedCoupon.aplicacao === 'produto_especifico') {
+                // Calcula o subtotal apenas dos itens válidos para o cupom
+                discountBase = cart.reduce((sum, item) => {
+                    if (appliedCoupon.produtos_validos_ids.includes(item.id)) {
+                        return sum + (item.quantidade * item.preco_venda);
+                    }
+                    return sum;
+                }, 0);
+            }
+
+            // Calcula o valor do desconto com base no tipo
             if (appliedCoupon.tipo_desconto === 'percentual') {
-                discountAmount = (subtotal * appliedCoupon.valor_desconto) / 100;
-            } else {
+                discountAmount = (discountBase * appliedCoupon.valor_desconto) / 100;
+            } else { // 'fixo'
                 discountAmount = appliedCoupon.valor_desconto;
             }
-            if (discountAmount > subtotal) {
-                discountAmount = subtotal;
+
+            // Garante que o desconto não seja maior que a base de cálculo
+            if (discountAmount > discountBase) {
+                discountAmount = discountBase;
             }
+
             cupomCodeDisplay.textContent = appliedCoupon.codigo;
             discountValueSpan.textContent = `- R$ ${discountAmount.toFixed(2)}`;
             discountDisplay.classList.remove('d-none');
@@ -164,6 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cartTotalSpan.textContent = `R$ ${totalGeral.toFixed(2)}`;
         finalizeSaleBtn.disabled = cart.length === 0;
     }
+    // ==============================================================
 
     async function applyCoupon() {
         const code = cupomInput.value;
@@ -196,28 +205,16 @@ document.addEventListener('DOMContentLoaded', () => {
     async function finalizeSale() {
         if (cart.length === 0) { alert('O carrinho está vazio!'); return; }
         
-        const subtotal = cart.reduce((sum, item) => sum + (item.quantidade * item.preco_venda), 0);
-        let discountAmount = 0;
-        if (appliedCoupon) {
-            if (appliedCoupon.tipo_desconto === 'percentual') {
-                discountAmount = (subtotal * appliedCoupon.valor_desconto) / 100;
-            } else {
-                discountAmount = appliedCoupon.valor_desconto;
-            }
-            if (discountAmount > subtotal) discountAmount = subtotal;
-        }
-        const taxaEntrega = parseFloat(taxaEntregaInput.value) || 0;
-        
-        // ===== ALTERAÇÃO AQUI: Capturando as parcelas =====
+        // A lógica de cálculo foi movida para o backend para segurança.
+        // O frontend envia os dados brutos.
         const saleData = {
             itens: cart.map(item => ({ id_produto: item.id, quantidade: item.quantidade })),
             forma_pagamento: paymentMethodSelect.value,
             id_cliente: selectedClientId.value || null,
-            total_venda: subtotal - discountAmount + taxaEntrega,
-            taxa_entrega: taxaEntrega,
+            taxa_entrega: parseFloat(taxaEntregaInput.value) || 0,
             cupom_utilizado: appliedCoupon ? appliedCoupon.codigo : null,
-            valor_desconto: discountAmount,
             parcelas: paymentMethodSelect.value === 'Cartão de Crédito' ? parseInt(installmentsInput.value) : 1
+            // Não enviamos mais total_venda nem valor_desconto. O backend calcula.
         };
 
         try {
@@ -230,15 +227,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(result.erro || 'Erro desconhecido ao finalizar a venda.');
             
             await showReceipt(result.id_venda);
-            lastItemPreview.style.display = 'none';
             
+            lastItemPreview.style.display = 'none';
             cart = [];
             taxaEntregaInput.value = 0;
             removeClient();
             removeCoupon();
-            paymentMethodSelect.value = 'Dinheiro'; // Reseta
-            installmentsWrapper.classList.add('d-none'); // Esconde
-            installmentsInput.value = 1; // Reseta
+            paymentMethodSelect.value = 'Dinheiro';
+            installmentsWrapper.classList.add('d-none');
+            installmentsInput.value = 1;
             renderCart();
             fetchAllProducts();
             searchInput.value = '';
@@ -246,6 +243,36 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Erro ao finalizar venda:', error);
             alert(`Erro: ${error.message}`);
+        }
+    }
+
+    function renderClientSearchResults(query) {
+        clientSearchResults.innerHTML = '';
+        if (!query || query.length < 2) return;
+        const filtered = allClients.filter(c => c.nome.toLowerCase().includes(query.toLowerCase()) || (c.cpf && c.cpf.includes(query)));
+        if (filtered.length === 0) {
+            clientSearchResults.innerHTML = '<div class="list-group-item text-muted">Nenhum cliente encontrado.</div>';
+            return;
+        }
+        filtered.slice(0, 5).forEach(c => {
+            const item = document.createElement('a');
+            item.href = '#';
+            item.className = 'list-group-item list-group-item-action';
+            item.textContent = `${c.nome} ${c.cpf ? `(${c.cpf})` : ''}`;
+            item.dataset.clientId = c.id;
+            clientSearchResults.appendChild(item);
+        });
+    }
+
+    function selectClient(clientId) {
+        const client = allClients.find(c => c.id === clientId);
+        if (client) {
+            selectedClientId.value = client.id;
+            selectedClientName.textContent = client.nome;
+            selectedClientDisplay.classList.remove('d-none');
+            clientSearchWrapper.classList.add('d-none');
+            clientSearchInput.value = '';
+            clientSearchResults.innerHTML = '';
         }
     }
 
@@ -289,7 +316,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('receiptTaxaEntrega').textContent = `R$ ${data.taxa_entrega.toFixed(2)}`;
             document.getElementById('receiptTotalGeral').textContent = `R$ ${data.total_venda.toFixed(2)}`;
 
-            // ===== ALTERAÇÃO AQUI: Formatando a exibição das parcelas =====
             let pagamentoStr = data.forma_pagamento;
             if (data.forma_pagamento === 'Cartão de Crédito' && data.parcelas > 1) {
                 pagamentoStr += ` (${data.parcelas}x)`;
@@ -299,44 +325,6 @@ document.addEventListener('DOMContentLoaded', () => {
             receiptModal.show();
         } catch (error) { console.error('Erro ao mostrar o recibo:', error); alert(error.message); }
     }
-
-    function renderClientSearchResults(query) {
-    clientSearchResults.innerHTML = '';
-    if (!query || query.length < 2) { // Só busca com 2+ caracteres
-        return;
-    }
-
-    const filtered = allClients.filter(c => 
-        c.nome.toLowerCase().includes(query.toLowerCase()) || 
-        (c.cpf && c.cpf.includes(query))
-    );
-
-    if (filtered.length === 0) {
-        clientSearchResults.innerHTML = '<div class="list-group-item text-muted">Nenhum cliente encontrado.</div>';
-        return;
-    }
-
-    filtered.slice(0, 5).forEach(c => { // Mostra no máximo 5 resultados
-        const item = document.createElement('a');
-        item.href = '#';
-        item.className = 'list-group-item list-group-item-action';
-        item.textContent = `${c.nome} ${c.cpf ? `(${c.cpf})` : ''}`;
-        item.dataset.clientId = c.id;
-        clientSearchResults.appendChild(item);
-    });
-}
-
-function selectClient(clientId) {
-    const client = allClients.find(c => c.id === clientId);
-    if (client) {
-        selectedClientId.value = client.id;
-        selectedClientName.textContent = client.nome;
-        selectedClientDisplay.classList.remove('d-none');
-        clientSearchWrapper.classList.add('d-none');
-        clientSearchInput.value = '';
-        clientSearchResults.innerHTML = '';
-    }
-}
 
     // --- EVENT LISTENERS ---
     searchInput.addEventListener('input', () => renderSearchResults(searchInput.value));
@@ -348,54 +336,36 @@ function selectClient(clientId) {
     applyCupomBtn.addEventListener('click', applyCoupon);
     removeCupomBtn.addEventListener('click', removeCoupon);
 
-
-// NOVO CÓDIGO PARA O LEITOR DE CÓDIGO DE BARRAS
     searchInput.addEventListener('keydown', (event) => {
-        // Verifica se a tecla pressionada foi "Enter"
         if (event.key === 'Enter') {
-            event.preventDefault(); // Impede o comportamento padrão do Enter (como submeter um formulário)
-
+            event.preventDefault();
             const scannedSKU = searchInput.value.trim();
-
-            if (scannedSKU === '') {
-                return; // Se o campo estiver vazio, não faz nada
-            }
-
-            // Procura por uma CORRESPONDÊNCIA EXATA do SKU na lista de produtos
-            // Isso é diferente da busca por nome, que busca por partes do texto.
+            if (scannedSKU === '') return;
             const matchedProduct = allProducts.find(p => p.sku.toLowerCase() === scannedSKU.toLowerCase());
-
             if (matchedProduct) {
-                // Se encontrou o produto, adiciona ao carrinho
                 addToCart(matchedProduct.id);
-
-                // Limpa o campo de busca para o próximo scan
                 searchInput.value = '';
-                searchResults.innerHTML = ''; // Limpa também a lista de sugestões
+                searchResults.innerHTML = '';
             } else {
-                // Se não encontrou, avisa o usuário
                 alert(`Produto com código de barras "${scannedSKU}" não encontrado.`);
-                // Opcional: você pode adicionar um efeito visual, como tremer o campo de busca
-                searchInput.select(); // Seleciona o texto para fácil correção
+                searchInput.select();
             }
         }
     });
 
-    // ===== ALTERAÇÃO AQUI: Listener para mostrar/esconder campo de parcelas =====
     paymentMethodSelect.addEventListener('change', () => {
         if (paymentMethodSelect.value === 'Cartão de Crédito') {
             installmentsWrapper.classList.remove('d-none');
         } else {
             installmentsWrapper.classList.add('d-none');
-            installmentsInput.value = 1; // Reseta para o padrão
+            installmentsInput.value = 1;
         }
     });
     
-    // (O resto dos listeners permanecem os mesmos)
     clientSearchInput.addEventListener('input', () => renderClientSearchResults(clientSearchInput.value));
     clientSearchResults.addEventListener('click', (e) => { e.preventDefault(); if(e.target.dataset.clientId) selectClient(parseInt(e.target.dataset.clientId)); });
     removeClientBtn.addEventListener('click', removeClient);
-    quickAddClientBtn.addEventListener('click', () => { quickClientForm.reset(); quickClientModal.show(); });
+    document.getElementById('quickAddClientBtn').addEventListener('click', () => { quickClientForm.reset(); quickClientModal.show(); });
     quickClientForm.addEventListener('submit', async (e) => { e.preventDefault(); const data = { nome: document.getElementById('quickClientNome').value, telefone: document.getElementById('quickClientTelefone').value, cpf: document.getElementById('quickClientCpf').value }; try { const response = await fetch(`${API_URL}/api/clientes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-access-token': token }, body: JSON.stringify(data) }); const newClient = await response.json(); if(response.ok) { quickClientModal.hide(); await fetchAllClients(); selectClient(newClient.id); } else { alert(`Erro: ${newClient.message || newClient.erro}`); } } catch (error) { console.error(error); } });
     finalizeSaleBtn.addEventListener('click', finalizeSale);
     document.getElementById('logoutButton').addEventListener('click', () => { localStorage.clear(); window.location.href = '/login.html'; });

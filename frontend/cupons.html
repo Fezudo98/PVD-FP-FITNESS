@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciar Cupons - Sistema FP Moda Fitness</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Incluindo o Select2 para uma melhor seleção de produtos -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -32,6 +36,8 @@
                         <th>Código</th>
                         <th>Tipo</th>
                         <th>Valor</th>
+                        <!-- NOVA COLUNA ADICIONADA -->
+                        <th>Aplicação</th>
                         <th>Status</th>
                         <th>Ações</th>
                     </tr>
@@ -43,9 +49,9 @@
         </div>
     </main>
 
-    <!-- Modal para Adicionar/Editar Cupom -->
+    <!-- Modal para Adicionar/Editar Cupom (TOTALMENTE ATUALIZADO) -->
     <div class="modal fade" id="cupomModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg"> <!-- Aumentado para modal-lg -->
             <div class="modal-content bg-dark text-white">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalTitle">Adicionar Cupom</h5>
@@ -73,6 +79,25 @@
                                 <small class="form-text text-muted">Use 10 para 10% ou 25.50 para R$25,50</small>
                             </div>
                         </div>
+
+                        <hr>
+
+                        <!-- NOVOS CAMPOS PARA APLICAÇÃO DO CUPOM -->
+                        <div class="mb-3">
+                            <label for="aplicacao" class="form-label">Aplicar Desconto Em:</label>
+                            <select class="form-select" id="aplicacao" required>
+                                <option value="total">Total da Venda</option>
+                                <option value="produto_especifico">Produtos Específicos</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3 d-none" id="produtos-wrapper">
+                            <label for="produtos-select" class="form-label">Selecione os Produtos Válidos</label>
+                            <select class="form-select" id="produtos-select" multiple="multiple" style="width: 100%;">
+                                <!-- Opções de produtos serão carregadas aqui via JavaScript -->
+                            </select>
+                        </div>
+
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -83,7 +108,10 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Incluindo o Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="/js/cupons.js"></script>
 </body>
 </html>

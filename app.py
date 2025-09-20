@@ -24,6 +24,9 @@ app.config['SECRET_KEY'] = 'my-super-secret-key-12345'
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 
+from flask_migrate import Migrate
+migrate = Migrate(app, db)
+
 
 # 2. MODELOS DE DADOS
 # ----------------------------------------------------
@@ -67,8 +70,23 @@ class Cupom(db.Model):
     tipo_desconto = db.Column(db.String(20), nullable=False) # 'percentual' ou 'fixo'
     valor_desconto = db.Column(db.Float, nullable=False)
     ativo = db.Column(db.Boolean, default=True)
+    
+    # --- NOVOS CAMPOS ADICIONADOS ---
+    aplicacao = db.Column(db.String(20), nullable=False, default='total') # 'total' ou 'produto_especifico'
+    produtos = db.relationship('Produto', secondary='cupom_produtos', lazy='subquery',
+                               backref=db.backref('cupons', lazy=True))
+
     def to_dict(self):
-        return { 'id': self.id, 'codigo': self.codigo, 'tipo_desconto': self.tipo_desconto, 'valor_desconto': self.valor_desconto, 'ativo': self.ativo }
+        # --- to_dict ATUALIZADO ---
+        return { 
+            'id': self.id, 
+            'codigo': self.codigo, 
+            'tipo_desconto': self.tipo_desconto, 
+            'valor_desconto': self.valor_desconto, 
+            'ativo': self.ativo,
+            'aplicacao': self.aplicacao,
+            'produtos_validos_ids': [p.id for p in self.produtos] # Envia os IDs dos produtos válidos
+        }
 
 class Venda(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -93,6 +111,14 @@ class ItemVenda(db.Model):
     id_venda = db.Column(db.Integer, db.ForeignKey('venda.id'), nullable=False)
     id_produto = db.Column(db.Integer, db.ForeignKey('produto.id'), nullable=False)
     produto = db.relationship('Produto')
+
+# =============== CÓDIGO NOVO ADICIONADO AQUI ===============
+# Tabela de associação para cupons e produtos
+cupom_produtos = db.Table('cupom_produtos',
+    db.Column('cupom_id', db.Integer, db.ForeignKey('cupom.id'), primary_key=True),
+    db.Column('produto_id', db.Integer, db.ForeignKey('produto.id'), primary_key=True)
+)
+# =======================================================
 
 ## --- NOVO MODELO DE LOG ADICIONADO --- ##
 class Log(db.Model):
@@ -453,10 +479,59 @@ def registrar_venda(current_user):
     dados = request.get_json()
     itens_venda_data = dados.get('itens')
     if not itens_venda_data: return jsonify({'erro': 'A lista de itens não pode estar vazia.'}), 400
+
     try:
-        # A nova venda ainda não tem um ID, então não podemos logar o ID aqui.
-        # O commit() no final irá atribuir o ID.
-        nova_venda = Venda(total_venda=dados.get('total_venda'), forma_pagamento=dados.get('forma_pagamento'), taxa_entrega=dados.get('taxa_entrega', 0.0), id_cliente=dados.get('id_cliente'), id_vendedor=current_user.id, cupom_utilizado=dados.get('cupom_utilizado'), valor_desconto=dados.get('valor_desconto', 0.0), parcelas=dados.get('parcelas', 1), itens=[])
+        # --- NOVA LÓGICA DE CÁLCULO DE DESCONTO ---
+        subtotal_produtos = 0
+        desconto_calculado = 0
+        cupom_codigo = dados.get('cupom_utilizado')
+        cupom = None
+
+        # 1. Calcula o subtotal primeiro, baseado nos preços do banco de dados
+        for item_data in itens_venda_data:
+            produto = Produto.query.get(item_data['id_produto'])
+            if not produto:
+                db.session.rollback()
+                return jsonify({'erro': 'Produto não encontrado.'}), 400
+            subtotal_produtos += produto.preco_venda * item_data['quantidade']
+
+        # 2. Se um cupom foi usado, busca no DB e calcula o desconto
+        if cupom_codigo:
+            cupom = Cupom.query.filter_by(codigo=cupom_codigo.upper(), ativo=True).first()
+            if cupom:
+                base_de_calculo_desconto = 0
+                if cupom.aplicacao == 'total':
+                    base_de_calculo_desconto = subtotal_produtos
+                else: # 'produto_especifico'
+                    ids_produtos_validos = [p.id for p in cupom.produtos]
+                    for item_data in itens_venda_data:
+                        if item_data['id_produto'] in ids_produtos_validos:
+                            produto = Produto.query.get(item_data['id_produto'])
+                            base_de_calculo_desconto += produto.preco_venda * item_data['quantidade']
+                
+                if cupom.tipo_desconto == 'percentual':
+                    desconto_calculado = (base_de_calculo_desconto * cupom.valor_desconto) / 100
+                else: # 'fixo'
+                    desconto_calculado = cupom.valor_desconto
+                
+                if desconto_calculado > base_de_calculo_desconto:
+                    desconto_calculado = base_de_calculo_desconto
+
+        taxa_entrega = dados.get('taxa_entrega', 0.0)
+        total_venda_calculado = subtotal_produtos - desconto_calculado + taxa_entrega
+        # --- FIM DA NOVA LÓGICA ---
+
+        nova_venda = Venda(
+            total_venda=round(total_venda_calculado, 2), # Usa o total seguro calculado aqui
+            forma_pagamento=dados.get('forma_pagamento'), 
+            taxa_entrega=taxa_entrega, 
+            id_cliente=dados.get('id_cliente'), 
+            id_vendedor=current_user.id, 
+            cupom_utilizado=cupom.codigo if cupom else None, 
+            valor_desconto=round(desconto_calculado, 2), # Usa o desconto seguro calculado aqui
+            parcelas=dados.get('parcelas', 1), 
+            itens=[]
+        )
         
         for item_data in itens_venda_data:
             produto = Produto.query.get(item_data['id_produto'])
@@ -469,8 +544,6 @@ def registrar_venda(current_user):
         
         db.session.add(nova_venda)
         
-        ## REGISTRO DE LOG ##
-        # Usamos uma técnica para obter o ID antes do commit final.
         db.session.flush()
         detalhes_log = f"ID da Venda: {nova_venda.id}, Total: R$ {nova_venda.total_venda:.2f}"
         registrar_log(current_user, "Venda Registrada", detalhes_log)
@@ -481,6 +554,7 @@ def registrar_venda(current_user):
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': 'Ocorreu um erro interno.', 'detalhes': str(e)}), 500
+
 
 @app.route('/api/vendas/<int:venda_id>', methods=['GET'])
 @token_required
