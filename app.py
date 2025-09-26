@@ -76,7 +76,6 @@ class Cupom(db.Model):
     valor_desconto = db.Column(db.Float, nullable=False)
     ativo = db.Column(db.Boolean, default=True)
     aplicacao = db.Column(db.String(20), nullable=False, default='total') # 'total' ou 'produto_especifico'
-    # ===== ALTERAÇÃO FEITA AQUI =====
     produtos = db.relationship('Produto', secondary=cupom_produtos, lazy='selectin',
                                backref=db.backref('cupons', lazy=True))
 
@@ -101,6 +100,17 @@ class Venda(db.Model):
     cupom_utilizado = db.Column(db.String(50), nullable=True)
     valor_desconto = db.Column(db.Float, nullable=True, default=0.0)
     parcelas = db.Column(db.Integer, nullable=True, default=1)
+    
+    # ===== NOVOS CAMPOS PARA ENTREGA =====
+    entrega_gratuita = db.Column(db.Boolean, default=False)
+    entrega_rua = db.Column(db.String(200), nullable=True)
+    entrega_numero = db.Column(db.String(20), nullable=True)
+    entrega_bairro = db.Column(db.String(100), nullable=True)
+    entrega_cidade = db.Column(db.String(100), nullable=True)
+    entrega_cep = db.Column(db.String(10), nullable=True)
+    entrega_complemento = db.Column(db.String(100), nullable=True)
+    # =====================================
+
     id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     id_vendedor = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     cliente = db.relationship('Cliente')
@@ -517,8 +527,16 @@ def registrar_venda(current_user):
                     desconto_calculado = cupom.valor_desconto
                 if desconto_calculado > base_de_calculo_desconto:
                     desconto_calculado = base_de_calculo_desconto
-        taxa_entrega = dados.get('taxa_entrega', 0.0)
-        total_venda_calculado = subtotal_produtos - desconto_calculado + taxa_entrega
+        
+        # ===== LÓGICA DE CÁLCULO ATUALIZADA =====
+        taxa_entrega = float(dados.get('taxa_entrega', 0.0))
+        entrega_gratuita = dados.get('entrega_gratuita', False)
+        
+        total_venda_calculado = subtotal_produtos - desconto_calculado
+        if not entrega_gratuita:
+            total_venda_calculado += taxa_entrega
+        # =========================================
+
         nova_venda = Venda(
             total_venda=round(total_venda_calculado, 2),
             forma_pagamento=dados.get('forma_pagamento'), 
@@ -528,6 +546,15 @@ def registrar_venda(current_user):
             cupom_utilizado=cupom.codigo if cupom else None, 
             valor_desconto=round(desconto_calculado, 2),
             parcelas=dados.get('parcelas', 1), 
+            # ===== SALVANDO OS NOVOS DADOS DE ENTREGA =====
+            entrega_gratuita=entrega_gratuita,
+            entrega_rua=dados.get('entrega_rua'),
+            entrega_numero=dados.get('entrega_numero'),
+            entrega_bairro=dados.get('entrega_bairro'),
+            entrega_cidade=dados.get('entrega_cidade'),
+            entrega_cep=dados.get('entrega_cep'),
+            entrega_complemento=dados.get('entrega_complemento'),
+            # ===============================================
             itens=[]
         )
         for item_data in itens_venda_data:
@@ -605,6 +632,59 @@ def get_dashboard_data(current_user):
     vendas_no_periodo_total = Venda.query.filter(Venda.data_hora >= data_inicio, Venda.data_hora < data_fim).order_by(Venda.data_hora.desc()).all()
     lista_vendas = [{'id': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Consumidor Final', 'vendedor': v.vendedor.nome, 'total': v.total_venda, 'pagamento': v.forma_pagamento, 'status': v.status} for v in vendas_no_periodo_total]
     return jsonify({'kpis': kpis, 'grafico_vendas_tempo': grafico_vendas_tempo, 'grafico_forma_pagamento': grafico_forma_pagamento, 'ranking_produtos': ranking_produtos, 'ranking_vendedores': ranking_vendedores, 'lista_vendas': lista_vendas})
+
+# ===== NOVO ENDPOINT DE RELATÓRIO DE ENTREGAS =====
+@app.route('/api/relatorios/entregas', methods=['GET'])
+@token_required
+def get_entregas_report(current_user):
+    if current_user.role != 'admin':
+        return jsonify({'message': 'Acesso negado.'}), 403
+
+    data_inicio_str = request.args.get('data_inicio')
+    data_fim_str = request.args.get('data_fim')
+
+    try:
+        data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d')
+        data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d') + timedelta(days=1)
+    except (ValueError, TypeError):
+        return jsonify({'erro': 'Formato de data inválido. Use AAAA-MM-DD.'}), 400
+
+    query_entregas = Venda.query.filter(
+        Venda.data_hora >= data_inicio,
+        Venda.data_hora < data_fim,
+        Venda.taxa_entrega > 0,
+        Venda.status == 'Concluída'
+    ).order_by(Venda.data_hora.desc())
+
+    vendas_com_entrega = query_entregas.all()
+
+    quantidade_entregas = len(vendas_com_entrega)
+    valor_total_taxas = sum(v.taxa_entrega for v in vendas_com_entrega)
+    
+    kpis = {
+        'quantidade_entregas': quantidade_entregas,
+        'valor_total_taxas': round(valor_total_taxas, 2)
+    }
+
+    lista_entregas = []
+    for venda in vendas_com_entrega:
+        endereco_completo = f"{venda.entrega_rua or ''}, {venda.entrega_numero or ''} - {venda.entrega_bairro or ''}".strip(', - ').strip()
+        
+        lista_entregas.append({
+            'id_venda': venda.id,
+            'data_hora': venda.data_hora.strftime('%d/%m/%Y %H:%M'),
+            'cliente': venda.cliente.nome if venda.cliente else 'Consumidor Final',
+            'endereco': endereco_completo if endereco_completo else 'Endereço não informado',
+            'cidade': venda.entrega_cidade or 'N/A',
+            'taxa_entrega': venda.taxa_entrega,
+            'status_entrega': 'Grátis' if venda.entrega_gratuita else 'Normal'
+        })
+        
+    return jsonify({
+        'kpis': kpis,
+        'lista_entregas': lista_entregas
+    })
+# ========================================================
 
 @app.route('/api/logs', methods=['GET'])
 @token_required

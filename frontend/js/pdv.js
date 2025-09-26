@@ -19,7 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartSubtotalSpan = document.getElementById('cartSubtotal');
     const cartTotalSpan = document.getElementById('cartTotal');
     const finalizeSaleBtn = document.getElementById('finalizeSaleBtn');
-    const taxaEntregaInput = document.getElementById('taxaEntregaInput');
     const lastItemPreview = document.getElementById('last-item-preview');
     const previewImage = document.getElementById('preview-image');
     
@@ -30,6 +29,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const discountDisplay = document.getElementById('discountDisplay');
     const cupomCodeDisplay = document.getElementById('cupomCodeDisplay');
     const discountValueSpan = document.getElementById('discountValue');
+
+    // ===== ELEMENTOS DE ENTREGA ATUALIZADOS =====
+    const taxaEntregaInput = document.getElementById('taxaEntregaInput');
+    const freeDeliveryCheckbox = document.getElementById('freeDeliveryCheckbox');
+    const deliveryAddressWrapper = document.getElementById('deliveryAddressWrapper');
+    // ===========================================
 
     // Elementos de Pagamento e Parcelamento
     const paymentMethodSelect = document.getElementById('paymentMethod');
@@ -54,13 +59,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchAllProducts() {
         try {
-            // Pega o que está sendo digitado para não limpar a busca se a atualização automática rodar
             const currentSearchQuery = searchInput.value;
             const response = await fetch(`${API_URL}/api/produtos?per_page=1000`, { headers: { 'x-access-token': token } });
             if (!response.ok) throw new Error('Falha ao recarregar produtos.');
             const data = await response.json();
-            allProducts = data.produtos; // Assumindo que a API retorna um objeto com uma chave 'produtos'
-            // Se havia uma busca em andamento, renderiza os resultados novamente
+            allProducts = data.produtos;
             if (currentSearchQuery) {
                 renderSearchResults(currentSearchQuery);
             }
@@ -129,6 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTotals();
     }
     
+    // ===== FUNÇÃO DE ATUALIZAR TOTAIS ATUALIZADA =====
     function updateTotals() {
         let subtotal = cart.reduce((sum, item) => sum + (item.quantidade * item.preco_venda), 0);
         let discountAmount = 0;
@@ -164,12 +168,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const taxaEntrega = parseFloat(taxaEntregaInput.value) || 0;
-        const totalGeral = subtotal - discountAmount + taxaEntrega;
+        let totalGeral = subtotal - discountAmount;
+
+        // Adiciona a taxa de entrega ao total apenas se a entrega NÃO for grátis
+        if (!freeDeliveryCheckbox.checked) {
+            totalGeral += taxaEntrega;
+        }
 
         cartSubtotalSpan.textContent = `R$ ${subtotal.toFixed(2)}`;
         cartTotalSpan.textContent = `R$ ${totalGeral.toFixed(2)}`;
         finalizeSaleBtn.disabled = cart.length === 0;
     }
+    // ===============================================
 
     async function applyCoupon() {
         const code = cupomInput.value;
@@ -199,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTotals();
     }
 
+    // ===== FUNÇÃO DE FINALIZAR VENDA ATUALIZADA =====
     async function finalizeSale() {
         if (cart.length === 0) { alert('O carrinho está vazio!'); return; }
         
@@ -206,9 +217,16 @@ document.addEventListener('DOMContentLoaded', () => {
             itens: cart.map(item => ({ id_produto: item.id, quantidade: item.quantidade })),
             forma_pagamento: paymentMethodSelect.value,
             id_cliente: selectedClientId.value || null,
-            taxa_entrega: parseFloat(taxaEntregaInput.value) || 0,
             cupom_utilizado: appliedCoupon ? appliedCoupon.codigo : null,
-            parcelas: paymentMethodSelect.value === 'Cartão de Crédito' ? parseInt(installmentsInput.value) : 1
+            parcelas: paymentMethodSelect.value === 'Cartão de Crédito' ? parseInt(installmentsInput.value) : 1,
+            // Novos dados de entrega
+            taxa_entrega: parseFloat(taxaEntregaInput.value) || 0,
+            entrega_gratuita: freeDeliveryCheckbox.checked,
+            entrega_rua: document.getElementById('entregaRua').value,
+            entrega_numero: document.getElementById('entregaNumero').value,
+            entrega_bairro: document.getElementById('entregaBairro').value,
+            entrega_cidade: document.getElementById('entregaCidade').value,
+            entrega_complemento: document.getElementById('entregaComplemento').value
         };
 
         try {
@@ -222,14 +240,25 @@ document.addEventListener('DOMContentLoaded', () => {
             
             await showReceipt(result.id_venda);
             
+            // Limpeza do formulário
             lastItemPreview.style.display = 'none';
             cart = [];
-            taxaEntregaInput.value = 0;
             removeClient();
             removeCoupon();
             paymentMethodSelect.value = 'Dinheiro';
             installmentsWrapper.classList.add('d-none');
             installmentsInput.value = 1;
+            
+            // Limpeza dos campos de entrega
+            taxaEntregaInput.value = 0;
+            freeDeliveryCheckbox.checked = false;
+            deliveryAddressWrapper.classList.add('d-none');
+            document.getElementById('entregaRua').value = '';
+            document.getElementById('entregaNumero').value = '';
+            document.getElementById('entregaBairro').value = '';
+            document.getElementById('entregaCidade').value = '';
+            document.getElementById('entregaComplemento').value = '';
+
             renderCart();
             await fetchAllProducts();
             searchInput.value = '';
@@ -239,6 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Erro: ${error.message}`);
         }
     }
+    // ================================================
 
     function renderClientSearchResults(query) {
         clientSearchResults.innerHTML = '';
@@ -325,7 +355,20 @@ document.addEventListener('DOMContentLoaded', () => {
     searchResults.addEventListener('click', (e) => { e.preventDefault(); const item = e.target.closest('[data-product-id]'); if(item) { addToCart(parseInt(item.dataset.productId)); searchInput.value=''; searchResults.innerHTML=''; searchInput.focus(); } });
     
     cartItemsDiv.addEventListener('click', (e) => { const target = e.target; const id = parseInt(target.dataset.id); if(!id) return; if(target.classList.contains('adjust-qty-btn')) { const item = cart.find(i=>i.id===id); const stockProduct = allProducts.find(p=>p.id===id); if(target.dataset.action==='increase' && item.quantidade < stockProduct.quantidade) item.quantidade++; else if(target.dataset.action==='decrease' && item.quantidade > 0) item.quantidade--; if(item.quantidade===0) cart=cart.filter(i=>i.id!==id); renderCart(); } else if(target.classList.contains('remove-item-btn')) { cart=cart.filter(i=>i.id!==id); renderCart(); } });
-    taxaEntregaInput.addEventListener('input', updateTotals);
+    
+    // ===== NOVOS EVENT LISTENERS PARA ENTREGA =====
+    taxaEntregaInput.addEventListener('input', () => {
+        const taxa = parseFloat(taxaEntregaInput.value) || 0;
+        if (taxa > 0) {
+            deliveryAddressWrapper.classList.remove('d-none');
+        } else {
+            deliveryAddressWrapper.classList.add('d-none');
+        }
+        updateTotals();
+    });
+
+    freeDeliveryCheckbox.addEventListener('change', updateTotals);
+    // ============================================
 
     applyCupomBtn.addEventListener('click', applyCoupon);
     removeCupomBtn.addEventListener('click', removeCoupon);
@@ -367,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INICIALIZAÇÃO ---
     fetchAllProducts();
     fetchAllClients();
-    setInterval(fetchAllProducts, 20000); // Atualiza a lista de produtos a cada 20 segundos
+    setInterval(fetchAllProducts, 20000);
     
     // --- LÓGICA DE IMPRESSÃO ---
     document.body.addEventListener('click', (event) => {
