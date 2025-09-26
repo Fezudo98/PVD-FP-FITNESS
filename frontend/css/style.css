@@ -62,23 +62,20 @@ body {
 /* --- Estilos da Página Principal (Dashboard) --- */
 
 .background-container {
-    background-image: url('/logo.jpg'); /* Navega uma pasta para cima para achar a logo */
+    background-image: url('/logo.jpg');
     background-size: cover;
     background-position: center center;
-    
-    /* O EFEITO MÁGICO */
     filter: blur(8px) brightness(0.4);
-
-    position: fixed; /* Fica fixo no fundo */
+    position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: -1; /* Joga o fundo para trás de todo o conteúdo */
+    z-index: -1;
 }
 
 .main-content {
-    background-color: rgba(0, 0, 0, 0.5); /* Fundo semi-transparente para o conteúdo */
+    background-color: rgba(0, 0, 0, 0.5);
     padding: 2rem;
     border-radius: 10px;
 }
@@ -107,25 +104,6 @@ h2, h4 {
     overflow-y: auto;
 }
 
-@media print {
-    body * {
-        visibility: hidden;
-    }
-    #receiptContent, #receiptContent * {
-        visibility: visible;
-    }
-    #receiptContent {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-    }
-    .modal-dialog {
-        max-width: 100%;
-        margin: 0;
-    }
-}
-
 /* --- Estilos da Página de Relatórios --- */
 .kpi-card {
     background-color: var(--cor-card);
@@ -145,7 +123,6 @@ h2, h4 {
     font-weight: bold;
 }
 
-/* CORREÇÃO ADICIONADA AQUI */
 .receipt-modal-content {
     color: #000;
 }
@@ -153,14 +130,14 @@ h2, h4 {
 /* --- Correção de Contraste na Tela de Login --- */
 .login-card .card-title,
 .login-card .form-label {
-    color: rgba(255, 255, 255, 0.6); /* Define a cor como um branco com 60% de opacidade */
-    font-weight: normal; /* Garante que a fonte não seja excessivamente grossa */
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: normal;
 }
 
 /* --- Estilos para a pré-visualização da imagem no PDV --- */
 #last-item-preview img {
-    max-height: 280px; /* Aumentado de 180px */
-    max-width: 280px;  /* Aumentado de 180px */
+    max-height: 280px;
+    max-width: 280px;
     border-radius: 10px;
     border: 2px solid var(--cor-principal);
     background-color: #333;
@@ -170,4 +147,114 @@ h2, h4 {
 
 #last-item-preview img:hover {
     transform: scale(1.05);
+}
+
+
+/* ======================================================= */
+/* --- ESTILOS DE IMPRESSÃO --- */
+/* ======================================================= */
+
+/* --- ESTILO PADRÃO (A4) - CORRIGIDO --- */
+@media print {
+    /* Esconde tudo que não está dentro do modal do recibo */
+    body > *:not(.modal) {
+        display: none;
+    }
+
+    /* Garante que o modal e seu conteúdo sejam visíveis */
+    .modal, .modal-dialog, .modal-content, #receiptContent {
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    /* Remove sombras e bordas do modal para uma impressão limpa */
+    .modal {
+        position: static;
+        background-color: white;
+        box-shadow: none;
+        border: none;
+    }
+    
+    .modal-dialog {
+        max-width: 100%;
+        margin: 0;
+        box-shadow: none;
+    }
+    
+    .modal-header, .modal-footer {
+        display: none; /* Esconde o cabeçalho e o rodapé do modal (botões) */
+    }
+
+    /* Garante que o conteúdo do recibo ocupe o espaço necessário */
+    #receiptContent {
+        position: relative;
+        width: 100%;
+    }
+}
+
+
+/* --- ESTILOS PARA IMPRESSÃO TÉRMICA --- */
+@media print {
+    /* Define o tamanho do papel para impressoras de 80mm de largura */
+    @page {
+        size: 80mm auto; /* Largura de 80mm, altura automática */
+        margin: 3mm;
+    }
+
+    /* Regras aplicadas SOMENTE quando o recibo estiver no modo "térmica" */
+    #receiptContent.termica-print {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 10pt; /* Tamanho de fonte legível para cupons */
+        color: #000;
+        background: #fff;
+    }
+
+    #receiptContent.termica-print .text-center,
+    #receiptContent.termica-print .text-end {
+        text-align: left !important;
+    }
+    
+    #receiptContent.termica-print img {
+        max-width: 60mm; /* Limita a largura da logo */
+        display: block;
+        margin: 0 auto 10px auto;
+    }
+
+    /* Transforma a tabela em blocos para caber na largura */
+    #receiptContent.termica-print table,
+    #receiptContent.termica-print thead,
+    #receiptContent.termica-print tbody,
+    #receiptContent.termica-print tr,
+    #receiptContent.termica-print th,
+    #receiptContent.termica-print td {
+        display: block;
+        width: 100% !important;
+        text-align: left !important;
+    }
+
+    #receiptContent.termica-print thead {
+        display: none; /* Esconde o cabeçalho da tabela */
+    }
+
+    #receiptContent.termica-print tr {
+        border-bottom: 1px dashed #666;
+        padding-bottom: 5px;
+        margin-bottom: 5px;
+    }
+    
+    /* Adiciona descrições antes de cada célula de dados */
+    #receiptContent.termica-print td:nth-of-type(2)::before { content: "Qtd: "; }
+    #receiptContent.termica-print td:nth-of-type(3)::before { content: "Preço Unit.: "; }
+    #receiptContent.termica-print td:nth-of-type(4)::before { content: "Subtotal: "; }
+    
+    #receiptContent.termica-print td:nth-of-type(1) {
+        font-weight: bold; /* Destaca o nome do produto */
+    }
+
+    /* Formata a seção de totais */
+    #receiptContent.termica-print .text-end p,
+    #receiptContent.termica-print .text-end h4 {
+        display: flex;
+        justify-content: space-between;
+    }
 }

@@ -30,9 +30,9 @@
                     <hr>
                     <div id="searchResults" class="list-group"></div>
                     <div id="last-item-preview" class="text-center mt-4" style="display: none;">
-    <p class="text-muted mb-2">Último item adicionado:</p>
-    <img id="preview-image" src="" alt="Imagem do Produto" class="img-fluid">
-</div>
+                        <p class="text-muted mb-2">Último item adicionado:</p>
+                        <img id="preview-image" src="" alt="Imagem do Produto" class="img-fluid">
+                    </div>
                 </div>
             </div>
 
@@ -86,7 +86,6 @@
                         </select>
                     </div>
 
-                    <!-- ===== ALTERAÇÃO AQUI: Campo de parcelas ===== -->
                     <div class="mb-3 d-none" id="installmentsWrapper">
                         <label for="installmentsInput" class="form-label">Nº de Parcelas</label>
                         <input type="number" class="form-control" id="installmentsInput" value="1" min="1" max="12">
@@ -192,7 +191,8 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                    <button type="button" class="btn btn-primary" onclick="printReceipt()">Imprimir</button>
+                    <button type="button" class="btn btn-success" id="imprimirTermicaBtn">Imprimir Cupom (Térmica)</button>
+                    <button type="button" class="btn btn-primary" id="imprimirA4Btn">Imprimir (A4)</button>
                 </div>
             </div>
         </div>

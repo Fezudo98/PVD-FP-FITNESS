@@ -54,10 +54,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchAllProducts() {
         try {
+            // Pega o que está sendo digitado para não limpar a busca se a atualização automática rodar
             const currentSearchQuery = searchInput.value;
-            const response = await fetch(`${API_URL}/api/produtos`, { headers: { 'x-access-token': token } });
+            const response = await fetch(`${API_URL}/api/produtos?per_page=1000`, { headers: { 'x-access-token': token } });
             if (!response.ok) throw new Error('Falha ao recarregar produtos.');
-            allProducts = await response.json();
+            const data = await response.json();
+            allProducts = data.produtos; // Assumindo que a API retorna um objeto com uma chave 'produtos'
+            // Se havia uma busca em andamento, renderiza os resultados novamente
             if (currentSearchQuery) {
                 renderSearchResults(currentSearchQuery);
             }
@@ -126,18 +129,15 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTotals();
     }
     
-    // =============== FUNÇÃO TOTALMENTE ATUALIZADA ===============
     function updateTotals() {
         let subtotal = cart.reduce((sum, item) => sum + (item.quantidade * item.preco_venda), 0);
         let discountAmount = 0;
 
         if (appliedCoupon) {
             let discountBase = 0;
-            // Verifica se o cupom é para o total ou para produtos específicos
             if (appliedCoupon.aplicacao === 'total') {
                 discountBase = subtotal;
             } else if (appliedCoupon.aplicacao === 'produto_especifico') {
-                // Calcula o subtotal apenas dos itens válidos para o cupom
                 discountBase = cart.reduce((sum, item) => {
                     if (appliedCoupon.produtos_validos_ids.includes(item.id)) {
                         return sum + (item.quantidade * item.preco_venda);
@@ -146,14 +146,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 0);
             }
 
-            // Calcula o valor do desconto com base no tipo
             if (appliedCoupon.tipo_desconto === 'percentual') {
                 discountAmount = (discountBase * appliedCoupon.valor_desconto) / 100;
-            } else { // 'fixo'
+            } else {
                 discountAmount = appliedCoupon.valor_desconto;
             }
 
-            // Garante que o desconto não seja maior que a base de cálculo
             if (discountAmount > discountBase) {
                 discountAmount = discountBase;
             }
@@ -172,7 +170,6 @@ document.addEventListener('DOMContentLoaded', () => {
         cartTotalSpan.textContent = `R$ ${totalGeral.toFixed(2)}`;
         finalizeSaleBtn.disabled = cart.length === 0;
     }
-    // ==============================================================
 
     async function applyCoupon() {
         const code = cupomInput.value;
@@ -205,8 +202,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function finalizeSale() {
         if (cart.length === 0) { alert('O carrinho está vazio!'); return; }
         
-        // A lógica de cálculo foi movida para o backend para segurança.
-        // O frontend envia os dados brutos.
         const saleData = {
             itens: cart.map(item => ({ id_produto: item.id, quantidade: item.quantidade })),
             forma_pagamento: paymentMethodSelect.value,
@@ -214,7 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
             taxa_entrega: parseFloat(taxaEntregaInput.value) || 0,
             cupom_utilizado: appliedCoupon ? appliedCoupon.codigo : null,
             parcelas: paymentMethodSelect.value === 'Cartão de Crédito' ? parseInt(installmentsInput.value) : 1
-            // Não enviamos mais total_venda nem valor_desconto. O backend calcula.
         };
 
         try {
@@ -237,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
             installmentsWrapper.classList.add('d-none');
             installmentsInput.value = 1;
             renderCart();
-            fetchAllProducts();
+            await fetchAllProducts();
             searchInput.value = '';
             searchResults.innerHTML = '';
         } catch (error) {
@@ -328,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- EVENT LISTENERS ---
     searchInput.addEventListener('input', () => renderSearchResults(searchInput.value));
-    searchResults.addEventListener('click', (e) => { e.preventDefault(); const item = e.target.closest('[data-product-id]'); if(item) { addToCart(parseInt(item.dataset.productId)); searchInput.value=''; searchResults.innerHTML=''; } });
+    searchResults.addEventListener('click', (e) => { e.preventDefault(); const item = e.target.closest('[data-product-id]'); if(item) { addToCart(parseInt(item.dataset.productId)); searchInput.value=''; searchResults.innerHTML=''; searchInput.focus(); } });
     
     cartItemsDiv.addEventListener('click', (e) => { const target = e.target; const id = parseInt(target.dataset.id); if(!id) return; if(target.classList.contains('adjust-qty-btn')) { const item = cart.find(i=>i.id===id); const stockProduct = allProducts.find(p=>p.id===id); if(target.dataset.action==='increase' && item.quantidade < stockProduct.quantidade) item.quantidade++; else if(target.dataset.action==='decrease' && item.quantidade > 0) item.quantidade--; if(item.quantidade===0) cart=cart.filter(i=>i.id!==id); renderCart(); } else if(target.classList.contains('remove-item-btn')) { cart=cart.filter(i=>i.id!==id); renderCart(); } });
     taxaEntregaInput.addEventListener('input', updateTotals);
@@ -373,9 +367,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INICIALIZAÇÃO ---
     fetchAllProducts();
     fetchAllClients();
+    setInterval(fetchAllProducts, 20000); // Atualiza a lista de produtos a cada 20 segundos
+    
+    // --- LÓGICA DE IMPRESSÃO ---
+    document.body.addEventListener('click', (event) => {
+        if (event.target.id === 'imprimirA4Btn') {
+            printReceipt('a4');
+        }
+        if (event.target.id === 'imprimirTermicaBtn') {
+            printReceipt('termica');
+        }
+    });
+
+    window.onafterprint = () => {
+        document.getElementById('receiptContent').classList.remove('termica-print');
+    };
 });
 
-function printReceipt() { window.print(); }
+function printReceipt(format) {
+    const receiptContent = document.getElementById('receiptContent');
+    
+    if (format === 'termica') {
+        receiptContent.classList.add('termica-print');
+    } else {
+        receiptContent.classList.remove('termica-print');
+    }
 
-// Inicia a atualização automática a cada 20 segundos
-setInterval(fetchAllProducts, 20000);
+    setTimeout(() => {
+        window.print();
+    }, 100);
+}

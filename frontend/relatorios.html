@@ -45,10 +45,7 @@
             <div class="col"><div class="kpi-card text-center h-100"><div class="card-body"><h5>Lucro Bruto</h5><h3 id="kpiLucroBruto">R$ 0,00</h3></div></div></div>
             <div class="col"><div class="kpi-card text-center h-100"><div class="card-body"><h5>Vendas</h5><h3 id="kpiTotalVendas">0</h3></div></div></div>
             <div class="col"><div class="kpi-card text-center h-100"><div class="card-body"><h5>Ticket Médio</h5><h3 id="kpiTicketMedio">R$ 0,00</h3></div></div></div>
-            
-            <!-- ===== ALTERAÇÃO AQUI: Novo card de Descontos ===== -->
             <div class="col"><div class="kpi-card text-center h-100"><div class="card-body"><h5>Total Descontos</h5><h3 id="kpiTotalDescontos">R$ 0,00</h3></div></div></div>
-            
             <div class="col"><div class="kpi-card text-center h-100"><div class="card-body"><h5>Taxas de Entrega</h5><h3 id="kpiTaxasEntrega">R$ 0,00</h3></div></div></div>
         </div>
 
@@ -127,7 +124,8 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                    <button type="button" class="btn btn-primary" onclick="printReceipt()">Imprimir</button>
+                    <button type="button" class="btn btn-success" id="imprimirTermicaBtn">Imprimir Cupom (Térmica)</button>
+                    <button type="button" class="btn btn-primary" id="imprimirA4Btn">Imprimir (A4)</button>
                 </div>
             </div>
         </div>
