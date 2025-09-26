@@ -117,7 +117,12 @@
                         <p id="receiptDiscountRow" class="d-none"><strong>Desconto (<span id="receiptCupomCode"></span>):</strong> <span id="receiptDiscountValue"></span></p>
                         <p><strong>Taxa de Entrega:</strong> <span id="receiptTaxaEntrega"></span></p>
                         <h4><strong>Total Geral:</strong> <span id="receiptTotalGeral"></span></h4>
-                        <p><strong>Pagamento:</strong> <span id="receiptFormaPagamento"></span></p>
+                        <!-- ===== CORREÇÃO APLICADA AQUI ===== -->
+                        <!-- O <p> com o <span> antigo foi removido e substituído por este <div> -->
+                        <div id="receiptPayments">
+                            <!-- O JavaScript irá preencher os múltiplos pagamentos aqui -->
+                        </div>
+                        <!-- =================================== -->
                     </div>
                     <hr>
                     <p class="text-center small">Obrigado pela preferência!</p>

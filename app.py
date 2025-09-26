@@ -1,6 +1,7 @@
 import os
 import jwt
 import base64
+import math
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, request, jsonify, send_from_directory
@@ -63,7 +64,6 @@ class Cliente(db.Model):
     def to_dict(self):
         return {'id': self.id, 'nome': self.nome, 'telefone': self.telefone, 'cpf': self.cpf}
 
-# Tabela de associação para cupons e produtos
 cupom_produtos = db.Table('cupom_produtos',
     db.Column('cupom_id', db.Integer, db.ForeignKey('cupom.id'), primary_key=True),
     db.Column('produto_id', db.Integer, db.ForeignKey('produto.id'), primary_key=True)
@@ -72,50 +72,43 @@ cupom_produtos = db.Table('cupom_produtos',
 class Cupom(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     codigo = db.Column(db.String(50), unique=True, nullable=False)
-    tipo_desconto = db.Column(db.String(20), nullable=False) # 'percentual' ou 'fixo'
+    tipo_desconto = db.Column(db.String(20), nullable=False) 
     valor_desconto = db.Column(db.Float, nullable=False)
     ativo = db.Column(db.Boolean, default=True)
-    aplicacao = db.Column(db.String(20), nullable=False, default='total') # 'total' ou 'produto_especifico'
+    aplicacao = db.Column(db.String(20), nullable=False, default='total')
     produtos = db.relationship('Produto', secondary=cupom_produtos, lazy='selectin',
                                backref=db.backref('cupons', lazy=True))
-
     def to_dict(self):
-        return { 
-            'id': self.id, 
-            'codigo': self.codigo, 
-            'tipo_desconto': self.tipo_desconto, 
-            'valor_desconto': self.valor_desconto, 
-            'ativo': self.ativo,
-            'aplicacao': self.aplicacao,
-            'produtos_validos_ids': [p.id for p in self.produtos]
-        }
+        return { 'id': self.id, 'codigo': self.codigo, 'tipo_desconto': self.tipo_desconto, 'valor_desconto': self.valor_desconto, 'ativo': self.ativo,'aplicacao': self.aplicacao,'produtos_validos_ids': [p.id for p in self.produtos]}
+
+class Pagamento(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    valor = db.Column(db.Float, nullable=False)
+    forma = db.Column(db.String(50), nullable=False) 
+    id_venda = db.Column(db.Integer, db.ForeignKey('venda.id'), nullable=False)
 
 class Venda(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data_hora = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     total_venda = db.Column(db.Float, nullable=False)
-    forma_pagamento = db.Column(db.String(50), nullable=False)
     taxa_entrega = db.Column(db.Float, nullable=True, default=0.0)
     status = db.Column(db.String(20), nullable=False, default='Concluída')
     cupom_utilizado = db.Column(db.String(50), nullable=True)
     valor_desconto = db.Column(db.Float, nullable=True, default=0.0)
     parcelas = db.Column(db.Integer, nullable=True, default=1)
-    
-    # ===== NOVOS CAMPOS PARA ENTREGA =====
-    entrega_gratuita = db.Column(db.Boolean, default=False)
+    entrega_gratuita = db.Column(db.Boolean, nullable=False, default=False)
     entrega_rua = db.Column(db.String(200), nullable=True)
     entrega_numero = db.Column(db.String(20), nullable=True)
     entrega_bairro = db.Column(db.String(100), nullable=True)
     entrega_cidade = db.Column(db.String(100), nullable=True)
     entrega_cep = db.Column(db.String(10), nullable=True)
     entrega_complemento = db.Column(db.String(100), nullable=True)
-    # =====================================
-
     id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     id_vendedor = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     cliente = db.relationship('Cliente')
     vendedor = db.relationship('Usuario')
     itens = db.relationship('ItemVenda', backref='venda', cascade="all, delete-orphan")
+    pagamentos = db.relationship('Pagamento', backref='venda', cascade="all, delete-orphan")
 
 class ItemVenda(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -173,10 +166,15 @@ def salvar_recibo_html(venda):
                 encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
             logo_tag = f'<img src="data:image/jpeg;base64,{encoded_string}" alt="Logo">'
         desconto_html = f'<p><strong>Desconto Aplicado ({venda.cupom_utilizado}):</strong> - R$ {venda.valor_desconto:.2f}</p>' if venda.valor_desconto > 0 else ''
-        forma_pagamento_str = venda.forma_pagamento
-        if venda.forma_pagamento == 'Cartão de Crédito' and venda.parcelas and venda.parcelas > 1:
-            forma_pagamento_str = f"Cartão de Crédito ({venda.parcelas}x)"
-        html_content = f'<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo Venda #{venda.id}</title><style>body{{font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; color: #000;}}.receipt-container{{max-width: 800px; margin: 20px auto; border: 1px solid #ccc; padding: 30px; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1);}}.header{{text-align: center; margin-bottom: 25px;}} .header img{{max-width: 150px;}}table{{width: 100%; border-collapse: collapse; margin-top: 20px;}}th, td{{padding: 12px; border-bottom: 1px solid #ddd; text-align: left;}}th{{background-color: #f2f2f2;}}.totals{{text-align: right; margin-top: 25px; padding-right: 10px;}}.totals p{{margin: 5px 0;}} .totals h3{{margin: 10px 0;}}.footer{{text-align: center; margin-top: 35px; font-size: 0.9em; color: #777;}}hr{{border: 0; border-top: 1px solid #eee; margin: 20px 0;}}</style></head><body><div class="receipt-container"><div class="header">{logo_tag}</div><p><strong>Venda ID:</strong> {venda.id}</p><p><strong>Data:</strong> {venda.data_hora.strftime("%d/%m/%Y %H:%M:%S")}</p><p><strong>Cliente:</strong> {venda.cliente.nome if venda.cliente else "Consumidor Final"}</p><p><strong>Vendedor(a):</strong> {venda.vendedor.nome}</p><hr><table><thead><tr><th style="text-align: left;">Produto</th><th style="text-align: center;">Qtd.</th><th style="text-align: right;">Preço Unit.</th><th style="text-align: right;">Subtotal</th></tr></thead><tbody>{itens_html}</tbody></table><div class="totals"><p><strong>Subtotal Produtos:</strong> R$ {subtotal_produtos:.2f}</p>{desconto_html}<p><strong>Taxa de Entrega:</strong> R$ {venda.taxa_entrega:.2f}</p><h3><strong>Total Geral:</strong> R$ {venda.total_venda:.2f}</h3><p><strong>Forma de Pagamento:</strong> {forma_pagamento_str}</p></div><hr><div class="footer"><p>Obrigado pela preferência!</p></div></div></body></html>'
+        
+        pagamentos_html = ""
+        for pg in venda.pagamentos:
+            if pg.forma == 'Cartão de Crédito' and venda.parcelas and venda.parcelas > 1:
+                pagamentos_html += f"<p><strong>Pagamento:</strong> {pg.forma} ({venda.parcelas}x) - R$ {pg.valor:.2f}</p>"
+            else:
+                 pagamentos_html += f"<p><strong>Pagamento:</strong> {pg.forma} - R$ {pg.valor:.2f}</p>"
+
+        html_content = f'<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo Venda #{venda.id}</title><style>body{{font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; color: #000;}}.receipt-container{{max-width: 800px; margin: 20px auto; border: 1px solid #ccc; padding: 30px; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1);}}.header{{text-align: center; margin-bottom: 25px;}} .header img{{max-width: 150px;}}table{{width: 100%; border-collapse: collapse; margin-top: 20px;}}th, td{{padding: 12px; border-bottom: 1px solid #ddd; text-align: left;}}th{{background-color: #f2f2f2;}}.totals{{text-align: right; margin-top: 25px; padding-right: 10px;}}.totals p{{margin: 5px 0;}} .totals h3{{margin: 10px 0;}}.footer{{text-align: center; margin-top: 35px; font-size: 0.9em; color: #777;}}hr{{border: 0; border-top: 1px solid #eee; margin: 20px 0;}}</style></head><body><div class="receipt-container"><div class="header">{logo_tag}</div><p><strong>Venda ID:</strong> {venda.id}</p><p><strong>Data:</strong> {venda.data_hora.strftime("%d/%m/%Y %H:%M:%S")}</p><p><strong>Cliente:</strong> {venda.cliente.nome if venda.cliente else "Consumidor Final"}</p><p><strong>Vendedor(a):</strong> {venda.vendedor.nome}</p><hr><table><thead><tr><th style="text-align: left;">Produto</th><th style="text-align: center;">Qtd.</th><th style="text-align: right;">Preço Unit.</th><th style="text-align: right;">Subtotal</th></tr></thead><tbody>{itens_html}</tbody></table><div class="totals"><p><strong>Subtotal Produtos:</strong> R$ {subtotal_produtos:.2f}</p>{desconto_html}<p><strong>Taxa de Entrega:</strong> R$ {venda.taxa_entrega:.2f}</p><h3><strong>Total Geral:</strong> R$ {venda.total_venda:.2f}</h3>{pagamentos_html}</div><hr><div class="footer"><p>Obrigado pela preferência!</p></div></div></body></html>'
         file_name = f"venda_{venda.id}_{venda.data_hora.strftime('%Y-%m-%d_%H-%M-%S')}.html"
         file_path = os.path.join(recibos_dir, file_name)
         with open(file_path, 'w', encoding='utf-8') as f:
@@ -256,28 +254,12 @@ def gerenciar_produtos(current_user):
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 15, type=int)
         search_query = request.args.get('q', '', type=str)
-
         query = Produto.query.order_by(Produto.nome)
-
         if search_query:
             termo_busca = f"%{search_query}%"
-            query = query.filter(
-                or_(
-                    Produto.nome.ilike(termo_busca),
-                    Produto.sku.ilike(termo_busca)
-                )
-            )
-
+            query = query.filter(or_(Produto.nome.ilike(termo_busca), Produto.sku.ilike(termo_busca)))
         paginacao = query.paginate(page=page, per_page=per_page, error_out=False)
-        
-        produtos_da_pagina = paginacao.items
-        
-        return jsonify({
-            'produtos': [produto.to_dict() for produto in produtos_da_pagina],
-            'total_paginas': paginacao.pages,
-            'pagina_atual': paginacao.page,
-            'total_produtos': paginacao.total
-        })
+        return jsonify({'produtos': [p.to_dict() for p in paginacao.items], 'total_paginas': paginacao.pages, 'pagina_atual': paginacao.page, 'total_produtos': paginacao.total})
 
     if request.method == 'POST':
         if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
@@ -305,9 +287,6 @@ def gerenciar_produto_especifico(current_user, produto_id):
     if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
     if request.method == 'PUT':
         dados = request.form
-        old_nome = produto.nome
-        old_preco_venda = produto.preco_venda
-        old_quantidade = produto.quantidade
         produto.nome = dados.get('nome', produto.nome)
         produto.categoria = dados.get('categoria', produto.categoria)
         produto.cor = dados.get('cor', produto.cor)
@@ -326,32 +305,23 @@ def gerenciar_produto_especifico(current_user, produto_id):
             filename = f"{secure_filename(produto.sku)}.{extensao}"
             file.save(os.path.join(uploads_dir, filename))
             produto.imagem_url = filename
-        detalhes_log = f"SKU: {produto.sku}. Alterações: "
-        if old_nome != produto.nome: detalhes_log += f"Nome ('{old_nome}' -> '{produto.nome}'), "
-        if old_preco_venda != produto.preco_venda: detalhes_log += f"Preço ('{old_preco_venda}' -> '{produto.preco_venda}'), "
-        if old_quantidade != produto.quantidade: detalhes_log += f"Qtd ('{old_quantidade}' -> '{produto.quantidade}'), "
-        registrar_log(current_user, "Produto Atualizado", detalhes_log.strip(', '))
+        registrar_log(current_user, "Produto Atualizado", f"SKU: {produto.sku}")
         db.session.commit()
         return jsonify(produto.to_dict())
-
     if request.method == 'DELETE':
-        sku_deletado = produto.sku
-        nome_deletado = produto.nome
         if produto.imagem_url and os.path.exists(os.path.join(base_dir, 'uploads', produto.imagem_url)):
             os.remove(os.path.join(base_dir, 'uploads', produto.imagem_url))
         db.session.delete(produto)
-        registrar_log(current_user, "Produto Deletado", f"SKU: {sku_deletado}, Nome: {nome_deletado}")
+        registrar_log(current_user, "Produto Deletado", f"SKU: {produto.sku}, Nome: {produto.nome}")
         db.session.commit()
         return jsonify({'mensagem': 'Produto deletado com sucesso!'})
 
 @app.route('/api/produtos/<int:produto_id>/gerar-barcode', methods=['POST'])
 @token_required
 def gerar_codigo_barras(current_user, produto_id):
-    if current_user.role != 'admin':
-        return jsonify({'message': 'Ação não permitida!'}), 403
+    if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
     produto = Produto.query.get_or_404(produto_id)
-    if not produto.sku:
-        return jsonify({'erro': 'O produto precisa ter um SKU definido para gerar o código de barras.'}), 400
+    if not produto.sku: return jsonify({'erro': 'Produto precisa de SKU.'}), 400
     try:
         barcodes_dir = os.path.join(base_dir, 'barcodes')
         os.makedirs(barcodes_dir, exist_ok=True)
@@ -363,9 +333,9 @@ def gerar_codigo_barras(current_user, produto_id):
         produto.codigo_barras_url = filename
         registrar_log(current_user, "Código de Barras Gerado", f"SKU: {produto.sku}")
         db.session.commit()
-        return jsonify({'mensagem': 'Código de barras gerado com sucesso!', 'url': filename})
+        return jsonify({'mensagem': 'Código de barras gerado!', 'url': filename})
     except Exception as e:
-        return jsonify({'erro': 'Falha ao gerar o código de barras.', 'detalhes': str(e)}), 500
+        return jsonify({'erro': 'Falha ao gerar código de barras.', 'detalhes': str(e)}), 500
 
 # --- Usuários ---
 @app.route('/api/usuarios', methods=['GET'])
@@ -385,15 +355,15 @@ def manage_specific_user(current_user, user_id):
         user.nome = dados.get('nome', user.nome)
         user.email = dados.get('email', user.email)
         user.role = dados.get('role', user.role)
-        registrar_log(current_user, "Usuário Atualizado", f"Usuário ID: {user_id}, Novo Cargo: {user.role}")
+        registrar_log(current_user, "Usuário Atualizado", f"ID: {user_id}, Cargo: {user.role}")
         db.session.commit()
         return jsonify(user.to_dict())
     if request.method == 'DELETE':
         if current_user.id == user_id: return jsonify({'erro': 'Você não pode deletar a si mesmo.'}), 400
-        registrar_log(current_user, "Usuário Deletado", f"Usuário ID: {user_id}, Nome: {user.nome}")
+        registrar_log(current_user, "Usuário Deletado", f"ID: {user_id}, Nome: {user.nome}")
         db.session.delete(user)
         db.session.commit()
-        return jsonify({'mensagem': 'Usuário deletado com sucesso!'})
+        return jsonify({'mensagem': 'Usuário deletado!'})
 
 # --- Clientes ---
 @app.route('/api/clientes', methods=['GET', 'POST'])
@@ -425,7 +395,7 @@ def gerenciar_cliente_especifico(current_user, cliente_id):
     elif request.method == 'DELETE':
         db.session.delete(cliente)
         db.session.commit()
-        return jsonify({'mensagem': 'Cliente deletado com sucesso!'})
+        return jsonify({'mensagem': 'Cliente deletado!'})
 
 # --- Cupons ---
 @app.route('/api/cupons', methods=['GET', 'POST'])
@@ -437,17 +407,10 @@ def gerenciar_cupons(current_user):
         return jsonify([cupom.to_dict() for cupom in cupons])
     if request.method == 'POST':
         dados = request.get_json()
-        if not dados.get('codigo'): return jsonify({'erro': 'O código do cupom é obrigatório.'}), 400
-        if Cupom.query.filter_by(codigo=dados['codigo'].upper()).first(): return jsonify({'erro': 'Este código de cupom já existe.'}), 400
-        novo_cupom = Cupom(
-            codigo=dados['codigo'].upper(), 
-            tipo_desconto=dados['tipo_desconto'], 
-            valor_desconto=float(dados['valor_desconto']),
-            aplicacao=dados.get('aplicacao', 'total')
-        )
+        if Cupom.query.filter_by(codigo=dados['codigo'].upper()).first(): return jsonify({'erro': 'Código já existe.'}), 400
+        novo_cupom = Cupom(codigo=dados['codigo'].upper(), tipo_desconto=dados['tipo_desconto'], valor_desconto=float(dados['valor_desconto']), aplicacao=dados.get('aplicacao', 'total'))
         if novo_cupom.aplicacao == 'produto_especifico' and dados.get('produtos_ids'):
-            produtos_associados = Produto.query.filter(Produto.id.in_(dados['produtos_ids'])).all()
-            novo_cupom.produtos = produtos_associados
+            novo_cupom.produtos = Produto.query.filter(Produto.id.in_(dados['produtos_ids'])).all()
         db.session.add(novo_cupom)
         registrar_log(current_user, "Cupom Criado", f"Código: {novo_cupom.codigo}")
         db.session.commit()
@@ -462,18 +425,13 @@ def gerenciar_cupom_especifico(current_user, cupom_id):
         dados = request.get_json()
         if 'ativo' in dados and len(dados) == 1:
             cupom.ativo = dados.get('ativo', cupom.ativo)
-            status = "Ativado" if cupom.ativo else "Desativado"
-            registrar_log(current_user, "Status do Cupom Alterado", f"Código: {cupom.codigo}, Novo Status: {status}")
+            registrar_log(current_user, "Status do Cupom Alterado", f"Código: {cupom.codigo}, Status: {'Ativado' if cupom.ativo else 'Desativado'}")
         else:
             cupom.codigo = dados.get('codigo', cupom.codigo).upper()
             cupom.tipo_desconto = dados.get('tipo_desconto', cupom.tipo_desconto)
             cupom.valor_desconto = float(dados.get('valor_desconto', cupom.valor_desconto))
             cupom.aplicacao = dados.get('aplicacao', cupom.aplicacao)
-            if cupom.aplicacao == 'produto_especifico' and 'produtos_ids' in dados:
-                produtos_associados = Produto.query.filter(Produto.id.in_(dados['produtos_ids'])).all()
-                cupom.produtos = produtos_associados
-            else:
-                cupom.produtos = []
+            cupom.produtos = Produto.query.filter(Produto.id.in_(dados.get('produtos_ids', []))).all() if cupom.aplicacao == 'produto_especifico' else []
             registrar_log(current_user, "Cupom Atualizado", f"Código: {cupom.codigo}")
         db.session.commit()
         return jsonify(cupom.to_dict())
@@ -481,14 +439,14 @@ def gerenciar_cupom_especifico(current_user, cupom_id):
         registrar_log(current_user, "Cupom Deletado", f"Código: {cupom.codigo}")
         db.session.delete(cupom)
         db.session.commit()
-        return jsonify({'mensagem': 'Cupom deletado com sucesso!'})
+        return jsonify({'mensagem': 'Cupom deletado!'})
 
 @app.route('/api/cupons/validar/<code>', methods=['GET'])
 @token_required
 def validar_cupom(current_user, code):
     cupom = Cupom.query.filter_by(codigo=code.upper()).first()
     if not cupom: return jsonify({'erro': 'Cupom inválido.'}), 404
-    if not cupom.ativo: return jsonify({'erro': 'Este cupom não está mais ativo.'}), 400
+    if not cupom.ativo: return jsonify({'erro': 'Cupom não está ativo.'}), 400
     return jsonify(cupom.to_dict())
 
 # --- Vendas, Reembolso e Relatórios ---
@@ -497,113 +455,87 @@ def validar_cupom(current_user, code):
 def registrar_venda(current_user):
     dados = request.get_json()
     itens_venda_data = dados.get('itens')
-    if not itens_venda_data: return jsonify({'erro': 'A lista de itens não pode estar vazia.'}), 400
-    try:
-        subtotal_produtos = 0
-        desconto_calculado = 0
-        cupom_codigo = dados.get('cupom_utilizado')
-        cupom = None
-        for item_data in itens_venda_data:
-            produto = Produto.query.get(item_data['id_produto'])
-            if not produto:
-                db.session.rollback()
-                return jsonify({'erro': 'Produto não encontrado.'}), 400
-            subtotal_produtos += produto.preco_venda * item_data['quantidade']
-        if cupom_codigo:
-            cupom = Cupom.query.filter_by(codigo=cupom_codigo.upper(), ativo=True).first()
-            if cupom:
-                base_de_calculo_desconto = 0
-                if cupom.aplicacao == 'total':
-                    base_de_calculo_desconto = subtotal_produtos
-                else:
-                    ids_produtos_validos = [p.id for p in cupom.produtos]
-                    for item_data in itens_venda_data:
-                        if item_data['id_produto'] in ids_produtos_validos:
-                            produto = Produto.query.get(item_data['id_produto'])
-                            base_de_calculo_desconto += produto.preco_venda * item_data['quantidade']
-                if cupom.tipo_desconto == 'percentual':
-                    desconto_calculado = (base_de_calculo_desconto * cupom.valor_desconto) / 100
-                else:
-                    desconto_calculado = cupom.valor_desconto
-                if desconto_calculado > base_de_calculo_desconto:
-                    desconto_calculado = base_de_calculo_desconto
-        
-        # ===== LÓGICA DE CÁLCULO ATUALIZADA =====
-        taxa_entrega = float(dados.get('taxa_entrega', 0.0))
-        entrega_gratuita = dados.get('entrega_gratuita', False)
-        
-        total_venda_calculado = subtotal_produtos - desconto_calculado
-        if not entrega_gratuita:
-            total_venda_calculado += taxa_entrega
-        # =========================================
+    pagamentos_data = dados.get('pagamentos')
 
-        nova_venda = Venda(
-            total_venda=round(total_venda_calculado, 2),
-            forma_pagamento=dados.get('forma_pagamento'), 
-            taxa_entrega=taxa_entrega, 
-            id_cliente=dados.get('id_cliente'), 
-            id_vendedor=current_user.id, 
-            cupom_utilizado=cupom.codigo if cupom else None, 
-            valor_desconto=round(desconto_calculado, 2),
-            parcelas=dados.get('parcelas', 1), 
-            # ===== SALVANDO OS NOVOS DADOS DE ENTREGA =====
-            entrega_gratuita=entrega_gratuita,
-            entrega_rua=dados.get('entrega_rua'),
-            entrega_numero=dados.get('entrega_numero'),
-            entrega_bairro=dados.get('entrega_bairro'),
-            entrega_cidade=dados.get('entrega_cidade'),
-            entrega_cep=dados.get('entrega_cep'),
-            entrega_complemento=dados.get('entrega_complemento'),
-            # ===============================================
-            itens=[]
-        )
+    if not itens_venda_data: return jsonify({'erro': 'Itens não podem estar vazios.'}), 400
+    if not pagamentos_data: return jsonify({'erro': 'Pagamentos não podem estar vazios.'}), 400
+
+    try:
+        subtotal_produtos, desconto_calculado = 0, 0
         for item_data in itens_venda_data:
             produto = Produto.query.get(item_data['id_produto'])
-            if not produto or produto.quantidade < item_data['quantidade']:
+            if not produto: return jsonify({'erro': f'Produto ID {item_data["id_produto"]} não encontrado.'}), 400
+            subtotal_produtos += produto.preco_venda * item_data['quantidade']
+
+        if dados.get('cupom_utilizado'):
+            cupom = Cupom.query.filter_by(codigo=dados['cupom_utilizado'].upper(), ativo=True).first()
+            if cupom:
+                base_calculo = subtotal_produtos
+                if cupom.aplicacao == 'produto_especifico':
+                    ids_validos = [p.id for p in cupom.produtos]
+                    base_calculo = sum(Produto.query.get(i['id_produto']).preco_venda * i['quantidade'] for i in itens_venda_data if i['id_produto'] in ids_validos)
+                desconto_calculado = (base_calculo * cupom.valor_desconto) / 100 if cupom.tipo_desconto == 'percentual' else cupom.valor_desconto
+                desconto_calculado = min(desconto_calculado, base_calculo)
+
+        taxa_entrega = float(dados.get('taxa_entrega', 0.0))
+        total_venda_final = subtotal_produtos - desconto_calculado
+        if not dados.get('entrega_gratuita', False):
+            total_venda_final += taxa_entrega
+
+        total_pago = sum(float(p['valor']) for p in pagamentos_data)
+        if not math.isclose(total_pago, total_venda_final, rel_tol=1e-2):
+            return jsonify({'erro': f'Soma dos pagamentos (R$ {total_pago:.2f}) difere do total da venda (R$ {total_venda_final:.2f}).'}), 400
+
+        nova_venda = Venda(total_venda=round(total_venda_final, 2), taxa_entrega=taxa_entrega, id_cliente=dados.get('id_cliente'), id_vendedor=current_user.id, cupom_utilizado=cupom.codigo if 'cupom' in locals() and cupom else None, valor_desconto=round(desconto_calculado, 2), parcelas=dados.get('parcelas', 1), entrega_gratuita=dados.get('entrega_gratuita', False), entrega_rua=dados.get('entrega_rua'), entrega_numero=dados.get('entrega_numero'), entrega_bairro=dados.get('entrega_bairro'), entrega_cidade=dados.get('entrega_cidade'), entrega_cep=dados.get('entrega_cep'), entrega_complemento=dados.get('entrega_complemento'))
+
+        for pg_data in pagamentos_data:
+            nova_venda.pagamentos.append(Pagamento(forma=pg_data['forma'], valor=round(float(pg_data['valor']), 2)))
+
+        for item_data in itens_venda_data:
+            produto = Produto.query.get(item_data['id_produto'])
+            if produto.quantidade < item_data['quantidade']:
                 db.session.rollback()
-                return jsonify({'erro': f'Estoque insuficiente para {produto.nome if produto else "desconhecido"}.'}), 400
+                return jsonify({'erro': f'Estoque insuficiente para {produto.nome}.'}), 400
             produto.quantidade -= item_data['quantidade']
-            item_venda = ItemVenda(id_produto=produto.id, quantidade=item_data['quantidade'], preco_unitario_momento=produto.preco_venda)
-            nova_venda.itens.append(item_venda)
+            nova_venda.itens.append(ItemVenda(id_produto=produto.id, quantidade=item_data['quantidade'], preco_unitario_momento=produto.preco_venda))
+
         db.session.add(nova_venda)
-        db.session.flush()
-        detalhes_log = f"ID da Venda: {nova_venda.id}, Total: R$ {nova_venda.total_venda:.2f}"
-        registrar_log(current_user, "Venda Registrada", detalhes_log)
         db.session.commit()
+        
+        registrar_log(current_user, "Venda Registrada", f"ID: {nova_venda.id}, Total: R$ {nova_venda.total_venda:.2f}")
         salvar_recibo_html(nova_venda)
+        
         return jsonify({'mensagem': 'Venda registrada com sucesso!', 'id_venda': nova_venda.id}), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({'erro': 'Ocorreu um erro interno.', 'detalhes': str(e)}), 500
+        return jsonify({'erro': 'Erro interno.', 'detalhes': str(e)}), 500
 
 @app.route('/api/vendas/<int:venda_id>', methods=['GET'])
 @token_required
 def get_venda_details(current_user, venda_id):
     venda = Venda.query.get_or_404(venda_id)
     if current_user.role != 'admin' and venda.id_vendedor != current_user.id:
-        return jsonify({'message': 'Acesso não autorizado a esta venda.'}), 403
+        return jsonify({'message': 'Acesso não autorizado.'}), 403
     itens_list = [{'produto_nome': item.produto.nome, 'quantidade': item.quantidade, 'preco_unitario': item.preco_unitario_momento, 'subtotal': item.quantidade * item.preco_unitario_momento} for item in venda.itens]
-    result = {'id': venda.id, 'data_hora': venda.data_hora.strftime('%d/%m/%Y %H:%M:%S'), 'total_venda': venda.total_venda, 'forma_pagamento': venda.forma_pagamento, 'taxa_entrega': venda.taxa_entrega, 'cliente_nome': venda.cliente.nome if venda.cliente else 'Consumidor Final', 'vendedor_nome': venda.vendedor.nome, 'itens': itens_list, 'cupom_utilizado': venda.cupom_utilizado, 'valor_desconto': venda.valor_desconto, 'parcelas': venda.parcelas}
-    return jsonify(result)
+    pagamentos_list = [{'forma': pg.forma, 'valor': pg.valor} for pg in venda.pagamentos]
+    return jsonify({'id': venda.id, 'data_hora': venda.data_hora.strftime('%d/%m/%Y %H:%M:%S'), 'total_venda': venda.total_venda, 'pagamentos': pagamentos_list, 'taxa_entrega': venda.taxa_entrega, 'cliente_nome': venda.cliente.nome if venda.cliente else 'Consumidor Final', 'vendedor_nome': venda.vendedor.nome, 'itens': itens_list, 'cupom_utilizado': venda.cupom_utilizado, 'valor_desconto': venda.valor_desconto, 'parcelas': venda.parcelas})
 
 @app.route('/api/vendas/<int:venda_id>/reembolsar', methods=['POST'])
 @token_required
 def reembolsar_venda(current_user, venda_id):
-    if current_user.role != 'admin': return jsonify({'erro': 'Apenas administradores podem realizar reembolsos.'}), 403
+    if current_user.role != 'admin': return jsonify({'erro': 'Apenas admins podem reembolsar.'}), 403
     venda = Venda.query.get_or_404(venda_id)
-    if venda.status == 'Reembolsada': return jsonify({'erro': 'Esta venda já foi reembolsada.'}), 400
+    if venda.status == 'Reembolsada': return jsonify({'erro': 'Venda já reembolsada.'}), 400
     try:
         for item in venda.itens:
-            produto = Produto.query.get(item.id_produto)
-            if produto:
-                produto.quantidade += item.quantidade
+            if item.produto: item.produto.quantidade += item.quantidade
         venda.status = 'Reembolsada'
-        registrar_log(current_user, "Venda Reembolsada", f"ID da Venda: {venda.id}")
+        registrar_log(current_user, "Venda Reembolsada", f"ID: {venda.id}")
         db.session.commit()
-        return jsonify({'mensagem': f'Venda {venda_id} reembolsada com sucesso! O estoque foi atualizado.'})
+        return jsonify({'mensagem': f'Venda {venda_id} reembolsada e estoque atualizado.'})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'erro': 'Erro ao processar o reembolso.', 'detalhes': str(e)}), 500
+        return jsonify({'erro': 'Erro ao processar reembolso.', 'detalhes': str(e)}), 500
 
 @app.route('/api/relatorios/dashboard', methods=['GET'])
 @token_required
@@ -613,102 +545,62 @@ def get_dashboard_data(current_user):
     try:
         data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d')
         data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d') + timedelta(days=1)
-    except (ValueError, TypeError): return jsonify({'erro': 'Formato de data inválido. Use AAAA-MM-DD.'}), 400
-    base_query = Venda.query.filter(Venda.data_hora >= data_inicio, Venda.data_hora < data_fim, Venda.status == 'Concluída')
-    vendas_validas = base_query.all()
-    receita_total = sum(v.total_venda for v in vendas_validas)
-    total_taxas_entrega = sum(v.taxa_entrega for v in vendas_validas)
-    total_descontos = sum(v.valor_desconto for v in vendas_validas)
-    custo_total_produtos = sum(item.quantidade * (item.produto.preco_custo if item.produto else 0) for v in vendas_validas for item in v.itens)
-    kpis = {'receita_total': round(receita_total, 2), 'total_vendas': len(vendas_validas), 'ticket_medio': round(receita_total / len(vendas_validas) if vendas_validas else 0, 2), 'total_descontos': round(total_descontos, 2), 'lucro_bruto': round(receita_total - custo_total_produtos, 2), 'total_taxas_entrega': round(total_taxas_entrega, 2)}
-    vendas_por_dia_query = base_query.with_entities(func.date(Venda.data_hora).label('dia'), func.sum(Venda.total_venda).label('total')).group_by('dia').order_by('dia').all()
-    grafico_vendas_tempo = [{'data': datetime.strptime(r.dia, '%Y-%m-%d').strftime('%d/%m'), 'total': r.total} for r in vendas_por_dia_query]
-    vendas_por_pagamento_query = base_query.with_entities(Venda.forma_pagamento, func.sum(Venda.total_venda).label('total')).group_by(Venda.forma_pagamento).all()
-    grafico_forma_pagamento = [{'forma': r.forma_pagamento, 'total': r.total} for r in vendas_por_pagamento_query]
-    ranking_produtos_query = db.session.query(Produto.nome, func.sum(ItemVenda.quantidade).label('total_qtd')).join(ItemVenda).join(Venda).filter(Venda.id.in_([v.id for v in vendas_validas])).group_by(Produto.nome).order_by(func.sum(ItemVenda.quantidade).desc()).limit(10).all()
-    ranking_produtos = [{'produto': r.nome, 'quantidade': int(r.total_qtd)} for r in ranking_produtos_query]
-    ranking_vendedores_query = db.session.query(Usuario.nome, func.sum(Venda.total_venda).label('total_valor')).join(Venda).filter(Venda.id.in_([v.id for v in vendas_validas])).group_by(Usuario.nome).order_by(func.sum(Venda.total_venda).desc()).all()
-    ranking_vendedores = [{'vendedor': r.nome, 'total': r.total_valor} for r in ranking_vendedores_query]
-    vendas_no_periodo_total = Venda.query.filter(Venda.data_hora >= data_inicio, Venda.data_hora < data_fim).order_by(Venda.data_hora.desc()).all()
-    lista_vendas = [{'id': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Consumidor Final', 'vendedor': v.vendedor.nome, 'total': v.total_venda, 'pagamento': v.forma_pagamento, 'status': v.status} for v in vendas_no_periodo_total]
-    return jsonify({'kpis': kpis, 'grafico_vendas_tempo': grafico_vendas_tempo, 'grafico_forma_pagamento': grafico_forma_pagamento, 'ranking_produtos': ranking_produtos, 'ranking_vendedores': ranking_vendedores, 'lista_vendas': lista_vendas})
+    except (ValueError, TypeError): return jsonify({'erro': 'Formato de data inválido.'}), 400
+    
+    vendas_query = Venda.query.filter(Venda.data_hora >= data_inicio, Venda.data_hora < data_fim)
+    vendas_concluidas = vendas_query.filter(Venda.status == 'Concluída').all()
+    
+    receita_total = sum(v.total_venda for v in vendas_concluidas)
+    total_taxas = sum(v.taxa_entrega for v in vendas_concluidas)
+    total_descontos = sum(v.valor_desconto for v in vendas_concluidas)
+    custo_total = sum(i.quantidade * (i.produto.preco_custo if i.produto else 0) for v in vendas_concluidas for i in v.itens)
+    kpis = {'receita_total': round(receita_total, 2), 'total_vendas': len(vendas_concluidas), 'ticket_medio': round(receita_total / len(vendas_concluidas) if vendas_concluidas else 0, 2), 'total_descontos': round(total_descontos, 2), 'lucro_bruto': round(receita_total - custo_total, 2), 'total_taxas_entrega': round(total_taxas, 2)}
+    
+    vendas_dia = db.session.query(func.date(Venda.data_hora).label('dia'), func.sum(Venda.total_venda).label('total')).filter(Venda.id.in_([v.id for v in vendas_concluidas])).group_by('dia').order_by('dia').all()
+    grafico_vendas_tempo = [{'data': datetime.strptime(r.dia, '%Y-%m-%d').strftime('%d/%m'), 'total': r.total} for r in vendas_dia]
+    
+    pagamentos_forma = db.session.query(Pagamento.forma, func.sum(Pagamento.valor).label('total')).join(Venda).filter(Venda.id.in_([v.id for v in vendas_concluidas])).group_by(Pagamento.forma).all()
+    grafico_forma_pagamento = [{'forma': r.forma, 'total': r.total} for r in pagamentos_forma]
 
-# ===== NOVO ENDPOINT DE RELATÓRIO DE ENTREGAS =====
+    ranking_produtos = db.session.query(Produto.nome, func.sum(ItemVenda.quantidade).label('total_qtd')).join(ItemVenda).join(Venda).filter(Venda.id.in_([v.id for v in vendas_concluidas])).group_by(Produto.nome).order_by(func.sum(ItemVenda.quantidade).desc()).limit(10).all()
+    ranking_produtos_list = [{'produto': r.nome, 'quantidade': int(r.total_qtd)} for r in ranking_produtos]
+    
+    ranking_vendedores = db.session.query(Usuario.nome, func.sum(Venda.total_venda).label('total_valor')).join(Venda).filter(Venda.id.in_([v.id for v in vendas_concluidas])).group_by(Usuario.nome).order_by(func.sum(Venda.total_venda).desc()).all()
+    ranking_vendedores_list = [{'vendedor': r.nome, 'total': r.total_valor} for r in ranking_vendedores]
+    
+    vendas_periodo_total = vendas_query.order_by(Venda.data_hora.desc()).all()
+    lista_vendas = [{'id': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Final', 'vendedor': v.vendedor.nome, 'total': v.total_venda, 'pagamento': ", ".join([p.forma for p in v.pagamentos]), 'status': v.status} for v in vendas_periodo_total]
+
+    return jsonify({'kpis': kpis, 'grafico_vendas_tempo': grafico_vendas_tempo, 'grafico_forma_pagamento': grafico_forma_pagamento, 'ranking_produtos': ranking_produtos_list, 'ranking_vendedores': ranking_vendedores_list, 'lista_vendas': lista_vendas})
+
 @app.route('/api/relatorios/entregas', methods=['GET'])
 @token_required
 def get_entregas_report(current_user):
-    if current_user.role != 'admin':
-        return jsonify({'message': 'Acesso negado.'}), 403
-
-    data_inicio_str = request.args.get('data_inicio')
-    data_fim_str = request.args.get('data_fim')
-
+    if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
+    data_inicio_str, data_fim_str = request.args.get('data_inicio'), request.args.get('data_fim')
     try:
         data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d')
         data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d') + timedelta(days=1)
-    except (ValueError, TypeError):
-        return jsonify({'erro': 'Formato de data inválido. Use AAAA-MM-DD.'}), 400
+    except (ValueError, TypeError): return jsonify({'erro': 'Formato de data inválido.'}), 400
 
-    query_entregas = Venda.query.filter(
-        Venda.data_hora >= data_inicio,
-        Venda.data_hora < data_fim,
-        Venda.taxa_entrega > 0,
-        Venda.status == 'Concluída'
-    ).order_by(Venda.data_hora.desc())
-
-    vendas_com_entrega = query_entregas.all()
-
-    quantidade_entregas = len(vendas_com_entrega)
-    valor_total_taxas = sum(v.taxa_entrega for v in vendas_com_entrega)
-    
-    kpis = {
-        'quantidade_entregas': quantidade_entregas,
-        'valor_total_taxas': round(valor_total_taxas, 2)
-    }
-
+    entregas = Venda.query.filter(Venda.data_hora >= data_inicio, Venda.data_hora < data_fim, Venda.taxa_entrega > 0, Venda.status == 'Concluída').order_by(Venda.data_hora.desc()).all()
+    kpis = {'quantidade_entregas': len(entregas), 'valor_total_taxas': round(sum(v.taxa_entrega for v in entregas), 2)}
     lista_entregas = []
-    for venda in vendas_com_entrega:
-        endereco_completo = f"{venda.entrega_rua or ''}, {venda.entrega_numero or ''} - {venda.entrega_bairro or ''}".strip(', - ').strip()
-        
-        lista_entregas.append({
-            'id_venda': venda.id,
-            'data_hora': venda.data_hora.strftime('%d/%m/%Y %H:%M'),
-            'cliente': venda.cliente.nome if venda.cliente else 'Consumidor Final',
-            'endereco': endereco_completo if endereco_completo else 'Endereço não informado',
-            'cidade': venda.entrega_cidade or 'N/A',
-            'taxa_entrega': venda.taxa_entrega,
-            'status_entrega': 'Grátis' if venda.entrega_gratuita else 'Normal'
-        })
-        
-    return jsonify({
-        'kpis': kpis,
-        'lista_entregas': lista_entregas
-    })
-# ========================================================
+    for v in entregas:
+        endereco = f"{v.entrega_rua or ''}, {v.entrega_numero or ''} - {v.entrega_bairro or ''}".strip(', - ').strip()
+        lista_entregas.append({'id_venda': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Final', 'endereco': endereco or 'Não informado', 'cidade': v.entrega_cidade or 'N/A', 'taxa_entrega': v.taxa_entrega, 'status_entrega': 'Grátis' if v.entrega_gratuita else 'Normal'})
+    return jsonify({'kpis': kpis, 'lista_entregas': lista_entregas})
 
 @app.route('/api/logs', methods=['GET'])
 @token_required
 def get_logs(current_user):
-    if current_user.role != 'admin':
-        return jsonify({'message': 'Acesso negado.'}), 403
-    query = Log.query.order_by(Log.timestamp.desc())
-    logs = query.limit(200).all()
-    logs_data = []
-    for log in logs:
-        logs_data.append({
-            'id': log.id,
-            'timestamp': log.timestamp.strftime('%d/%m/%Y %H:%M:%S'),
-            'usuario_nome': log.usuario_nome,
-            'acao': log.acao,
-            'detalhes': log.detalhes
-        })
-    return jsonify(logs_data)
-
+    if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
+    logs = Log.query.order_by(Log.timestamp.desc()).limit(200).all()
+    return jsonify([{'id': l.id, 'timestamp': l.timestamp.strftime('%d/%m/%Y %H:%M:%S'), 'usuario_nome': l.usuario_nome, 'acao': l.acao, 'detalhes': l.detalhes} for l in logs])
 
 # 6. INICIALIZAÇÃO DO SERVIDOR
 # -----------------------------------------------------------
 if __name__ == '__main__':
     with app.app_context():
-        # A linha db.create_all() não é mais necessária aqui se estivermos usando migrações
         pass
     app.run(host='0.0.0.0', port=5000, debug=True)

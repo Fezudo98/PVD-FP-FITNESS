@@ -70,39 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
         rankingProdutosChart = new Chart(ctx, { type: 'bar', data: { labels: data.map(d => d.produto), datasets: [{ label: 'Quantidade Vendida', data: data.map(d => d.quantidade), backgroundColor: 'rgba(224, 180, 49, 0.8)', }] }, options: { indexAxis: 'y', responsive: true, plugins: { title: { display: true, text: 'Top 10 Produtos Mais Vendidos', color: '#f8f9fa' }, legend: { display: false }, }, scales: { x: { ticks: { color: '#f8f9fa' } }, y: { ticks: { color: '#f8f9fa' } } } } });
     }
     function renderRankingVendedoresChart(data) {
-    const ctx = document.getElementById('rankingVendedoresChart').getContext('2d');
-    if(rankingVendedoresChart) rankingVendedoresChart.destroy();
-    rankingVendedoresChart = new Chart(ctx, { 
-        type: 'bar', 
-        data: { 
-            labels: data.map(d => d.vendedor), 
-            datasets: [{ 
-                label: 'Valor Total Vendido (R$)', 
-                data: data.map(d => d.total), 
-                backgroundColor: 'rgba(224, 180, 49, 0.8)', 
-            }] 
-        }, 
-        options: { 
-            
-            indexAxis: 'y', // Isso transforma o gráfico em barras horizontais
-            responsive: true, 
-            plugins: { 
-                title: { 
-                    display: true, 
-                    text: 'Ranking de Vendedores', 
-                    color: '#f8f9fa' 
-                }, 
-                legend: { 
-                    display: false // A legenda é desnecessária aqui, o título já explica
-                }, 
-            }, 
-            scales: { 
-                x: { ticks: { color: '#f8f9fa' } }, 
-                y: { ticks: { color: '#f8f9fa' } } 
-            } 
-        } 
-    });
-}
+        const ctx = document.getElementById('rankingVendedoresChart').getContext('2d');
+        if(rankingVendedoresChart) rankingVendedoresChart.destroy();
+        rankingVendedoresChart = new Chart(ctx, { type: 'bar', data: { labels: data.map(d => d.vendedor), datasets: [{ label: 'Valor Total Vendido (R$)', data: data.map(d => d.total), backgroundColor: 'rgba(224, 180, 49, 0.8)', }] }, options: { indexAxis: 'y', responsive: true, plugins: { title: { display: true, text: 'Ranking de Vendedores', color: '#f8f9fa' }, legend: { display: false }, }, scales: { x: { ticks: { color: '#f8f9fa' } }, y: { ticks: { color: '#f8f9fa' } } } } });
+    }
     
     function renderVendasTable(vendas) {
         const tableBody = document.getElementById('vendasTableBody');
@@ -136,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ===== FUNÇÃO DE EXIBIR RECIBO ATUALIZADA =====
     async function showReceiptDetails(vendaId) {
         try {
             const response = await fetch(`${API_URL}/api/vendas/${vendaId}`, { headers: { 'x-access-token': token } });
@@ -152,17 +124,16 @@ document.addEventListener('DOMContentLoaded', () => {
             let subtotalProdutos = 0;
             data.itens.forEach(item => {
                 const row = itemsTable.insertRow();
-                const itemSubtotal = item.quantidade * item.preco_unitario;
-                row.innerHTML = `<td>${item.produto_nome}</td><td>${item.quantidade}</td><td>R$ ${item.preco_unitario.toFixed(2)}</td><td>R$ ${itemSubtotal.toFixed(2)}</td>`;
-                subtotalProdutos += itemSubtotal;
+                subtotalProdutos += item.subtotal;
+                row.innerHTML = `<td>${item.produto_nome}</td><td>${item.quantidade}</td><td>R$ ${item.preco_unitario.toFixed(2)}</td><td>R$ ${item.subtotal.toFixed(2)}</td>`;
             });
             document.getElementById('receiptSubtotal').textContent = `R$ ${subtotalProdutos.toFixed(2)}`;
             
             const receiptDiscountRow = document.getElementById('receiptDiscountRow');
             if(data.valor_desconto > 0) {
+                receiptDiscountRow.classList.remove('d-none');
                 document.getElementById('receiptCupomCode').textContent = data.cupom_utilizado;
                 document.getElementById('receiptDiscountValue').textContent = `- R$ ${data.valor_desconto.toFixed(2)}`;
-                receiptDiscountRow.classList.remove('d-none');
             } else {
                 receiptDiscountRow.classList.add('d-none');
             }
@@ -170,11 +141,18 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('receiptTaxaEntrega').textContent = `R$ ${data.taxa_entrega.toFixed(2)}`;
             document.getElementById('receiptTotalGeral').textContent = `R$ ${data.total_venda.toFixed(2)}`;
             
-            let pagamentoStr = data.forma_pagamento;
-            if (data.forma_pagamento === 'Cartão de Crédito' && data.parcelas > 1) {
-                pagamentoStr += ` (${data.parcelas}x)`;
-            }
-            document.getElementById('receiptFormaPagamento').textContent = pagamentoStr;
+            // Lógica para exibir múltiplos pagamentos
+            const paymentsDiv = document.getElementById('receiptPayments'); // Assumindo que o HTML terá este div
+            paymentsDiv.innerHTML = ''; // Limpa pagamentos anteriores
+            data.pagamentos.forEach(p => {
+                let paymentText = `${p.forma} - R$ ${p.valor.toFixed(2)}`;
+                if (p.forma === 'Cartão de Crédito' && data.parcelas > 1) {
+                    paymentText = `${p.forma} (${data.parcelas}x) - R$ ${p.valor.toFixed(2)}`;
+                }
+                const pElem = document.createElement('p');
+                pElem.innerHTML = `<strong>Pagamento:</strong> <span>${paymentText}</span>`;
+                paymentsDiv.appendChild(pElem);
+            });
             
             receiptModal.show();
         } catch (error) {
@@ -224,32 +202,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LÓGICA DE IMPRESSÃO ---
     document.body.addEventListener('click', (event) => {
-        if (event.target.id === 'imprimirA4Btn') {
-            printReceipt('a4');
-        }
-        if (event.target.id === 'imprimirTermicaBtn') {
-            printReceipt('termica');
-        }
+        if (event.target.id === 'imprimirA4Btn') printReceipt('a4');
+        if (event.target.id === 'imprimirTermicaBtn') printReceipt('termica');
     });
     
     window.onafterprint = () => {
         document.getElementById('receiptContent').classList.remove('termica-print');
     };
+    function printReceipt(format) {
+        const receiptContent = document.getElementById('receiptContent');
+        receiptContent.classList.toggle('termica-print', format === 'termica');
+        setTimeout(() => window.print(), 100);
+    }
 
     init();
 });
-
-// Função de impressão agora é global para ser acessada pelo onclick do HTML
-function printReceipt(format) {
-    const receiptContent = document.getElementById('receiptContent');
-    
-    if (format === 'termica') {
-        receiptContent.classList.add('termica-print');
-    } else {
-        receiptContent.classList.remove('termica-print');
-    }
-
-    setTimeout(() => {
-        window.print();
-    }, 100);
-}

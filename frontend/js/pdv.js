@@ -10,6 +10,8 @@ let allProducts = [];
 let cart = [];
 let allClients = [];
 let appliedCoupon = null;
+let payments = [];
+let totalSaleValue = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- REFERÊNCIAS AOS ELEMENTOS DO DOM ---
@@ -18,30 +20,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartItemsDiv = document.getElementById('cartItems');
     const cartSubtotalSpan = document.getElementById('cartSubtotal');
     const cartTotalSpan = document.getElementById('cartTotal');
-    const finalizeSaleBtn = document.getElementById('finalizeSaleBtn');
     const lastItemPreview = document.getElementById('last-item-preview');
     const previewImage = document.getElementById('preview-image');
     
-    // Elementos do Cupom
     const cupomInput = document.getElementById('cupomInput');
     const applyCupomBtn = document.getElementById('applyCupomBtn');
     const removeCupomBtn = document.getElementById('removeCupomBtn');
     const discountDisplay = document.getElementById('discountDisplay');
     const cupomCodeDisplay = document.getElementById('cupomCodeDisplay');
     const discountValueSpan = document.getElementById('discountValue');
-
-    // ===== ELEMENTOS DE ENTREGA ATUALIZADOS =====
     const taxaEntregaInput = document.getElementById('taxaEntregaInput');
     const freeDeliveryCheckbox = document.getElementById('freeDeliveryCheckbox');
     const deliveryAddressWrapper = document.getElementById('deliveryAddressWrapper');
-    // ===========================================
 
-    // Elementos de Pagamento e Parcelamento
-    const paymentMethodSelect = document.getElementById('paymentMethod');
-    const installmentsWrapper = document.getElementById('installmentsWrapper');
-    const installmentsInput = document.getElementById('installmentsInput');
-
-    // Elementos do Cliente
     const clientSearchInput = document.getElementById('clientSearchInput');
     const clientSearchResults = document.getElementById('clientSearchResults');
     const selectedClientDisplay = document.getElementById('selectedClientDisplay');
@@ -50,10 +41,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const clientSearchWrapper = document.getElementById('clientSearchWrapper');
     const selectedClientId = document.getElementById('selectedClientId');
     
-    // Modais
     const quickClientModal = new bootstrap.Modal(document.getElementById('quickClientModal'));
     const quickClientForm = document.getElementById('quickClientForm');
     const receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
+    
+    const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+    const openPaymentModalBtn = document.getElementById('openPaymentModalBtn');
+    const paymentTotalDisplay = document.getElementById('paymentTotalDisplay');
+    const paymentRemainingDisplay = document.getElementById('paymentRemainingDisplay');
+    const addPaymentForm = document.getElementById('addPaymentForm');
+    const paymentMethodSelect = document.getElementById('paymentMethodSelect');
+    const paymentInstallmentsWrapper = document.getElementById('paymentInstallmentsWrapper');
+    const paymentInstallmentsInput = document.getElementById('paymentInstallmentsInput');
+    const paymentValueInput = document.getElementById('paymentValueInput');
+    const addedPaymentsList = document.getElementById('addedPaymentsList');
+    const confirmSaleBtn = document.getElementById('confirmSaleBtn');
 
     // --- FUNÇÕES ---
 
@@ -64,12 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error('Falha ao recarregar produtos.');
             const data = await response.json();
             allProducts = data.produtos;
-            if (currentSearchQuery) {
-                renderSearchResults(currentSearchQuery);
-            }
-        } catch (error) { 
-            console.error(error); 
-        }
+            if (currentSearchQuery) renderSearchResults(currentSearchQuery);
+        } catch (error) { console.error(error); }
     }
 
     async function fetchAllClients() {
@@ -101,15 +99,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function addToCart(productId) {
         const product = allProducts.find(p => p.id === productId);
         if (!product || product.quantidade <= 0) { alert('Produto sem estoque!'); return; }
-        
         previewImage.src = `${API_URL}/uploads/${product.imagem_url || 'default.png'}`;
         lastItemPreview.style.display = 'block';
-
         const cartItem = cart.find(item => item.id === productId);
         if (cartItem) {
-            if (cartItem.quantidade < product.quantidade) {
-                cartItem.quantidade++;
-            } else { alert('Quantidade máxima em estoque atingida.'); }
+            if (cartItem.quantidade < product.quantidade) cartItem.quantidade++;
+            else alert('Quantidade máxima em estoque atingida.');
         } else {
             cart.push({ ...product, quantidade: 1 });
         }
@@ -132,60 +127,32 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTotals();
     }
     
-    // ===== FUNÇÃO DE ATUALIZAR TOTAIS ATUALIZADA =====
     function updateTotals() {
         let subtotal = cart.reduce((sum, item) => sum + (item.quantidade * item.preco_venda), 0);
         let discountAmount = 0;
-
         if (appliedCoupon) {
-            let discountBase = 0;
-            if (appliedCoupon.aplicacao === 'total') {
-                discountBase = subtotal;
-            } else if (appliedCoupon.aplicacao === 'produto_especifico') {
-                discountBase = cart.reduce((sum, item) => {
-                    if (appliedCoupon.produtos_validos_ids.includes(item.id)) {
-                        return sum + (item.quantidade * item.preco_venda);
-                    }
-                    return sum;
-                }, 0);
-            }
-
-            if (appliedCoupon.tipo_desconto === 'percentual') {
-                discountAmount = (discountBase * appliedCoupon.valor_desconto) / 100;
-            } else {
-                discountAmount = appliedCoupon.valor_desconto;
-            }
-
-            if (discountAmount > discountBase) {
-                discountAmount = discountBase;
-            }
-
+            let discountBase = (appliedCoupon.aplicacao === 'total') ? subtotal : cart.reduce((sum, item) => appliedCoupon.produtos_validos_ids.includes(item.id) ? sum + (item.quantidade * item.preco_venda) : sum, 0);
+            discountAmount = (appliedCoupon.tipo_desconto === 'percentual') ? (discountBase * appliedCoupon.valor_desconto) / 100 : appliedCoupon.valor_desconto;
+            discountAmount = Math.min(discountAmount, discountBase);
             cupomCodeDisplay.textContent = appliedCoupon.codigo;
             discountValueSpan.textContent = `- R$ ${discountAmount.toFixed(2)}`;
             discountDisplay.classList.remove('d-none');
         } else {
             discountDisplay.classList.add('d-none');
         }
-
         const taxaEntrega = parseFloat(taxaEntregaInput.value) || 0;
         let totalGeral = subtotal - discountAmount;
-
-        // Adiciona a taxa de entrega ao total apenas se a entrega NÃO for grátis
         if (!freeDeliveryCheckbox.checked) {
             totalGeral += taxaEntrega;
         }
-
         cartSubtotalSpan.textContent = `R$ ${subtotal.toFixed(2)}`;
         cartTotalSpan.textContent = `R$ ${totalGeral.toFixed(2)}`;
-        finalizeSaleBtn.disabled = cart.length === 0;
+        openPaymentModalBtn.disabled = cart.length === 0;
     }
-    // ===============================================
 
     async function applyCoupon() {
         const code = cupomInput.value;
-        if (!code) { alert('Por favor, insira um código de cupom.'); return; }
-        if (cart.length === 0) { alert('Adicione produtos ao carrinho antes de aplicar um cupom.'); return; }
-
+        if (!code) return;
         try {
             const response = await fetch(`${API_URL}/api/cupons/validar/${code}`, { headers: { 'x-access-token': token } });
             const result = await response.json();
@@ -209,19 +176,57 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTotals();
     }
 
-    // ===== FUNÇÃO DE FINALIZAR VENDA ATUALIZADA =====
-    async function finalizeSale() {
-        if (cart.length === 0) { alert('O carrinho está vazio!'); return; }
+    function preparePaymentModal() {
+        payments = [];
+        totalSaleValue = parseFloat(cartTotalSpan.textContent.replace('R$ ', '').replace(',', '.'))
+        paymentValueInput.value = totalSaleValue.toFixed(2);
+        updatePaymentModal();
+        paymentModal.show();
+    }
+
+    function updatePaymentModal() {
+        const totalPaid = payments.reduce((sum, p) => sum + p.valor, 0);
+        const remaining = totalSaleValue - totalPaid;
+
+        paymentTotalDisplay.textContent = `R$ ${totalSaleValue.toFixed(2)}`;
+        paymentRemainingDisplay.textContent = `R$ ${remaining.toFixed(2)}`;
         
+        addedPaymentsList.innerHTML = '';
+        if (payments.length === 0) {
+            addedPaymentsList.innerHTML = '<div class="list-group-item text-muted text-center">Nenhum pagamento adicionado.</div>';
+        } else {
+            payments.forEach((p, index) => {
+                const item = document.createElement('div');
+                item.className = 'list-group-item d-flex justify-content-between align-items-center';
+                item.innerHTML = `<span>${p.forma}</span><strong>R$ ${p.valor.toFixed(2)}</strong><button class="btn btn-sm btn-outline-danger py-0 px-1 remove-payment-btn" data-index="${index}">X</button>`;
+                addedPaymentsList.appendChild(item);
+            });
+        }
+        confirmSaleBtn.disabled = Math.abs(remaining) > 0.01;
+        paymentValueInput.value = remaining.toFixed(2);
+    }
+
+    function addPayment(event) {
+        event.preventDefault();
+        const forma = paymentMethodSelect.value;
+        const valor = parseFloat(paymentValueInput.value);
+        const remaining = totalSaleValue - payments.reduce((sum, p) => sum + p.valor, 0);
+        if (isNaN(valor) || valor <= 0) { alert('Por favor, insira um valor de pagamento válido.'); return; }
+        if (valor > remaining + 0.01) { alert('O valor do pagamento não pode ser maior que o valor restante.'); return; }
+        payments.push({ forma, valor });
+        updatePaymentModal();
+    }
+
+    async function finalizeSale() {
+        if (cart.length === 0) return;
         const saleData = {
             itens: cart.map(item => ({ id_produto: item.id, quantidade: item.quantidade })),
-            forma_pagamento: paymentMethodSelect.value,
+            pagamentos: payments,
             id_cliente: selectedClientId.value || null,
-            cupom_utilizado: appliedCoupon ? appliedCoupon.codigo : null,
-            parcelas: paymentMethodSelect.value === 'Cartão de Crédito' ? parseInt(installmentsInput.value) : 1,
-            // Novos dados de entrega
             taxa_entrega: parseFloat(taxaEntregaInput.value) || 0,
             entrega_gratuita: freeDeliveryCheckbox.checked,
+            cupom_utilizado: appliedCoupon ? appliedCoupon.codigo : null,
+            parcelas: paymentInstallmentsWrapper.classList.contains('d-none') ? 1 : parseInt(paymentInstallmentsInput.value),
             entrega_rua: document.getElementById('entregaRua').value,
             entrega_numero: document.getElementById('entregaNumero').value,
             entrega_bairro: document.getElementById('entregaBairro').value,
@@ -230,80 +235,42 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
+            confirmSaleBtn.disabled = true;
+            confirmSaleBtn.textContent = 'Registrando...';
             const response = await fetch(`${API_URL}/api/vendas`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-access-token': token },
                 body: JSON.stringify(saleData)
             });
             const result = await response.json();
-            if (!response.ok) throw new Error(result.erro || 'Erro desconhecido ao finalizar a venda.');
+            if (!response.ok) throw new Error(result.erro || 'Erro ao finalizar a venda.');
             
+            paymentModal.hide();
             await showReceipt(result.id_venda);
             
-            // Limpeza do formulário
-            lastItemPreview.style.display = 'none';
+            // Limpeza completa do formulário
             cart = [];
-            removeClient();
-            removeCoupon();
-            paymentMethodSelect.value = 'Dinheiro';
-            installmentsWrapper.classList.add('d-none');
-            installmentsInput.value = 1;
+            payments = [];
+            // A LINHA CORRIGIDA ESTÁ AQUI:
+            removeCoupon(); // Reseta o cupom para a próxima venda
             
-            // Limpeza dos campos de entrega
             taxaEntregaInput.value = 0;
             freeDeliveryCheckbox.checked = false;
             deliveryAddressWrapper.classList.add('d-none');
-            document.getElementById('entregaRua').value = '';
-            document.getElementById('entregaNumero').value = '';
-            document.getElementById('entregaBairro').value = '';
-            document.getElementById('entregaCidade').value = '';
-            document.getElementById('entregaComplemento').value = '';
-
+            document.getElementById('deliveryAddressWrapper').querySelectorAll('input').forEach(i => i.value = '');
+            lastItemPreview.style.display = 'none';
+            removeClient();
             renderCart();
             await fetchAllProducts();
             searchInput.value = '';
             searchResults.innerHTML = '';
+
         } catch (error) {
-            console.error('Erro ao finalizar venda:', error);
             alert(`Erro: ${error.message}`);
+        } finally {
+            confirmSaleBtn.disabled = false;
+            confirmSaleBtn.textContent = 'Confirmar Venda';
         }
-    }
-    // ================================================
-
-    function renderClientSearchResults(query) {
-        clientSearchResults.innerHTML = '';
-        if (!query || query.length < 2) return;
-        const filtered = allClients.filter(c => c.nome.toLowerCase().includes(query.toLowerCase()) || (c.cpf && c.cpf.includes(query)));
-        if (filtered.length === 0) {
-            clientSearchResults.innerHTML = '<div class="list-group-item text-muted">Nenhum cliente encontrado.</div>';
-            return;
-        }
-        filtered.slice(0, 5).forEach(c => {
-            const item = document.createElement('a');
-            item.href = '#';
-            item.className = 'list-group-item list-group-item-action';
-            item.textContent = `${c.nome} ${c.cpf ? `(${c.cpf})` : ''}`;
-            item.dataset.clientId = c.id;
-            clientSearchResults.appendChild(item);
-        });
-    }
-
-    function selectClient(clientId) {
-        const client = allClients.find(c => c.id === clientId);
-        if (client) {
-            selectedClientId.value = client.id;
-            selectedClientName.textContent = client.nome;
-            selectedClientDisplay.classList.remove('d-none');
-            clientSearchWrapper.classList.add('d-none');
-            clientSearchInput.value = '';
-            clientSearchResults.innerHTML = '';
-        }
-    }
-
-    function removeClient() {
-        selectedClientId.value = '';
-        selectedClientDisplay.classList.add('d-none');
-        clientSearchWrapper.classList.remove('d-none');
     }
 
     async function showReceipt(vendaId) {
@@ -322,121 +289,96 @@ document.addEventListener('DOMContentLoaded', () => {
             let subtotalProdutos = 0;
             data.itens.forEach(item => {
                 const row = itemsTable.insertRow();
-                const itemSubtotal = item.quantidade * item.preco_unitario;
-                row.innerHTML = `<td>${item.produto_nome}</td><td>${item.quantidade}</td><td>R$ ${item.preco_unitario.toFixed(2)}</td><td>R$ ${itemSubtotal.toFixed(2)}</td>`;
-                subtotalProdutos += itemSubtotal;
+                subtotalProdutos += item.subtotal;
+                row.innerHTML = `<td>${item.produto_nome}</td><td>${item.quantidade}</td><td>R$ ${item.preco_unitario.toFixed(2)}</td><td>R$ ${item.subtotal.toFixed(2)}</td>`;
             });
             document.getElementById('receiptSubtotal').textContent = `R$ ${subtotalProdutos.toFixed(2)}`;
             
             const receiptDiscountRow = document.getElementById('receiptDiscountRow');
             if(data.valor_desconto > 0) {
+                receiptDiscountRow.classList.remove('d-none');
                 document.getElementById('receiptCupomCode').textContent = data.cupom_utilizado;
                 document.getElementById('receiptDiscountValue').textContent = `- R$ ${data.valor_desconto.toFixed(2)}`;
-                receiptDiscountRow.classList.remove('d-none');
             } else {
                 receiptDiscountRow.classList.add('d-none');
             }
-
             document.getElementById('receiptTaxaEntrega').textContent = `R$ ${data.taxa_entrega.toFixed(2)}`;
             document.getElementById('receiptTotalGeral').textContent = `R$ ${data.total_venda.toFixed(2)}`;
-
-            let pagamentoStr = data.forma_pagamento;
-            if (data.forma_pagamento === 'Cartão de Crédito' && data.parcelas > 1) {
-                pagamentoStr += ` (${data.parcelas}x)`;
-            }
-            document.getElementById('receiptFormaPagamento').textContent = pagamentoStr;
+            
+            const paymentsDiv = document.getElementById('receiptPayments');
+            paymentsDiv.innerHTML = '';
+            data.pagamentos.forEach(p => {
+                let paymentText = `${p.forma} - R$ ${p.valor.toFixed(2)}`;
+                if (p.forma === 'Cartão de Crédito' && data.parcelas > 1) {
+                    paymentText = `${p.forma} (${data.parcelas}x) - R$ ${p.valor.toFixed(2)}`;
+                }
+                const pElem = document.createElement('p');
+                pElem.innerHTML = `<strong>Pagamento:</strong> <span>${paymentText}</span>`;
+                paymentsDiv.appendChild(pElem);
+            });
             
             receiptModal.show();
         } catch (error) { console.error('Erro ao mostrar o recibo:', error); alert(error.message); }
     }
 
+    function renderClientSearchResults(query) {
+        clientSearchResults.innerHTML = '';
+        if (!query || query.length < 2) return;
+        const filtered = allClients.filter(c => c.nome.toLowerCase().includes(query.toLowerCase()) || (c.cpf && c.cpf.includes(query)));
+        filtered.slice(0, 5).forEach(c => {
+            const item = document.createElement('a'); item.href = '#';
+            item.className = 'list-group-item list-group-item-action';
+            item.textContent = `${c.nome} ${c.cpf ? `(${c.cpf})` : ''}`;
+            item.dataset.clientId = c.id;
+            clientSearchResults.appendChild(item);
+        });
+    }
+
+    function selectClient(clientId) {
+        const client = allClients.find(c => c.id === parseInt(clientId));
+        if (client) {
+            selectedClientId.value = client.id;
+            selectedClientName.textContent = client.nome;
+            selectedClientDisplay.classList.remove('d-none');
+            clientSearchWrapper.classList.add('d-none');
+            clientSearchInput.value = '';
+            clientSearchResults.innerHTML = '';
+        }
+    }
+
+    function removeClient() {
+        selectedClientId.value = '';
+        selectedClientDisplay.classList.add('d-none');
+        clientSearchWrapper.classList.remove('d-none');
+    }
+
     // --- EVENT LISTENERS ---
+    
     searchInput.addEventListener('input', () => renderSearchResults(searchInput.value));
     searchResults.addEventListener('click', (e) => { e.preventDefault(); const item = e.target.closest('[data-product-id]'); if(item) { addToCart(parseInt(item.dataset.productId)); searchInput.value=''; searchResults.innerHTML=''; searchInput.focus(); } });
-    
     cartItemsDiv.addEventListener('click', (e) => { const target = e.target; const id = parseInt(target.dataset.id); if(!id) return; if(target.classList.contains('adjust-qty-btn')) { const item = cart.find(i=>i.id===id); const stockProduct = allProducts.find(p=>p.id===id); if(target.dataset.action==='increase' && item.quantidade < stockProduct.quantidade) item.quantidade++; else if(target.dataset.action==='decrease' && item.quantidade > 0) item.quantidade--; if(item.quantidade===0) cart=cart.filter(i=>i.id!==id); renderCart(); } else if(target.classList.contains('remove-item-btn')) { cart=cart.filter(i=>i.id!==id); renderCart(); } });
-    
-    // ===== NOVOS EVENT LISTENERS PARA ENTREGA =====
-    taxaEntregaInput.addEventListener('input', () => {
-        const taxa = parseFloat(taxaEntregaInput.value) || 0;
-        if (taxa > 0) {
-            deliveryAddressWrapper.classList.remove('d-none');
-        } else {
-            deliveryAddressWrapper.classList.add('d-none');
-        }
-        updateTotals();
-    });
-
-    freeDeliveryCheckbox.addEventListener('change', updateTotals);
-    // ============================================
-
     applyCupomBtn.addEventListener('click', applyCoupon);
     removeCupomBtn.addEventListener('click', removeCoupon);
-
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            const scannedSKU = searchInput.value.trim();
-            if (scannedSKU === '') return;
-            const matchedProduct = allProducts.find(p => p.sku.toLowerCase() === scannedSKU.toLowerCase());
-            if (matchedProduct) {
-                addToCart(matchedProduct.id);
-                searchInput.value = '';
-                searchResults.innerHTML = '';
-            } else {
-                alert(`Produto com código de barras "${scannedSKU}" não encontrado.`);
-                searchInput.select();
-            }
-        }
-    });
-
-    paymentMethodSelect.addEventListener('change', () => {
-        if (paymentMethodSelect.value === 'Cartão de Crédito') {
-            installmentsWrapper.classList.remove('d-none');
-        } else {
-            installmentsWrapper.classList.add('d-none');
-            installmentsInput.value = 1;
-        }
-    });
-    
+    taxaEntregaInput.addEventListener('input', () => { (parseFloat(taxaEntregaInput.value) || 0) > 0 ? deliveryAddressWrapper.classList.remove('d-none') : deliveryAddressWrapper.classList.add('d-none'); updateTotals(); });
+    freeDeliveryCheckbox.addEventListener('change', updateTotals);
+    openPaymentModalBtn.addEventListener('click', preparePaymentModal);
+    addPaymentForm.addEventListener('submit', addPayment);
+    confirmSaleBtn.addEventListener('click', finalizeSale);
+    paymentMethodSelect.addEventListener('change', () => { paymentInstallmentsWrapper.classList.toggle('d-none', paymentMethodSelect.value !== 'Cartão de Crédito'); });
+    addedPaymentsList.addEventListener('click', (e) => { if (e.target.classList.contains('remove-payment-btn')) { const indexToRemove = parseInt(e.target.dataset.index); payments.splice(indexToRemove, 1); updatePaymentModal(); } });
     clientSearchInput.addEventListener('input', () => renderClientSearchResults(clientSearchInput.value));
-    clientSearchResults.addEventListener('click', (e) => { e.preventDefault(); if(e.target.dataset.clientId) selectClient(parseInt(e.target.dataset.clientId)); });
+    clientSearchResults.addEventListener('click', (e) => { e.preventDefault(); if(e.target.dataset.clientId) selectClient(e.target.dataset.clientId); });
     removeClientBtn.addEventListener('click', removeClient);
-    document.getElementById('quickAddClientBtn').addEventListener('click', () => { quickClientForm.reset(); quickClientModal.show(); });
     quickClientForm.addEventListener('submit', async (e) => { e.preventDefault(); const data = { nome: document.getElementById('quickClientNome').value, telefone: document.getElementById('quickClientTelefone').value, cpf: document.getElementById('quickClientCpf').value }; try { const response = await fetch(`${API_URL}/api/clientes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-access-token': token }, body: JSON.stringify(data) }); const newClient = await response.json(); if(response.ok) { quickClientModal.hide(); await fetchAllClients(); selectClient(newClient.id); } else { alert(`Erro: ${newClient.message || newClient.erro}`); } } catch (error) { console.error(error); } });
-    finalizeSaleBtn.addEventListener('click', finalizeSale);
     document.getElementById('logoutButton').addEventListener('click', () => { localStorage.clear(); window.location.href = '/login.html'; });
+    document.getElementById('quickAddClientBtn').addEventListener('click', () => { quickClientForm.reset(); quickClientModal.show(); });
+    
+    document.body.addEventListener('click', (event) => { if (event.target.id === 'imprimirA4Btn') printReceipt('a4'); if (event.target.id === 'imprimirTermicaBtn') printReceipt('termica'); });
+    window.onafterprint = () => document.getElementById('receiptContent').classList.remove('termica-print');
+    function printReceipt(format) { const receiptContent = document.getElementById('receiptContent'); receiptContent.classList.toggle('termica-print', format === 'termica'); setTimeout(() => window.print(), 100); }
 
     // --- INICIALIZAÇÃO ---
     fetchAllProducts();
     fetchAllClients();
     setInterval(fetchAllProducts, 20000);
-    
-    // --- LÓGICA DE IMPRESSÃO ---
-    document.body.addEventListener('click', (event) => {
-        if (event.target.id === 'imprimirA4Btn') {
-            printReceipt('a4');
-        }
-        if (event.target.id === 'imprimirTermicaBtn') {
-            printReceipt('termica');
-        }
-    });
-
-    window.onafterprint = () => {
-        document.getElementById('receiptContent').classList.remove('termica-print');
-    };
 });
-
-function printReceipt(format) {
-    const receiptContent = document.getElementById('receiptContent');
-    
-    if (format === 'termica') {
-        receiptContent.classList.add('termica-print');
-    } else {
-        receiptContent.classList.remove('termica-print');
-    }
-
-    setTimeout(() => {
-        window.print();
-    }, 100);
-}
