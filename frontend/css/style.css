@@ -154,11 +154,19 @@ h2, h4 {
 /* --- ESTILOS DE IMPRESSÃO --- */
 /* ======================================================= */
 
-/* --- ESTILO PADRÃO (A4) - CORRIGIDO --- */
+/* --- ESTILO PADRÃO (A4) - CORRIGIDO PARA EVITAR PÁGINAS EM BRANCO --- */
 @media print {
+    /* CORREÇÃO: Força um reset completo no layout da página */
+    html, body {
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
     /* Esconde tudo que não está dentro do modal do recibo */
     body > *:not(.modal) {
-        display: none;
+        display: none !important;
     }
 
     /* Garante que o modal e seu conteúdo sejam visíveis */
@@ -167,28 +175,31 @@ h2, h4 {
         visibility: visible !important;
     }
     
-    /* Remove sombras e bordas do modal para uma impressão limpa */
+    /* CORREÇÃO: Remove qualquer propriedade de espaçamento do modal */
     .modal {
-        position: static;
-        background-color: white;
-        box-shadow: none;
-        border: none;
+        position: static !important;
+        background-color: white !important;
+        box-shadow: none !important;
+        border: none !important;
+        min-height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
     
     .modal-dialog {
-        max-width: 100%;
-        margin: 0;
-        box-shadow: none;
+        max-width: 100% !important;
+        margin: 0 !important;
+        box-shadow: none !important;
     }
     
     .modal-header, .modal-footer {
-        display: none; /* Esconde o cabeçalho e o rodapé do modal (botões) */
+        display: none !important; /* Esconde o cabeçalho e o rodapé do modal (botões) */
     }
 
     /* Garante que o conteúdo do recibo ocupe o espaço necessário */
     #receiptContent {
-        position: relative;
-        width: 100%;
+        position: relative !important;
+        width: 100% !important;
     }
 }
 

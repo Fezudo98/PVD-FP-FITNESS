@@ -76,7 +76,8 @@ class Cupom(db.Model):
     valor_desconto = db.Column(db.Float, nullable=False)
     ativo = db.Column(db.Boolean, default=True)
     aplicacao = db.Column(db.String(20), nullable=False, default='total') # 'total' ou 'produto_especifico'
-    produtos = db.relationship('Produto', secondary=cupom_produtos, lazy='subquery',
+    # ===== ALTERAÇÃO FEITA AQUI =====
+    produtos = db.relationship('Produto', secondary=cupom_produtos, lazy='selectin',
                                backref=db.backref('cupons', lazy=True))
 
     def to_dict(self):

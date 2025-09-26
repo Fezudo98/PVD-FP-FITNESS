@@ -7,8 +7,10 @@ if (!token) {
 
 // --- VARIÁVEIS GLOBAIS ---
 let allProducts = []; // Para armazenar a lista de todos os produtos
+// CORREÇÃO 1: Adicionar uma variável para guardar os dados dos cupons
+let allCupons = [];
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // --- REFERÊNCIAS AOS ELEMENTOS DO DOM ---
     const cuponsTableBody = document.getElementById('cuponsTableBody');
     const addCupomBtn = document.getElementById('addCupomBtn');
@@ -33,11 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     async function fetchAllProducts() {
         try {
-            const response = await fetch(`${API_URL}/api/produtos`, {
+            const response = await fetch(`${API_URL}/api/produtos?per_page=1000`, { // Busca todos para o select
                 headers: { 'x-access-token': token }
             });
             if (!response.ok) throw new Error('Falha ao carregar produtos.');
-            allProducts = await response.json();
+            const data = await response.json();
+            allProducts = data.produtos;
         } catch (error) {
             console.error(error);
             alert('Não foi possível carregar a lista de produtos para o formulário.');
@@ -57,6 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const cupons = await response.json();
+            // CORREÇÃO 2: Armazenar os cupons buscados na variável global
+            allCupons = cupons;
             renderCupons(cupons);
         } catch (error) {
             console.error('Erro ao buscar cupons:', error);
@@ -75,9 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         cupons.forEach(cupom => {
             const tr = document.createElement('tr');
-            // Mapeia o valor técnico para um texto amigável
             const aplicacaoTexto = cupom.aplicacao === 'total' ? 'Total da Venda' : 'Produtos Específicos';
 
+            // CORREÇÃO 3: Remover o atributo data-cupom que estava causando o erro
             tr.innerHTML = `
                 <td>${cupom.id}</td>
                 <td><strong>${cupom.codigo}</strong></td>
@@ -90,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </span>
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-info edit-btn" data-id="${cupom.id}" data-cupom='${JSON.stringify(cupom)}'>Editar</button>
+                    <button class="btn btn-sm btn-info edit-btn" data-id="${cupom.id}">Editar</button>
                     <button class="btn btn-sm btn-warning toggle-status-btn" data-id="${cupom.id}" data-ativo="${cupom.ativo}">
                         ${cupom.ativo ? 'Desativar' : 'Ativar'}
                     </button>
@@ -106,12 +111,12 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function populateProductSelect() {
         const select = $('#produtos-select');
-        select.empty(); // Limpa opções antigas
+        select.empty();
         allProducts.forEach(produto => {
             const option = new Option(`${produto.nome} (SKU: ${produto.sku})`, produto.id, false, false);
             select.append(option);
         });
-        select.trigger('change'); // Notifica o Select2 sobre as novas opções
+        select.trigger('change');
     }
 
     // --- EVENT LISTENERS ---
@@ -121,13 +126,10 @@ document.addEventListener('DOMContentLoaded', () => {
         cupomForm.reset();
         document.getElementById('cupomId').value = '';
         modalTitle.textContent = 'Adicionar Novo Cupom';
-        
-        // Garante que o seletor de produtos esteja no estado inicial
         aplicacaoSelect.value = 'total';
         produtosWrapper.classList.add('d-none');
         $('#produtos-select').val(null).trigger('change');
-        
-        populateProductSelect(); // Carrega os produtos no seletor
+        populateProductSelect();
         cupomModal.show();
     });
 
@@ -143,21 +145,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Lida com o envio do formulário (CRIAR e EDITAR)
     cupomForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
         const id = document.getElementById('cupomId').value;
-        const isNew = !id;
-        const url = isNew ? `${API_URL}/api/cupons` : `${API_URL}/api/cupons/${id}`;
-        // O método será PUT para edição, mesmo para alterar os campos, o backend precisa ser ajustado para isso.
-        const method = isNew ? 'POST' : 'PUT';
-
+        const url = id ? `${API_URL}/api/cupons/${id}` : `${API_URL}/api/cupons`;
+        const method = id ? 'PUT' : 'POST';
         const cupomData = {
-            codigo: document.getElementById('codigo').value,
+            codigo: document.getElementById('codigo').value.toUpperCase(),
             tipo_desconto: document.getElementById('tipo_desconto').value,
             valor_desconto: document.getElementById('valor_desconto').value,
             aplicacao: document.getElementById('aplicacao').value,
-            produtos_ids: $('#produtos-select').val().map(id => parseInt(id)) // Pega os IDs dos produtos selecionados
+            produtos_ids: $('#produtos-select').val().map(id => parseInt(id))
         };
-
         try {
             const response = await fetch(url, {
                 method: method,
@@ -179,13 +176,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Lida com cliques nos botões de Ações na tabela
     cuponsTableBody.addEventListener('click', async (e) => {
         const target = e.target;
-        if (!target.dataset.id) return; // Sai se o clique não foi em um botão com data-id
+        if (!target.dataset.id) return;
         
-        const id = target.dataset.id;
+        const id = parseInt(target.dataset.id);
 
-        // Lógica para EDITAR
+        // CORREÇÃO 4: Lógica para EDITAR refeita para ser mais segura
         if (target.classList.contains('edit-btn')) {
-            const cupom = JSON.parse(target.dataset.cupom);
+            // Encontra o cupom na variável global 'allCupons' usando o ID do botão
+            const cupom = allCupons.find(c => c.id === id);
+            if (!cupom) {
+                console.error("Cupom não encontrado para o ID:", id);
+                return;
+            }
             
             modalTitle.textContent = `Editar Cupom: ${cupom.codigo}`;
             document.getElementById('cupomId').value = cupom.id;
@@ -194,11 +196,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('valor_desconto').value = cupom.valor_desconto;
             document.getElementById('aplicacao').value = cupom.aplicacao;
 
-            populateProductSelect(); // Carrega os produtos
+            populateProductSelect();
             
             if (cupom.aplicacao === 'produto_especifico') {
                 produtosWrapper.classList.remove('d-none');
-                // Pré-seleciona os produtos associados a este cupom
                 $('#produtos-select').val(cupom.produtos_validos_ids).trigger('change');
             } else {
                 produtosWrapper.classList.add('d-none');
@@ -214,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await fetch(`${API_URL}/api/cupons/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'x-access-token': token },
-                body: JSON.stringify({ ativo: !currentStatus }) // Envia apenas a alteração de status
+                body: JSON.stringify({ ativo: !currentStatus })
             });
             fetchCupons();
         }
@@ -238,6 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- INICIALIZAÇÃO ---
-    fetchAllProducts(); // Carrega os produtos uma vez ao carregar a página
-    fetchCupons(); // Carrega os cupons para exibir na tabela
+    // Espera os produtos carregarem primeiro, pois são necessários para o modal
+    await fetchAllProducts();
+    // Depois carrega os cupons
+    fetchCupons();
 });
