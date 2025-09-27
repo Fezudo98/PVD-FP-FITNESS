@@ -13,6 +13,7 @@ from werkzeug.utils import secure_filename
 import barcode
 from barcode.writer import ImageWriter
 from flask_migrate import Migrate
+import pytz # ADICIONADO: Biblioteca para lidar com fuso horário
 
 # 1. CONFIGURAÇÃO INICIAL
 # ------------------------------------
@@ -22,6 +23,7 @@ base_dir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(base_dir, 'estoque.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'my-super-secret-key-12345' 
+CEARA_TZ = pytz.timezone('America/Fortaleza') # ADICIONADO: Constante para o fuso horário local
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
@@ -29,6 +31,7 @@ migrate = Migrate(app, db)
 
 
 # 2. MODELOS DE DADOS
+# (Nenhuma alteração nesta seção)
 # ----------------------------------------------------
 class Produto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -128,6 +131,13 @@ class Log(db.Model):
 
 # 3. FUNÇÕES AUXILIARES
 # -----------------------------------------------------------
+
+# ATUALIZADO: Função auxiliar para converter data/hora UTC para o fuso local e formatar
+def to_local_time_str(utc_dt, fmt='%d/%m/%Y %H:%M:%S'):
+    if not utc_dt:
+        return None
+    return utc_dt.replace(tzinfo=pytz.utc).astimezone(CEARA_TZ).strftime(fmt)
+
 def registrar_log(usuario, acao, detalhes=""):
     try:
         user_id = usuario.id if usuario else None
@@ -174,8 +184,13 @@ def salvar_recibo_html(venda):
             else:
                  pagamentos_html += f"<p><strong>Pagamento:</strong> {pg.forma} - R$ {pg.valor:.2f}</p>"
 
-        html_content = f'<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo Venda #{venda.id}</title><style>body{{font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; color: #000;}}.receipt-container{{max-width: 800px; margin: 20px auto; border: 1px solid #ccc; padding: 30px; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1);}}.header{{text-align: center; margin-bottom: 25px;}} .header img{{max-width: 150px;}}table{{width: 100%; border-collapse: collapse; margin-top: 20px;}}th, td{{padding: 12px; border-bottom: 1px solid #ddd; text-align: left;}}th{{background-color: #f2f2f2;}}.totals{{text-align: right; margin-top: 25px; padding-right: 10px;}}.totals p{{margin: 5px 0;}} .totals h3{{margin: 10px 0;}}.footer{{text-align: center; margin-top: 35px; font-size: 0.9em; color: #777;}}hr{{border: 0; border-top: 1px solid #eee; margin: 20px 0;}}</style></head><body><div class="receipt-container"><div class="header">{logo_tag}</div><p><strong>Venda ID:</strong> {venda.id}</p><p><strong>Data:</strong> {venda.data_hora.strftime("%d/%m/%Y %H:%M:%S")}</p><p><strong>Cliente:</strong> {venda.cliente.nome if venda.cliente else "Consumidor Final"}</p><p><strong>Vendedor(a):</strong> {venda.vendedor.nome}</p><hr><table><thead><tr><th style="text-align: left;">Produto</th><th style="text-align: center;">Qtd.</th><th style="text-align: right;">Preço Unit.</th><th style="text-align: right;">Subtotal</th></tr></thead><tbody>{itens_html}</tbody></table><div class="totals"><p><strong>Subtotal Produtos:</strong> R$ {subtotal_produtos:.2f}</p>{desconto_html}<p><strong>Taxa de Entrega:</strong> R$ {venda.taxa_entrega:.2f}</p><h3><strong>Total Geral:</strong> R$ {venda.total_venda:.2f}</h3>{pagamentos_html}</div><hr><div class="footer"><p>Obrigado pela preferência!</p></div></div></body></html>'
-        file_name = f"venda_{venda.id}_{venda.data_hora.strftime('%Y-%m-%d_%H-%M-%S')}.html"
+        # ATUALIZADO: Usando a função auxiliar para converter a data/hora
+        data_hora_local_str = to_local_time_str(venda.data_hora)
+
+        html_content = f'<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo Venda #{venda.id}</title><style>body{{font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; color: #000;}}.receipt-container{{max-width: 800px; margin: 20px auto; border: 1px solid #ccc; padding: 30px; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1);}}.header{{text-align: center; margin-bottom: 25px;}} .header img{{max-width: 150px;}}table{{width: 100%; border-collapse: collapse; margin-top: 20px;}}th, td{{padding: 12px; border-bottom: 1px solid #ddd; text-align: left;}}th{{background-color: #f2f2f2;}}.totals{{text-align: right; margin-top: 25px; padding-right: 10px;}}.totals p{{margin: 5px 0;}} .totals h3{{margin: 10px 0;}}.footer{{text-align: center; margin-top: 35px; font-size: 0.9em; color: #777;}}hr{{border: 0; border-top: 1px solid #eee; margin: 20px 0;}}</style></head><body><div class="receipt-container"><div class="header">{logo_tag}</div><p><strong>Venda ID:</strong> {venda.id}</p><p><strong>Data:</strong> {data_hora_local_str}</p><p><strong>Cliente:</strong> {venda.cliente.nome if venda.cliente else "Consumidor Final"}</p><p><strong>Vendedor(a):</strong> {venda.vendedor.nome}</p><hr><table><thead><tr><th style="text-align: left;">Produto</th><th style="text-align: center;">Qtd.</th><th style="text-align: right;">Preço Unit.</th><th style="text-align: right;">Subtotal</th></tr></thead><tbody>{itens_html}</tbody></table><div class="totals"><p><strong>Subtotal Produtos:</strong> R$ {subtotal_produtos:.2f}</p>{desconto_html}<p><strong>Taxa de Entrega:</strong> R$ {venda.taxa_entrega:.2f}</p><h3><strong>Total Geral:</strong> R$ {venda.total_venda:.2f}</h3>{pagamentos_html}</div><hr><div class="footer"><p>Obrigado pela preferência!</p></div></div></body></html>'
+        
+        # ATUALIZADO: Nome do arquivo também usa a data/hora local
+        file_name = f"venda_{venda.id}_{venda.data_hora.replace(tzinfo=pytz.utc).astimezone(CEARA_TZ).strftime('%Y-%m-%d_%H-%M-%S')}.html"
         file_path = os.path.join(recibos_dir, file_name)
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
@@ -184,6 +199,7 @@ def salvar_recibo_html(venda):
         print(f"ERRO ao salvar recibo para a venda {venda.id}: {e}")
 
 # 4. ROTAS DE SERVIR ARQUIVOS
+# (Nenhuma alteração nesta seção)
 # -----------------------------------------------------------
 @app.route('/')
 def index():
@@ -205,6 +221,7 @@ def serve_static_files(filename):
 # -----------------------------------------------------------
 
 # --- Autenticação ---
+# (Nenhuma alteração nesta sub-seção)
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     dados = request.get_json()
@@ -247,6 +264,7 @@ def login():
     return jsonify({'token': token, 'user': user.to_dict()})
 
 # --- Produtos ---
+# (Nenhuma alteração nesta sub-seção)
 @app.route('/api/produtos', methods=['GET', 'POST'])
 @token_required
 def gerenciar_produtos(current_user):
@@ -338,6 +356,7 @@ def gerar_codigo_barras(current_user, produto_id):
         return jsonify({'erro': 'Falha ao gerar código de barras.', 'detalhes': str(e)}), 500
 
 # --- Usuários ---
+# (Nenhuma alteração nesta sub-seção)
 @app.route('/api/usuarios', methods=['GET'])
 @token_required
 def get_all_users(current_user):
@@ -366,6 +385,7 @@ def manage_specific_user(current_user, user_id):
         return jsonify({'mensagem': 'Usuário deletado!'})
 
 # --- Clientes ---
+# (Nenhuma alteração nesta sub-seção)
 @app.route('/api/clientes', methods=['GET', 'POST'])
 @token_required
 def gerenciar_clientes(current_user):
@@ -398,6 +418,7 @@ def gerenciar_cliente_especifico(current_user, cliente_id):
         return jsonify({'mensagem': 'Cliente deletado!'})
 
 # --- Cupons ---
+# (Nenhuma alteração nesta sub-seção)
 @app.route('/api/cupons', methods=['GET', 'POST'])
 @token_required
 def gerenciar_cupons(current_user):
@@ -518,7 +539,23 @@ def get_venda_details(current_user, venda_id):
         return jsonify({'message': 'Acesso não autorizado.'}), 403
     itens_list = [{'produto_nome': item.produto.nome, 'quantidade': item.quantidade, 'preco_unitario': item.preco_unitario_momento, 'subtotal': item.quantidade * item.preco_unitario_momento} for item in venda.itens]
     pagamentos_list = [{'forma': pg.forma, 'valor': pg.valor} for pg in venda.pagamentos]
-    return jsonify({'id': venda.id, 'data_hora': venda.data_hora.strftime('%d/%m/%Y %H:%M:%S'), 'total_venda': venda.total_venda, 'pagamentos': pagamentos_list, 'taxa_entrega': venda.taxa_entrega, 'cliente_nome': venda.cliente.nome if venda.cliente else 'Consumidor Final', 'vendedor_nome': venda.vendedor.nome, 'itens': itens_list, 'cupom_utilizado': venda.cupom_utilizado, 'valor_desconto': venda.valor_desconto, 'parcelas': venda.parcelas})
+    
+    # ATUALIZADO: Usando a função auxiliar para converter a data/hora
+    data_hora_local_str = to_local_time_str(venda.data_hora)
+
+    return jsonify({
+        'id': venda.id, 
+        'data_hora': data_hora_local_str, 
+        'total_venda': venda.total_venda, 
+        'pagamentos': pagamentos_list, 
+        'taxa_entrega': venda.taxa_entrega, 
+        'cliente_nome': venda.cliente.nome if venda.cliente else 'Consumidor Final', 
+        'vendedor_nome': venda.vendedor.nome, 
+        'itens': itens_list, 
+        'cupom_utilizado': venda.cupom_utilizado, 
+        'valor_desconto': venda.valor_desconto, 
+        'parcelas': venda.parcelas
+    })
 
 @app.route('/api/vendas/<int:venda_id>/reembolsar', methods=['POST'])
 @token_required
@@ -543,8 +580,16 @@ def get_dashboard_data(current_user):
     if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
     data_inicio_str, data_fim_str = request.args.get('data_inicio'), request.args.get('data_fim')
     try:
-        data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d')
-        data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d') + timedelta(days=1)
+        # ATUALIZADO: Converte as datas do filtro para UTC antes de consultar o banco
+        # Pega o início do dia no fuso local (00:00:00)
+        data_inicio_local = CEARA_TZ.localize(datetime.strptime(data_inicio_str, '%Y-%m-%d'))
+        # Pega o início do dia seguinte no fuso local para definir o fim do período
+        data_fim_local = CEARA_TZ.localize(datetime.strptime(data_fim_str, '%Y-%m-%d')) + timedelta(days=1)
+
+        # Converte para UTC para a busca no banco de dados
+        data_inicio = data_inicio_local.astimezone(pytz.utc)
+        data_fim = data_fim_local.astimezone(pytz.utc)
+
     except (ValueError, TypeError): return jsonify({'erro': 'Formato de data inválido.'}), 400
     
     vendas_query = Venda.query.filter(Venda.data_hora >= data_inicio, Venda.data_hora < data_fim)
@@ -556,7 +601,8 @@ def get_dashboard_data(current_user):
     custo_total = sum(i.quantidade * (i.produto.preco_custo if i.produto else 0) for v in vendas_concluidas for i in v.itens)
     kpis = {'receita_total': round(receita_total, 2), 'total_vendas': len(vendas_concluidas), 'ticket_medio': round(receita_total / len(vendas_concluidas) if vendas_concluidas else 0, 2), 'total_descontos': round(total_descontos, 2), 'lucro_bruto': round(receita_total - custo_total, 2), 'total_taxas_entrega': round(total_taxas, 2)}
     
-    vendas_dia = db.session.query(func.date(Venda.data_hora).label('dia'), func.sum(Venda.total_venda).label('total')).filter(Venda.id.in_([v.id for v in vendas_concluidas])).group_by('dia').order_by('dia').all()
+    # ATUALIZADO: A query de vendas por dia também precisa ser ajustada para o fuso local
+    vendas_dia = db.session.query(func.date(Venda.data_hora, f'{-CEARA_TZ.utcoffset(datetime.utcnow()).total_seconds() / 3600.0} hours').label('dia'), func.sum(Venda.total_venda).label('total')).filter(Venda.id.in_([v.id for v in vendas_concluidas])).group_by('dia').order_by('dia').all()
     grafico_vendas_tempo = [{'data': datetime.strptime(r.dia, '%Y-%m-%d').strftime('%d/%m'), 'total': r.total} for r in vendas_dia]
     
     pagamentos_forma = db.session.query(Pagamento.forma, func.sum(Pagamento.valor).label('total')).join(Venda).filter(Venda.id.in_([v.id for v in vendas_concluidas])).group_by(Pagamento.forma).all()
@@ -569,7 +615,8 @@ def get_dashboard_data(current_user):
     ranking_vendedores_list = [{'vendedor': r.nome, 'total': r.total_valor} for r in ranking_vendedores]
     
     vendas_periodo_total = vendas_query.order_by(Venda.data_hora.desc()).all()
-    lista_vendas = [{'id': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Final', 'vendedor': v.vendedor.nome, 'total': v.total_venda, 'pagamento': ", ".join([p.forma for p in v.pagamentos]), 'status': v.status} for v in vendas_periodo_total]
+    # ATUALIZADO: Lista de vendas também usa a função auxiliar para formatar a data/hora
+    lista_vendas = [{'id': v.id, 'data_hora': to_local_time_str(v.data_hora, '%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Final', 'vendedor': v.vendedor.nome, 'total': v.total_venda, 'pagamento': ", ".join([p.forma for p in v.pagamentos]), 'status': v.status} for v in vendas_periodo_total]
 
     return jsonify({'kpis': kpis, 'grafico_vendas_tempo': grafico_vendas_tempo, 'grafico_forma_pagamento': grafico_forma_pagamento, 'ranking_produtos': ranking_produtos_list, 'ranking_vendedores': ranking_vendedores_list, 'lista_vendas': lista_vendas})
 
@@ -579,8 +626,11 @@ def get_entregas_report(current_user):
     if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
     data_inicio_str, data_fim_str = request.args.get('data_inicio'), request.args.get('data_fim')
     try:
-        data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d')
-        data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d') + timedelta(days=1)
+        # ATUALIZADO: Mesma lógica de conversão de fuso horário dos relatórios
+        data_inicio_local = CEARA_TZ.localize(datetime.strptime(data_inicio_str, '%Y-%m-%d'))
+        data_fim_local = CEARA_TZ.localize(datetime.strptime(data_fim_str, '%Y-%m-%d')) + timedelta(days=1)
+        data_inicio = data_inicio_local.astimezone(pytz.utc)
+        data_fim = data_fim_local.astimezone(pytz.utc)
     except (ValueError, TypeError): return jsonify({'erro': 'Formato de data inválido.'}), 400
 
     entregas = Venda.query.filter(Venda.data_hora >= data_inicio, Venda.data_hora < data_fim, Venda.taxa_entrega > 0, Venda.status == 'Concluída').order_by(Venda.data_hora.desc()).all()
@@ -588,7 +638,7 @@ def get_entregas_report(current_user):
     lista_entregas = []
     for v in entregas:
         endereco = f"{v.entrega_rua or ''}, {v.entrega_numero or ''} - {v.entrega_bairro or ''}".strip(', - ').strip()
-        lista_entregas.append({'id_venda': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Final', 'endereco': endereco or 'Não informado', 'cidade': v.entrega_cidade or 'N/A', 'taxa_entrega': v.taxa_entrega, 'status_entrega': 'Grátis' if v.entrega_gratuita else 'Normal'})
+        lista_entregas.append({'id_venda': v.id, 'data_hora': to_local_time_str(v.data_hora, '%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Final', 'endereco': endereco or 'Não informado', 'cidade': v.entrega_cidade or 'N/A', 'taxa_entrega': v.taxa_entrega, 'status_entrega': 'Grátis' if v.entrega_gratuita else 'Normal'})
     return jsonify({'kpis': kpis, 'lista_entregas': lista_entregas})
 
 @app.route('/api/logs', methods=['GET'])
@@ -596,7 +646,8 @@ def get_entregas_report(current_user):
 def get_logs(current_user):
     if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
     logs = Log.query.order_by(Log.timestamp.desc()).limit(200).all()
-    return jsonify([{'id': l.id, 'timestamp': l.timestamp.strftime('%d/%m/%Y %H:%M:%S'), 'usuario_nome': l.usuario_nome, 'acao': l.acao, 'detalhes': l.detalhes} for l in logs])
+    # ATUALIZADO: Usa a função auxiliar para converter o timestamp de cada log
+    return jsonify([{'id': l.id, 'timestamp': to_local_time_str(l.timestamp), 'usuario_nome': l.usuario_nome, 'acao': l.acao, 'detalhes': l.detalhes} for l in logs])
 
 # 6. INICIALIZAÇÃO DO SERVIDOR
 # -----------------------------------------------------------
