@@ -49,17 +49,20 @@
                             <span>Subtotal:</span>
                             <span id="cartSubtotal">R$ 0,00</span>
                         </div>
+                        
+                        <!-- ===== SEÇÃO DE CUPOM ATUALIZADA ===== -->
+                        <div id="appliedCouponsList" class="my-2">
+                            <!-- Cupons aplicados aparecerão aqui como badges via JavaScript -->
+                        </div>
                         <div class="input-group my-2">
                             <input type="text" id="cupomInput" class="form-control" placeholder="CUPOM DE DESCONTO" style="text-transform: uppercase;">
                             <button class="btn btn-outline-success" type="button" id="applyCupomBtn">Aplicar</button>
                         </div>
-                        <div id="discountDisplay" class="d-flex justify-content-between text-success d-none">
-                            <span>Desconto (<span id="cupomCodeDisplay"></span>):</span>
-                            <div>
-                                <span id="discountValue">R$ 0,00</span>
-                                <button id="removeCupomBtn" class="btn btn-sm btn-outline-danger py-0 px-1 ms-2">X</button>
-                            </div>
+                        <div id="totalDiscountDisplay" class="d-flex justify-content-between text-success d-none">
+                            <span>Desconto Total:</span>
+                            <span id="totalDiscountValue">R$ 0,00</span>
                         </div>
+                        <!-- ======================================= -->
                         
                         <div class="row mt-2 align-items-center">
                             <div class="col-6">
@@ -114,7 +117,6 @@
                     </div>
                     <input type="hidden" id="selectedClientId" value="">
 
-                    <!-- ===== BOTÃO PRINCIPAL ATUALIZADO ===== -->
                     <div class="d-grid mt-4">
                         <button id="openPaymentModalBtn" class="btn btn-custom btn-lg" disabled>PROSSEGUIR PARA PAGAMENTO</button>
                     </div>
@@ -123,7 +125,7 @@
         </div>
     </main>
 
-    <!-- ===== NOVO MODAL DE PAGAMENTO ===== -->
+    <!-- Modal de Pagamento -->
     <div class="modal fade" id="paymentModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content bg-dark text-white">
@@ -217,7 +219,7 @@
                     </table><hr>
                     <div class="text-end">
                         <p><strong>Subtotal Produtos:</strong> <span id="receiptSubtotal"></span></p>
-                        <p id="receiptDiscountRow" class="d-none"><strong>Desconto (<span id="receiptCupomCode"></span>):</strong> <span id="receiptDiscountValue"></span></p>
+                        <p id="receiptDiscountRow" class="d-none"><strong>Descontos (<span id="receiptCupomCode"></span>):</strong> <span id="receiptDiscountValue"></span></p>
                         <p><strong>Taxa de Entrega:</strong> <span id="receiptTaxaEntrega"></span></p>
                         <h4><strong>Total Geral:</strong> <span id="receiptTotalGeral"></span></h4>
                         <div id="receiptPayments"></div>

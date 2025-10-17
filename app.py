@@ -87,14 +87,26 @@ class Pagamento(db.Model):
     forma = db.Column(db.String(50), nullable=False) 
     id_venda = db.Column(db.Integer, db.ForeignKey('venda.id'), nullable=False)
 
+# NOVA TABELA DE ASSOCIAÇÃO PARA VENDAS E CUPONS
+venda_cupons = db.Table('venda_cupons',
+    db.Column('venda_id', db.Integer, db.ForeignKey('venda.id'), primary_key=True),
+    db.Column('cupom_id', db.Integer, db.ForeignKey('cupom.id'), primary_key=True)
+)
+
 class Venda(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data_hora = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     total_venda = db.Column(db.Float, nullable=False)
     taxa_entrega = db.Column(db.Float, nullable=True, default=0.0)
     status = db.Column(db.String(20), nullable=False, default='Concluída')
-    cupom_utilizado = db.Column(db.String(50), nullable=True)
-    valor_desconto = db.Column(db.Float, nullable=True, default=0.0)
+    # === CAMPOS DE CUPOM MODIFICADOS ===
+    # REMOVIDO: cupom_utilizado = db.Column(db.String(50), nullable=True)
+    # REMOVIDO: valor_desconto = db.Column(db.Float, nullable=True, default=0.0)
+    # ADICIONADO:
+    desconto_total = db.Column(db.Float, nullable=True, default=0.0)
+    cupons = db.relationship('Cupom', secondary=venda_cupons, lazy='selectin',
+                             backref=db.backref('vendas', lazy=True))
+    # ====================================
     parcelas = db.Column(db.Integer, nullable=True, default=1)
     entrega_gratuita = db.Column(db.Boolean, nullable=False, default=False)
     entrega_rua = db.Column(db.String(200), nullable=True)
@@ -165,8 +177,14 @@ def salvar_recibo_html(venda):
             with open(logo_path, "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
             logo_tag = f'<img src="data:image/jpeg;base64,{encoded_string}" alt="Logo">'
-        desconto_html = f'<p><strong>Desconto Aplicado ({venda.cupom_utilizado}):</strong> - R$ {venda.valor_desconto:.2f}</p>' if venda.valor_desconto > 0 else ''
         
+        # === LÓGICA DE RECIBO ATUALIZADA PARA MÚLTIPLOS CUPONS ===
+        desconto_html = ''
+        if venda.desconto_total > 0:
+            cupons_str = ", ".join([c.codigo for c in venda.cupons])
+            desconto_html = f'<p><strong>Descontos Aplicados ({cupons_str}):</strong> - R$ {venda.desconto_total:.2f}</p>'
+        # ==========================================================
+
         pagamentos_html = ""
         for pg in venda.pagamentos:
             if pg.forma == 'Cartão de Crédito' and venda.parcelas and venda.parcelas > 1:
@@ -456,29 +474,49 @@ def registrar_venda(current_user):
     dados = request.get_json()
     itens_venda_data = dados.get('itens')
     pagamentos_data = dados.get('pagamentos')
+    cupons_codigos = dados.get('cupons_utilizados', [])
 
     if not itens_venda_data: return jsonify({'erro': 'Itens não podem estar vazios.'}), 400
     if not pagamentos_data: return jsonify({'erro': 'Pagamentos não podem estar vazios.'}), 400
 
     try:
-        subtotal_produtos, desconto_calculado = 0, 0
+        subtotal_produtos = 0
         for item_data in itens_venda_data:
             produto = Produto.query.get(item_data['id_produto'])
             if not produto: return jsonify({'erro': f'Produto ID {item_data["id_produto"]} não encontrado.'}), 400
             subtotal_produtos += produto.preco_venda * item_data['quantidade']
 
-        if dados.get('cupom_utilizado'):
-            cupom = Cupom.query.filter_by(codigo=dados['cupom_utilizado'].upper(), ativo=True).first()
-            if cupom:
-                base_calculo = subtotal_produtos
-                if cupom.aplicacao == 'produto_especifico':
-                    ids_validos = [p.id for p in cupom.produtos]
-                    base_calculo = sum(Produto.query.get(i['id_produto']).preco_venda * i['quantidade'] for i in itens_venda_data if i['id_produto'] in ids_validos)
-                desconto_calculado = (base_calculo * cupom.valor_desconto) / 100 if cupom.tipo_desconto == 'percentual' else cupom.valor_desconto
-                desconto_calculado = min(desconto_calculado, base_calculo)
+        # === NOVA LÓGICA DE CÁLCULO DE MÚLTIPLOS CUPONS ===
+        desconto_total_calculado = 0.0
+        cupons_aplicados_obj = []
+        subtotal_para_calculo = subtotal_produtos
+
+        if cupons_codigos:
+            cupons_from_db = Cupom.query.filter(
+                Cupom.codigo.in_([c.upper() for c in cupons_codigos]), Cupom.ativo==True
+            ).all()
+
+            # 1. Aplicar cupons percentuais sobre o total
+            cupons_percentuais = [c for c in cupons_from_db if c.tipo_desconto == 'percentual' and c.aplicacao == 'total']
+            for cupom in sorted(cupons_percentuais, key=lambda c: c.valor_desconto, reverse=True):
+                desconto = (subtotal_para_calculo * cupom.valor_desconto) / 100
+                desconto_total_calculado += desconto
+                subtotal_para_calculo -= desconto
+                cupons_aplicados_obj.append(cupom)
+
+            # 2. Aplicar cupons de valor fixo sobre o total
+            cupons_fixos = [c for c in cupons_from_db if c.tipo_desconto == 'fixo' and c.aplicacao == 'total']
+            for cupom in sorted(cupons_fixos, key=lambda c: c.valor_desconto, reverse=True):
+                desconto = min(cupom.valor_desconto, subtotal_para_calculo)
+                desconto_total_calculado += desconto
+                subtotal_para_calculo -= desconto
+                cupons_aplicados_obj.append(cupom)
+        
+        desconto_total_calculado = min(desconto_total_calculado, subtotal_produtos)
+        # =========================================================
 
         taxa_entrega = float(dados.get('taxa_entrega', 0.0))
-        total_venda_final = subtotal_produtos - desconto_calculado
+        total_venda_final = subtotal_produtos - desconto_total_calculado
         if not dados.get('entrega_gratuita', False):
             total_venda_final += taxa_entrega
 
@@ -486,7 +524,22 @@ def registrar_venda(current_user):
         if not math.isclose(total_pago, total_venda_final, rel_tol=1e-2):
             return jsonify({'erro': f'Soma dos pagamentos (R$ {total_pago:.2f}) difere do total da venda (R$ {total_venda_final:.2f}).'}), 400
 
-        nova_venda = Venda(total_venda=round(total_venda_final, 2), taxa_entrega=taxa_entrega, id_cliente=dados.get('id_cliente'), id_vendedor=current_user.id, cupom_utilizado=cupom.codigo if 'cupom' in locals() and cupom else None, valor_desconto=round(desconto_calculado, 2), parcelas=dados.get('parcelas', 1), entrega_gratuita=dados.get('entrega_gratuita', False), entrega_rua=dados.get('entrega_rua'), entrega_numero=dados.get('entrega_numero'), entrega_bairro=dados.get('entrega_bairro'), entrega_cidade=dados.get('entrega_cidade'), entrega_cep=dados.get('entrega_cep'), entrega_complemento=dados.get('entrega_complemento'))
+        nova_venda = Venda(
+            total_venda=round(total_venda_final, 2), 
+            taxa_entrega=taxa_entrega, 
+            id_cliente=dados.get('id_cliente'), 
+            id_vendedor=current_user.id, 
+            desconto_total=round(desconto_total_calculado, 2),
+            cupons=cupons_aplicados_obj,
+            parcelas=dados.get('parcelas', 1), 
+            entrega_gratuita=dados.get('entrega_gratuita', False), 
+            entrega_rua=dados.get('entrega_rua'), 
+            entrega_numero=dados.get('entrega_numero'), 
+            entrega_bairro=dados.get('entrega_bairro'), 
+            entrega_cidade=dados.get('entrega_cidade'), 
+            entrega_cep=dados.get('entrega_cep'), 
+            entrega_complemento=dados.get('entrega_complemento')
+        )
 
         for pg_data in pagamentos_data:
             nova_venda.pagamentos.append(Pagamento(forma=pg_data['forma'], valor=round(float(pg_data['valor']), 2)))
@@ -516,9 +569,23 @@ def get_venda_details(current_user, venda_id):
     venda = Venda.query.get_or_404(venda_id)
     if current_user.role != 'admin' and venda.id_vendedor != current_user.id:
         return jsonify({'message': 'Acesso não autorizado.'}), 403
+    
     itens_list = [{'produto_nome': item.produto.nome, 'quantidade': item.quantidade, 'preco_unitario': item.preco_unitario_momento, 'subtotal': item.quantidade * item.preco_unitario_momento} for item in venda.itens]
     pagamentos_list = [{'forma': pg.forma, 'valor': pg.valor} for pg in venda.pagamentos]
-    return jsonify({'id': venda.id, 'data_hora': venda.data_hora.strftime('%d/%m/%Y %H:%M:%S'), 'total_venda': venda.total_venda, 'pagamentos': pagamentos_list, 'taxa_entrega': venda.taxa_entrega, 'cliente_nome': venda.cliente.nome if venda.cliente else 'Consumidor Final', 'vendedor_nome': venda.vendedor.nome, 'itens': itens_list, 'cupom_utilizado': venda.cupom_utilizado, 'valor_desconto': venda.valor_desconto, 'parcelas': venda.parcelas})
+    
+    return jsonify({
+        'id': venda.id, 
+        'data_hora': venda.data_hora.strftime('%d/%m/%Y %H:%M:%S'), 
+        'total_venda': venda.total_venda, 
+        'pagamentos': pagamentos_list, 
+        'taxa_entrega': venda.taxa_entrega, 
+        'cliente_nome': venda.cliente.nome if venda.cliente else 'Consumidor Final', 
+        'vendedor_nome': venda.vendedor.nome, 
+        'itens': itens_list, 
+        'cupons_utilizados': [c.codigo for c in venda.cupons], 
+        'desconto_total': venda.desconto_total, 
+        'parcelas': venda.parcelas
+    })
 
 @app.route('/api/vendas/<int:venda_id>/reembolsar', methods=['POST'])
 @token_required
@@ -552,7 +619,9 @@ def get_dashboard_data(current_user):
     
     receita_total = sum(v.total_venda for v in vendas_concluidas)
     total_taxas = sum(v.taxa_entrega for v in vendas_concluidas)
-    total_descontos = sum(v.valor_desconto for v in vendas_concluidas)
+    # === ATUALIZADO PARA USAR O NOVO CAMPO ===
+    total_descontos = sum(v.desconto_total for v in vendas_concluidas)
+    # ==========================================
     custo_total = sum(i.quantidade * (i.produto.preco_custo if i.produto else 0) for v in vendas_concluidas for i in v.itens)
     kpis = {'receita_total': round(receita_total, 2), 'total_vendas': len(vendas_concluidas), 'ticket_medio': round(receita_total / len(vendas_concluidas) if vendas_concluidas else 0, 2), 'total_descontos': round(total_descontos, 2), 'lucro_bruto': round(receita_total - custo_total, 2), 'total_taxas_entrega': round(total_taxas, 2)}
     

@@ -9,7 +9,7 @@ if (!token) {
 let allProducts = [];
 let cart = [];
 let allClients = [];
-let appliedCoupon = null;
+let appliedCoupons = []; // MODIFICADO: Agora é um array para múltiplos cupons
 let payments = [];
 let totalSaleValue = 0;
 
@@ -25,14 +25,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const cupomInput = document.getElementById('cupomInput');
     const applyCupomBtn = document.getElementById('applyCupomBtn');
-    const removeCupomBtn = document.getElementById('removeCupomBtn');
-    const discountDisplay = document.getElementById('discountDisplay');
-    const cupomCodeDisplay = document.getElementById('cupomCodeDisplay');
-    const discountValueSpan = document.getElementById('discountValue');
     const taxaEntregaInput = document.getElementById('taxaEntregaInput');
     const freeDeliveryCheckbox = document.getElementById('freeDeliveryCheckbox');
     const deliveryAddressWrapper = document.getElementById('deliveryAddressWrapper');
 
+    // NOVAS REFERÊNCIAS PARA MÚLTIPLOS CUPONS
+    const appliedCouponsList = document.getElementById('appliedCouponsList');
+    const totalDiscountDisplay = document.getElementById('totalDiscountDisplay');
+    const totalDiscountValueSpan = document.getElementById('totalDiscountValue');
+    
     const clientSearchInput = document.getElementById('clientSearchInput');
     const clientSearchResults = document.getElementById('clientSearchResults');
     const selectedClientDisplay = document.getElementById('selectedClientDisplay');
@@ -127,52 +128,100 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTotals();
     }
     
+    // NOVA FUNÇÃO para renderizar os badges dos cupons
+    function renderAppliedCoupons() {
+        appliedCouponsList.innerHTML = '';
+        if (appliedCoupons.length > 0) {
+            appliedCoupons.forEach(coupon => {
+                const couponBadge = document.createElement('span');
+                couponBadge.className = 'badge bg-success me-2 mb-1'; // mb-1 para espaçamento
+                couponBadge.innerHTML = `
+                    ${coupon.codigo} 
+                    <button class="btn-close btn-close-white ms-1" style="font-size: 0.6em;" data-code="${coupon.codigo}"></button>
+                `;
+                appliedCouponsList.appendChild(couponBadge);
+            });
+        }
+    }
+
+    // FUNÇÃO ATUALIZADA para calcular múltiplos descontos
     function updateTotals() {
         let subtotal = cart.reduce((sum, item) => sum + (item.quantidade * item.preco_venda), 0);
-        let discountAmount = 0;
-        if (appliedCoupon) {
-            let discountBase = (appliedCoupon.aplicacao === 'total') ? subtotal : cart.reduce((sum, item) => appliedCoupon.produtos_validos_ids.includes(item.id) ? sum + (item.quantidade * item.preco_venda) : sum, 0);
-            discountAmount = (appliedCoupon.tipo_desconto === 'percentual') ? (discountBase * appliedCoupon.valor_desconto) / 100 : appliedCoupon.valor_desconto;
-            discountAmount = Math.min(discountAmount, discountBase);
-            cupomCodeDisplay.textContent = appliedCoupon.codigo;
-            discountValueSpan.textContent = `- R$ ${discountAmount.toFixed(2)}`;
-            discountDisplay.classList.remove('d-none');
-        } else {
-            discountDisplay.classList.add('d-none');
+        let totalDiscountAmount = 0;
+        let subtotalParaCalculo = subtotal;
+
+        if (appliedCoupons.length > 0) {
+            // Lógica de cálculo espelhando o backend (percentual primeiro, depois fixo)
+            const percentuais = appliedCoupons.filter(c => c.tipo_desconto === 'percentual');
+            percentuais.sort((a, b) => b.valor_desconto - a.valor_desconto); // Maior % primeiro
+            
+            for (const coupon of percentuais) {
+                let baseCalculo = (coupon.aplicacao === 'total') ? subtotalParaCalculo : cart.reduce((sum, item) => coupon.produtos_validos_ids.includes(item.id) ? sum + (item.quantidade * item.preco_venda) : sum, 0);
+                const discount = (baseCalculo * coupon.valor_desconto) / 100;
+                totalDiscountAmount += discount;
+                subtotalParaCalculo -= discount;
+            }
+
+            const fixos = appliedCoupons.filter(c => c.tipo_desconto === 'fixo');
+            fixos.sort((a, b) => b.valor_desconto - a.valor_desconto); // Maior valor fixo primeiro
+            
+            for (const coupon of fixos) {
+                let baseCalculo = (coupon.aplicacao === 'total') ? subtotalParaCalculo : cart.reduce((sum, item) => coupon.produtos_validos_ids.includes(item.id) ? sum + (item.quantidade * item.preco_venda) : sum, 0);
+                const discount = Math.min(coupon.valor_desconto, baseCalculo);
+                totalDiscountAmount += discount;
+                subtotalParaCalculo -= discount;
+            }
         }
+        
+        totalDiscountAmount = Math.min(totalDiscountAmount, subtotal);
+
+        if (totalDiscountAmount > 0) {
+            totalDiscountValueSpan.textContent = `- R$ ${totalDiscountAmount.toFixed(2)}`;
+            totalDiscountDisplay.classList.remove('d-none');
+        } else {
+            totalDiscountDisplay.classList.add('d-none');
+        }
+        
         const taxaEntrega = parseFloat(taxaEntregaInput.value) || 0;
-        let totalGeral = subtotal - discountAmount;
+        let totalGeral = subtotal - totalDiscountAmount;
         if (!freeDeliveryCheckbox.checked) {
             totalGeral += taxaEntrega;
         }
+
         cartSubtotalSpan.textContent = `R$ ${subtotal.toFixed(2)}`;
         cartTotalSpan.textContent = `R$ ${totalGeral.toFixed(2)}`;
         openPaymentModalBtn.disabled = cart.length === 0;
     }
 
+    // FUNÇÃO ATUALIZADA para adicionar cupons a uma lista
     async function applyCoupon() {
-        const code = cupomInput.value;
+        const code = cupomInput.value.toUpperCase();
         if (!code) return;
+
+        if (appliedCoupons.some(c => c.codigo === code)) {
+            alert('Este cupom já foi adicionado.');
+            cupomInput.value = '';
+            return;
+        }
+
         try {
             const response = await fetch(`${API_URL}/api/cupons/validar/${code}`, { headers: { 'x-access-token': token } });
             const result = await response.json();
             if (!response.ok) throw new Error(result.erro || 'Erro ao validar cupom.');
-            appliedCoupon = result;
-            cupomInput.disabled = true;
-            applyCupomBtn.disabled = true;
+            
+            appliedCoupons.push(result);
+            cupomInput.value = '';
+            renderAppliedCoupons();
             updateTotals();
         } catch (error) {
             alert(error.message);
-            appliedCoupon = null;
-            updateTotals();
         }
     }
 
-    function removeCoupon() {
-        appliedCoupon = null;
-        cupomInput.value = '';
-        cupomInput.disabled = false;
-        applyCupomBtn.disabled = false;
+    // NOVA FUNÇÃO para remover um cupom específico da lista
+    function removeCoupon(codeToRemove) {
+        appliedCoupons = appliedCoupons.filter(c => c.codigo !== codeToRemove);
+        renderAppliedCoupons();
         updateTotals();
     }
 
@@ -217,6 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updatePaymentModal();
     }
 
+    // FUNÇÃO ATUALIZADA para enviar a lista de cupons
     async function finalizeSale() {
         if (cart.length === 0) return;
         const saleData = {
@@ -225,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
             id_cliente: selectedClientId.value || null,
             taxa_entrega: parseFloat(taxaEntregaInput.value) || 0,
             entrega_gratuita: freeDeliveryCheckbox.checked,
-            cupom_utilizado: appliedCoupon ? appliedCoupon.codigo : null,
+            cupons_utilizados: appliedCoupons.map(c => c.codigo), // ENVIA ARRAY DE CÓDIGOS
             parcelas: paymentInstallmentsWrapper.classList.contains('d-none') ? 1 : parseInt(paymentInstallmentsInput.value),
             entrega_rua: document.getElementById('entregaRua').value,
             entrega_numero: document.getElementById('entregaNumero').value,
@@ -251,8 +301,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Limpeza completa do formulário
             cart = [];
             payments = [];
-            // A LINHA CORRIGIDA ESTÁ AQUI:
-            removeCoupon(); // Reseta o cupom para a próxima venda
+            appliedCoupons = []; // Limpa o array de cupons
+            renderAppliedCoupons(); // Limpa a UI de cupons
             
             taxaEntregaInput.value = 0;
             freeDeliveryCheckbox.checked = false;
@@ -260,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('deliveryAddressWrapper').querySelectorAll('input').forEach(i => i.value = '');
             lastItemPreview.style.display = 'none';
             removeClient();
-            renderCart();
+            renderCart(); // Isso já chama updateTotals()
             await fetchAllProducts();
             searchInput.value = '';
             searchResults.innerHTML = '';
@@ -273,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // FUNÇÃO ATUALIZADA para exibir múltiplos cupons no recibo
     async function showReceipt(vendaId) {
         try {
             const response = await fetch(`${API_URL}/api/vendas/${vendaId}`, { headers: { 'x-access-token': token } });
@@ -295,10 +346,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('receiptSubtotal').textContent = `R$ ${subtotalProdutos.toFixed(2)}`;
             
             const receiptDiscountRow = document.getElementById('receiptDiscountRow');
-            if(data.valor_desconto > 0) {
+            if(data.desconto_total > 0) {
                 receiptDiscountRow.classList.remove('d-none');
-                document.getElementById('receiptCupomCode').textContent = data.cupom_utilizado;
-                document.getElementById('receiptDiscountValue').textContent = `- R$ ${data.valor_desconto.toFixed(2)}`;
+                document.getElementById('receiptCupomCode').textContent = data.cupons_utilizados.join(', ');
+                document.getElementById('receiptDiscountValue').textContent = `- R$ ${data.desconto_total.toFixed(2)}`;
             } else {
                 receiptDiscountRow.classList.add('d-none');
             }
@@ -358,7 +409,8 @@ document.addEventListener('DOMContentLoaded', () => {
     searchResults.addEventListener('click', (e) => { e.preventDefault(); const item = e.target.closest('[data-product-id]'); if(item) { addToCart(parseInt(item.dataset.productId)); searchInput.value=''; searchResults.innerHTML=''; searchInput.focus(); } });
     cartItemsDiv.addEventListener('click', (e) => { const target = e.target; const id = parseInt(target.dataset.id); if(!id) return; if(target.classList.contains('adjust-qty-btn')) { const item = cart.find(i=>i.id===id); const stockProduct = allProducts.find(p=>p.id===id); if(target.dataset.action==='increase' && item.quantidade < stockProduct.quantidade) item.quantidade++; else if(target.dataset.action==='decrease' && item.quantidade > 0) item.quantidade--; if(item.quantidade===0) cart=cart.filter(i=>i.id!==id); renderCart(); } else if(target.classList.contains('remove-item-btn')) { cart=cart.filter(i=>i.id!==id); renderCart(); } });
     applyCupomBtn.addEventListener('click', applyCoupon);
-    removeCupomBtn.addEventListener('click', removeCoupon);
+    // NOVO LISTENER para remover cupons
+    appliedCouponsList.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON' && e.target.dataset.code) { removeCoupon(e.target.dataset.code); } });
     taxaEntregaInput.addEventListener('input', () => { (parseFloat(taxaEntregaInput.value) || 0) > 0 ? deliveryAddressWrapper.classList.remove('d-none') : deliveryAddressWrapper.classList.add('d-none'); updateTotals(); });
     freeDeliveryCheckbox.addEventListener('change', updateTotals);
     openPaymentModalBtn.addEventListener('click', preparePaymentModal);
@@ -380,5 +432,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INICIALIZAÇÃO ---
     fetchAllProducts();
     fetchAllClients();
-    setInterval(fetchAllProducts, 20000);
+    setInterval(fetchAllProducts, 20000); // Continua atualizando o estoque periodicamente
 });
