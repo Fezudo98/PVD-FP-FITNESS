@@ -99,14 +99,9 @@ class Venda(db.Model):
     total_venda = db.Column(db.Float, nullable=False)
     taxa_entrega = db.Column(db.Float, nullable=True, default=0.0)
     status = db.Column(db.String(20), nullable=False, default='Concluída')
-    # === CAMPOS DE CUPOM MODIFICADOS ===
-    # REMOVIDO: cupom_utilizado = db.Column(db.String(50), nullable=True)
-    # REMOVIDO: valor_desconto = db.Column(db.Float, nullable=True, default=0.0)
-    # ADICIONADO:
     desconto_total = db.Column(db.Float, nullable=True, default=0.0)
     cupons = db.relationship('Cupom', secondary=venda_cupons, lazy='selectin',
                              backref=db.backref('vendas', lazy=True))
-    # ====================================
     parcelas = db.Column(db.Integer, nullable=True, default=1)
     entrega_gratuita = db.Column(db.Boolean, nullable=False, default=False)
     entrega_rua = db.Column(db.String(200), nullable=True)
@@ -137,6 +132,18 @@ class Log(db.Model):
     usuario_nome = db.Column(db.String(100))
     acao = db.Column(db.String(255), nullable=False)
     detalhes = db.Column(db.String(500))
+
+# NOVO MODELO DE MOVIMENTAÇÃO DE CAIXA
+class MovimentacaoCaixa(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    tipo = db.Column(db.String(50), nullable=False) # Ex: 'VENDA', 'AJUSTE_MANUAL_ENTRADA', 'REEMBOLSO'
+    valor = db.Column(db.Float, nullable=False)
+    observacao = db.Column(db.String(255), nullable=True)
+    id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    id_venda_associada = db.Column(db.Integer, db.ForeignKey('venda.id'), nullable=True)
+    usuario = db.relationship('Usuario')
+
 
 # 3. FUNÇÕES AUXILIARES
 # -----------------------------------------------------------
@@ -178,12 +185,10 @@ def salvar_recibo_html(venda):
                 encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
             logo_tag = f'<img src="data:image/jpeg;base64,{encoded_string}" alt="Logo">'
         
-        # === LÓGICA DE RECIBO ATUALIZADA PARA MÚLTIPLOS CUPONS ===
         desconto_html = ''
         if venda.desconto_total > 0:
             cupons_str = ", ".join([c.codigo for c in venda.cupons])
             desconto_html = f'<p><strong>Descontos Aplicados ({cupons_str}):</strong> - R$ {venda.desconto_total:.2f}</p>'
-        # ==========================================================
 
         pagamentos_html = ""
         for pg in venda.pagamentos:
@@ -486,7 +491,6 @@ def registrar_venda(current_user):
             if not produto: return jsonify({'erro': f'Produto ID {item_data["id_produto"]} não encontrado.'}), 400
             subtotal_produtos += produto.preco_venda * item_data['quantidade']
 
-        # === NOVA LÓGICA DE CÁLCULO DE MÚLTIPLOS CUPONS ===
         desconto_total_calculado = 0.0
         cupons_aplicados_obj = []
         subtotal_para_calculo = subtotal_produtos
@@ -496,7 +500,6 @@ def registrar_venda(current_user):
                 Cupom.codigo.in_([c.upper() for c in cupons_codigos]), Cupom.ativo==True
             ).all()
 
-            # 1. Aplicar cupons percentuais sobre o total
             cupons_percentuais = [c for c in cupons_from_db if c.tipo_desconto == 'percentual' and c.aplicacao == 'total']
             for cupom in sorted(cupons_percentuais, key=lambda c: c.valor_desconto, reverse=True):
                 desconto = (subtotal_para_calculo * cupom.valor_desconto) / 100
@@ -504,7 +507,6 @@ def registrar_venda(current_user):
                 subtotal_para_calculo -= desconto
                 cupons_aplicados_obj.append(cupom)
 
-            # 2. Aplicar cupons de valor fixo sobre o total
             cupons_fixos = [c for c in cupons_from_db if c.tipo_desconto == 'fixo' and c.aplicacao == 'total']
             for cupom in sorted(cupons_fixos, key=lambda c: c.valor_desconto, reverse=True):
                 desconto = min(cupom.valor_desconto, subtotal_para_calculo)
@@ -513,7 +515,6 @@ def registrar_venda(current_user):
                 cupons_aplicados_obj.append(cupom)
         
         desconto_total_calculado = min(desconto_total_calculado, subtotal_produtos)
-        # =========================================================
 
         taxa_entrega = float(dados.get('taxa_entrega', 0.0))
         total_venda_final = subtotal_produtos - desconto_total_calculado
@@ -555,8 +556,22 @@ def registrar_venda(current_user):
         db.session.add(nova_venda)
         db.session.commit()
         
+        # LÓGICA DE CAIXA: Adiciona movimentação para pagamentos em Dinheiro/PIX
+        for pg in nova_venda.pagamentos:
+            if pg.forma in ['Dinheiro', 'PIX']:
+                mov = MovimentacaoCaixa(
+                    tipo='VENDA',
+                    valor=pg.valor,
+                    id_usuario=current_user.id,
+                    id_venda_associada=nova_venda.id,
+                    observacao=f"Entrada referente à Venda ID #{nova_venda.id}"
+                )
+                db.session.add(mov)
+
         registrar_log(current_user, "Venda Registrada", f"ID: {nova_venda.id}, Total: R$ {nova_venda.total_venda:.2f}")
         salvar_recibo_html(nova_venda)
+        
+        db.session.commit() # Salva a movimentação de caixa
         
         return jsonify({'mensagem': 'Venda registrada com sucesso!', 'id_venda': nova_venda.id}), 201
     except Exception as e:
@@ -594,6 +609,20 @@ def reembolsar_venda(current_user, venda_id):
     venda = Venda.query.get_or_404(venda_id)
     if venda.status == 'Reembolsada': return jsonify({'erro': 'Venda já reembolsada.'}), 400
     try:
+        # LÓGICA DE CAIXA: Verifica se o reembolso deve gerar uma saída de caixa
+        valor_reembolso_caixa = sum(
+            p.valor for p in venda.pagamentos if p.forma in ['Dinheiro', 'PIX']
+        )
+        if valor_reembolso_caixa > 0:
+            mov_reembolso = MovimentacaoCaixa(
+                tipo='REEMBOLSO',
+                valor=-valor_reembolso_caixa,  # Valor negativo para saída
+                observacao=f"Saída por reembolso da Venda ID #{venda.id}",
+                id_usuario=current_user.id,
+                id_venda_associada=venda.id
+            )
+            db.session.add(mov_reembolso)
+
         for item in venda.itens:
             if item.produto: item.produto.quantidade += item.quantidade
         venda.status = 'Reembolsada'
@@ -619,9 +648,7 @@ def get_dashboard_data(current_user):
     
     receita_total = sum(v.total_venda for v in vendas_concluidas)
     total_taxas = sum(v.taxa_entrega for v in vendas_concluidas)
-    # === ATUALIZADO PARA USAR O NOVO CAMPO ===
     total_descontos = sum(v.desconto_total for v in vendas_concluidas)
-    # ==========================================
     custo_total = sum(i.quantidade * (i.produto.preco_custo if i.produto else 0) for v in vendas_concluidas for i in v.itens)
     kpis = {'receita_total': round(receita_total, 2), 'total_vendas': len(vendas_concluidas), 'ticket_medio': round(receita_total / len(vendas_concluidas) if vendas_concluidas else 0, 2), 'total_descontos': round(total_descontos, 2), 'lucro_bruto': round(receita_total - custo_total, 2), 'total_taxas_entrega': round(total_taxas, 2)}
     
@@ -666,6 +693,57 @@ def get_logs(current_user):
     if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
     logs = Log.query.order_by(Log.timestamp.desc()).limit(200).all()
     return jsonify([{'id': l.id, 'timestamp': l.timestamp.strftime('%d/%m/%Y %H:%M:%S'), 'usuario_nome': l.usuario_nome, 'acao': l.acao, 'detalhes': l.detalhes} for l in logs])
+
+# NOVAS ROTAS DE GESTÃO DE CAIXA
+@app.route('/api/caixa/saldo', methods=['GET'])
+@token_required
+def get_saldo_caixa(current_user):
+    saldo = db.session.query(func.sum(MovimentacaoCaixa.valor)).scalar() or 0.0
+    return jsonify({'saldo_atual': round(saldo, 2)})
+
+@app.route('/api/caixa/movimentacoes', methods=['GET'])
+@token_required
+def get_movimentacoes_caixa(current_user):
+    if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
+    
+    movimentacoes = MovimentacaoCaixa.query.order_by(MovimentacaoCaixa.timestamp.desc()).limit(200).all()
+    
+    resultado = [{
+        'id': m.id,
+        'timestamp': m.timestamp.strftime('%d/%m/%Y %H:%M:%S'),
+        'tipo': m.tipo.replace('_', ' ').title(),
+        'valor': m.valor,
+        'observacao': m.observacao,
+        'usuario_nome': m.usuario.nome,
+        'id_venda': m.id_venda_associada
+    } for m in movimentacoes]
+    
+    return jsonify(resultado)
+
+@app.route('/api/caixa/ajustar', methods=['POST'])
+@token_required
+def ajustar_caixa(current_user):
+    if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
+    
+    dados = request.get_json()
+    valor = float(dados.get('valor', 0))
+    observacao = dados.get('observacao', '')
+    tipo_ajuste = dados.get('tipo', 'AJUSTE_MANUAL_ENTRADA')
+
+    if not observacao:
+        return jsonify({'erro': 'Uma observação é obrigatória para realizar o ajuste.'}), 400
+
+    mov = MovimentacaoCaixa(
+        tipo=tipo_ajuste,
+        valor=valor,
+        observacao=observacao,
+        id_usuario=current_user.id
+    )
+    db.session.add(mov)
+    registrar_log(current_user, "Ajuste de Caixa", f"Tipo: {tipo_ajuste}, Valor: R$ {valor:.2f}, Obs: {observacao}")
+    db.session.commit()
+    
+    return jsonify({'mensagem': 'Caixa ajustado com sucesso!'}), 200
 
 # 6. INICIALIZAÇÃO DO SERVIDOR
 # -----------------------------------------------------------
