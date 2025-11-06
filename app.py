@@ -78,8 +78,13 @@ class Cupom(db.Model):
     aplicacao = db.Column(db.String(20), nullable=False, default='total')
     produtos = db.relationship('Produto', secondary=cupom_produtos, lazy='selectin',
                                backref=db.backref('cupons', lazy=True))
+    
+    @property
+    def produtos_validos_ids(self):
+        return [p.id for p in self.produtos]
+
     def to_dict(self):
-        return { 'id': self.id, 'codigo': self.codigo, 'tipo_desconto': self.tipo_desconto, 'valor_desconto': self.valor_desconto, 'ativo': self.ativo,'aplicacao': self.aplicacao,'produtos_validos_ids': [p.id for p in self.produtos]}
+        return { 'id': self.id, 'codigo': self.codigo, 'tipo_desconto': self.tipo_desconto, 'valor_desconto': self.valor_desconto, 'ativo': self.ativo,'aplicacao': self.aplicacao,'produtos_validos_ids': self.produtos_validos_ids}
 
 class Pagamento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -87,7 +92,6 @@ class Pagamento(db.Model):
     forma = db.Column(db.String(50), nullable=False) 
     id_venda = db.Column(db.Integer, db.ForeignKey('venda.id'), nullable=False)
 
-# NOVA TABELA DE ASSOCIAÇÃO PARA VENDAS E CUPONS
 venda_cupons = db.Table('venda_cupons',
     db.Column('venda_id', db.Integer, db.ForeignKey('venda.id'), primary_key=True),
     db.Column('cupom_id', db.Integer, db.ForeignKey('cupom.id'), primary_key=True)
@@ -133,11 +137,10 @@ class Log(db.Model):
     acao = db.Column(db.String(255), nullable=False)
     detalhes = db.Column(db.String(500))
 
-# NOVO MODELO DE MOVIMENTAÇÃO DE CAIXA
 class MovimentacaoCaixa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    tipo = db.Column(db.String(50), nullable=False) # Ex: 'VENDA', 'AJUSTE_MANUAL_ENTRADA', 'REEMBOLSO'
+    tipo = db.Column(db.String(50), nullable=False)
     valor = db.Column(db.Float, nullable=False)
     observacao = db.Column(db.String(255), nullable=True)
     id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
@@ -486,8 +489,13 @@ def registrar_venda(current_user):
 
     try:
         subtotal_produtos = 0
+        produtos_no_carrinho_ids = [item['id_produto'] for item in itens_venda_data]
+        produtos_no_carrinho = Produto.query.filter(Produto.id.in_(produtos_no_carrinho_ids)).all()
+        
+        produtos_map = {p.id: p for p in produtos_no_carrinho}
+
         for item_data in itens_venda_data:
-            produto = Produto.query.get(item_data['id_produto'])
+            produto = produtos_map.get(item_data['id_produto'])
             if not produto: return jsonify({'erro': f'Produto ID {item_data["id_produto"]} não encontrado.'}), 400
             subtotal_produtos += produto.preco_venda * item_data['quantidade']
 
@@ -499,19 +507,28 @@ def registrar_venda(current_user):
             cupons_from_db = Cupom.query.filter(
                 Cupom.codigo.in_([c.upper() for c in cupons_codigos]), Cupom.ativo==True
             ).all()
+            
+            cupons_ordenados = sorted(cupons_from_db, key=lambda c: (c.tipo_desconto != 'percentual', c.valor_desconto), reverse=True)
+            
+            for cupom in cupons_ordenados:
+                base_de_calculo = 0
+                if cupom.aplicacao == 'total':
+                    base_de_calculo = subtotal_para_calculo
+                else: # 'produto_especifico'
+                    for item_data in itens_venda_data:
+                        if item_data['id_produto'] in cupom.produtos_validos_ids:
+                             produto_atual = produtos_map.get(item_data['id_produto'])
+                             base_de_calculo += produto_atual.preco_venda * item_data['quantidade']
+                
+                desconto_rodada = 0
+                if cupom.tipo_desconto == 'percentual':
+                    desconto_rodada = (base_de_calculo * cupom.valor_desconto) / 100
+                else: # 'fixo'
+                    desconto_rodada = min(cupom.valor_desconto, base_de_calculo)
 
-            cupons_percentuais = [c for c in cupons_from_db if c.tipo_desconto == 'percentual' and c.aplicacao == 'total']
-            for cupom in sorted(cupons_percentuais, key=lambda c: c.valor_desconto, reverse=True):
-                desconto = (subtotal_para_calculo * cupom.valor_desconto) / 100
-                desconto_total_calculado += desconto
-                subtotal_para_calculo -= desconto
-                cupons_aplicados_obj.append(cupom)
-
-            cupons_fixos = [c for c in cupons_from_db if c.tipo_desconto == 'fixo' and c.aplicacao == 'total']
-            for cupom in sorted(cupons_fixos, key=lambda c: c.valor_desconto, reverse=True):
-                desconto = min(cupom.valor_desconto, subtotal_para_calculo)
-                desconto_total_calculado += desconto
-                subtotal_para_calculo -= desconto
+                desconto_total_calculado += desconto_rodada
+                if cupom.aplicacao == 'total':
+                    subtotal_para_calculo -= desconto_rodada
                 cupons_aplicados_obj.append(cupom)
         
         desconto_total_calculado = min(desconto_total_calculado, subtotal_produtos)
@@ -546,7 +563,7 @@ def registrar_venda(current_user):
             nova_venda.pagamentos.append(Pagamento(forma=pg_data['forma'], valor=round(float(pg_data['valor']), 2)))
 
         for item_data in itens_venda_data:
-            produto = Produto.query.get(item_data['id_produto'])
+            produto = produtos_map.get(item_data['id_produto'])
             if produto.quantidade < item_data['quantidade']:
                 db.session.rollback()
                 return jsonify({'erro': f'Estoque insuficiente para {produto.nome}.'}), 400
@@ -556,7 +573,6 @@ def registrar_venda(current_user):
         db.session.add(nova_venda)
         db.session.commit()
         
-        # LÓGICA DE CAIXA: Adiciona movimentação para pagamentos em Dinheiro/PIX
         for pg in nova_venda.pagamentos:
             if pg.forma in ['Dinheiro', 'PIX']:
                 mov = MovimentacaoCaixa(
@@ -571,12 +587,13 @@ def registrar_venda(current_user):
         registrar_log(current_user, "Venda Registrada", f"ID: {nova_venda.id}, Total: R$ {nova_venda.total_venda:.2f}")
         salvar_recibo_html(nova_venda)
         
-        db.session.commit() # Salva a movimentação de caixa
+        db.session.commit()
         
         return jsonify({'mensagem': 'Venda registrada com sucesso!', 'id_venda': nova_venda.id}), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({'erro': 'Erro interno.', 'detalhes': str(e)}), 500
+        print(f"ERRO INTERNO EM registrar_venda: {e}") 
+        return jsonify({'erro': 'Erro interno do servidor.', 'detalhes': str(e)}), 500
 
 @app.route('/api/vendas/<int:venda_id>', methods=['GET'])
 @token_required
@@ -609,14 +626,13 @@ def reembolsar_venda(current_user, venda_id):
     venda = Venda.query.get_or_404(venda_id)
     if venda.status == 'Reembolsada': return jsonify({'erro': 'Venda já reembolsada.'}), 400
     try:
-        # LÓGICA DE CAIXA: Verifica se o reembolso deve gerar uma saída de caixa
         valor_reembolso_caixa = sum(
             p.valor for p in venda.pagamentos if p.forma in ['Dinheiro', 'PIX']
         )
         if valor_reembolso_caixa > 0:
             mov_reembolso = MovimentacaoCaixa(
                 tipo='REEMBOLSO',
-                valor=-valor_reembolso_caixa,  # Valor negativo para saída
+                valor=-valor_reembolso_caixa,
                 observacao=f"Saída por reembolso da Venda ID #{venda.id}",
                 id_usuario=current_user.id,
                 id_venda_associada=venda.id
@@ -694,7 +710,6 @@ def get_logs(current_user):
     logs = Log.query.order_by(Log.timestamp.desc()).limit(200).all()
     return jsonify([{'id': l.id, 'timestamp': l.timestamp.strftime('%d/%m/%Y %H:%M:%S'), 'usuario_nome': l.usuario_nome, 'acao': l.acao, 'detalhes': l.detalhes} for l in logs])
 
-# NOVAS ROTAS DE GESTÃO DE CAIXA
 @app.route('/api/caixa/saldo', methods=['GET'])
 @token_required
 def get_saldo_caixa(current_user):

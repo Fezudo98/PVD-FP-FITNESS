@@ -1,6 +1,8 @@
-const API_URL = ''; // Deixe vazio
+// Define a URL base da sua API. Deixe vazio para rodar no mesmo local.
+const API_URL = ''; 
 const token = localStorage.getItem('authToken');
 
+// Barreira de segurança: Se não houver token, redireciona para o login.
 if (!token) {
     window.location.href = '/login.html';
 }
@@ -9,7 +11,7 @@ if (!token) {
 let allProducts = [];
 let cart = [];
 let allClients = [];
-let appliedCoupons = []; // MODIFICADO: Agora é um array para múltiplos cupons
+let appliedCoupons = []; // Array para armazenar os múltiplos cupons aplicados
 let payments = [];
 let totalSaleValue = 0;
 
@@ -29,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const freeDeliveryCheckbox = document.getElementById('freeDeliveryCheckbox');
     const deliveryAddressWrapper = document.getElementById('deliveryAddressWrapper');
 
-    // NOVAS REFERÊNCIAS PARA MÚLTIPLOS CUPONS
     const appliedCouponsList = document.getElementById('appliedCouponsList');
     const totalDiscountDisplay = document.getElementById('totalDiscountDisplay');
     const totalDiscountValueSpan = document.getElementById('totalDiscountValue');
@@ -128,49 +129,57 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTotals();
     }
     
-    // NOVA FUNÇÃO para renderizar os badges dos cupons
     function renderAppliedCoupons() {
         appliedCouponsList.innerHTML = '';
         if (appliedCoupons.length > 0) {
             appliedCoupons.forEach(coupon => {
                 const couponBadge = document.createElement('span');
-                couponBadge.className = 'badge bg-success me-2 mb-1'; // mb-1 para espaçamento
-                couponBadge.innerHTML = `
-                    ${coupon.codigo} 
-                    <button class="btn-close btn-close-white ms-1" style="font-size: 0.6em;" data-code="${coupon.codigo}"></button>
-                `;
+                couponBadge.className = 'badge bg-success me-2 mb-1';
+                couponBadge.innerHTML = `${coupon.codigo} <button class="btn-close btn-close-white ms-1" style="font-size: 0.6em;" data-code="${coupon.codigo}"></button>`;
                 appliedCouponsList.appendChild(couponBadge);
             });
         }
     }
 
-    // FUNÇÃO ATUALIZADA para calcular múltiplos descontos
+    // ##### FUNÇÃO ATUALIZADA COM A CORREÇÃO DO BUG #####
     function updateTotals() {
         let subtotal = cart.reduce((sum, item) => sum + (item.quantidade * item.preco_venda), 0);
         let totalDiscountAmount = 0;
         let subtotalParaCalculo = subtotal;
 
         if (appliedCoupons.length > 0) {
-            // Lógica de cálculo espelhando o backend (percentual primeiro, depois fixo)
-            const percentuais = appliedCoupons.filter(c => c.tipo_desconto === 'percentual');
-            percentuais.sort((a, b) => b.valor_desconto - a.valor_desconto); // Maior % primeiro
             
-            for (const coupon of percentuais) {
-                let baseCalculo = (coupon.aplicacao === 'total') ? subtotalParaCalculo : cart.reduce((sum, item) => coupon.produtos_validos_ids.includes(item.id) ? sum + (item.quantidade * item.preco_venda) : sum, 0);
-                const discount = (baseCalculo * coupon.valor_desconto) / 100;
-                totalDiscountAmount += discount;
-                subtotalParaCalculo -= discount;
-            }
+            const cuponsOrdenados = [...appliedCoupons].sort((a, b) => {
+                if (a.tipo_desconto === 'percentual' && b.tipo_desconto !== 'percentual') return -1;
+                if (a.tipo_desconto !== 'percentual' && b.tipo_desconto === 'percentual') return 1;
+                return b.valor_desconto - a.valor_desconto;
+            });
+            
+            cuponsOrdenados.forEach(coupon => {
+                let baseCalculo = 0;
+                if (coupon.aplicacao === 'total') {
+                    baseCalculo = subtotalParaCalculo;
+                } else { // 'produto_especifico'
+                    baseCalculo = cart.reduce((sum, cartItem) => {
+                        if (coupon.produtos_validos_ids.includes(cartItem.id)) {
+                            return sum + (cartItem.quantidade * cartItem.preco_venda);
+                        }
+                        return sum;
+                    }, 0);
+                }
 
-            const fixos = appliedCoupons.filter(c => c.tipo_desconto === 'fixo');
-            fixos.sort((a, b) => b.valor_desconto - a.valor_desconto); // Maior valor fixo primeiro
-            
-            for (const coupon of fixos) {
-                let baseCalculo = (coupon.aplicacao === 'total') ? subtotalParaCalculo : cart.reduce((sum, item) => coupon.produtos_validos_ids.includes(item.id) ? sum + (item.quantidade * item.preco_venda) : sum, 0);
-                const discount = Math.min(coupon.valor_desconto, baseCalculo);
-                totalDiscountAmount += discount;
-                subtotalParaCalculo -= discount;
-            }
+                let descontoRodada = 0;
+                if (coupon.tipo_desconto === 'percentual') {
+                    descontoRodada = (baseCalculo * coupon.valor_desconto) / 100;
+                } else { // 'fixo'
+                    descontoRodada = Math.min(coupon.valor_desconto, baseCalculo);
+                }
+
+                totalDiscountAmount += descontoRodada;
+                if (coupon.aplicacao === 'total') {
+                     subtotalParaCalculo -= descontoRodada;
+                }
+            });
         }
         
         totalDiscountAmount = Math.min(totalDiscountAmount, subtotal);
@@ -193,7 +202,6 @@ document.addEventListener('DOMContentLoaded', () => {
         openPaymentModalBtn.disabled = cart.length === 0;
     }
 
-    // FUNÇÃO ATUALIZADA para adicionar cupons a uma lista
     async function applyCoupon() {
         const code = cupomInput.value.toUpperCase();
         if (!code) return;
@@ -218,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // NOVA FUNÇÃO para remover um cupom específico da lista
     function removeCoupon(codeToRemove) {
         appliedCoupons = appliedCoupons.filter(c => c.codigo !== codeToRemove);
         renderAppliedCoupons();
@@ -266,7 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updatePaymentModal();
     }
 
-    // FUNÇÃO ATUALIZADA para enviar a lista de cupons
     async function finalizeSale() {
         if (cart.length === 0) return;
         const saleData = {
@@ -275,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
             id_cliente: selectedClientId.value || null,
             taxa_entrega: parseFloat(taxaEntregaInput.value) || 0,
             entrega_gratuita: freeDeliveryCheckbox.checked,
-            cupons_utilizados: appliedCoupons.map(c => c.codigo), // ENVIA ARRAY DE CÓDIGOS
+            cupons_utilizados: appliedCoupons.map(c => c.codigo),
             parcelas: paymentInstallmentsWrapper.classList.contains('d-none') ? 1 : parseInt(paymentInstallmentsInput.value),
             entrega_rua: document.getElementById('entregaRua').value,
             entrega_numero: document.getElementById('entregaNumero').value,
@@ -298,11 +304,10 @@ document.addEventListener('DOMContentLoaded', () => {
             paymentModal.hide();
             await showReceipt(result.id_venda);
             
-            // Limpeza completa do formulário
             cart = [];
             payments = [];
-            appliedCoupons = []; // Limpa o array de cupons
-            renderAppliedCoupons(); // Limpa a UI de cupons
+            appliedCoupons = [];
+            renderAppliedCoupons();
             
             taxaEntregaInput.value = 0;
             freeDeliveryCheckbox.checked = false;
@@ -310,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('deliveryAddressWrapper').querySelectorAll('input').forEach(i => i.value = '');
             lastItemPreview.style.display = 'none';
             removeClient();
-            renderCart(); // Isso já chama updateTotals()
+            renderCart();
             await fetchAllProducts();
             searchInput.value = '';
             searchResults.innerHTML = '';
@@ -323,7 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // FUNÇÃO ATUALIZADA para exibir múltiplos cupons no recibo
     async function showReceipt(vendaId) {
         try {
             const response = await fetch(`${API_URL}/api/vendas/${vendaId}`, { headers: { 'x-access-token': token } });
@@ -403,13 +407,18 @@ document.addEventListener('DOMContentLoaded', () => {
         clientSearchWrapper.classList.remove('d-none');
     }
 
+    function printReceipt(format) {
+        const receiptContent = document.getElementById('receiptContent');
+        receiptContent.classList.toggle('termica-print', format === 'termica');
+        setTimeout(() => window.print(), 100);
+    }
+
     // --- EVENT LISTENERS ---
     
     searchInput.addEventListener('input', () => renderSearchResults(searchInput.value));
     searchResults.addEventListener('click', (e) => { e.preventDefault(); const item = e.target.closest('[data-product-id]'); if(item) { addToCart(parseInt(item.dataset.productId)); searchInput.value=''; searchResults.innerHTML=''; searchInput.focus(); } });
     cartItemsDiv.addEventListener('click', (e) => { const target = e.target; const id = parseInt(target.dataset.id); if(!id) return; if(target.classList.contains('adjust-qty-btn')) { const item = cart.find(i=>i.id===id); const stockProduct = allProducts.find(p=>p.id===id); if(target.dataset.action==='increase' && item.quantidade < stockProduct.quantidade) item.quantidade++; else if(target.dataset.action==='decrease' && item.quantidade > 0) item.quantidade--; if(item.quantidade===0) cart=cart.filter(i=>i.id!==id); renderCart(); } else if(target.classList.contains('remove-item-btn')) { cart=cart.filter(i=>i.id!==id); renderCart(); } });
     applyCupomBtn.addEventListener('click', applyCoupon);
-    // NOVO LISTENER para remover cupons
     appliedCouponsList.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON' && e.target.dataset.code) { removeCoupon(e.target.dataset.code); } });
     taxaEntregaInput.addEventListener('input', () => { (parseFloat(taxaEntregaInput.value) || 0) > 0 ? deliveryAddressWrapper.classList.remove('d-none') : deliveryAddressWrapper.classList.add('d-none'); updateTotals(); });
     freeDeliveryCheckbox.addEventListener('change', updateTotals);
@@ -424,13 +433,11 @@ document.addEventListener('DOMContentLoaded', () => {
     quickClientForm.addEventListener('submit', async (e) => { e.preventDefault(); const data = { nome: document.getElementById('quickClientNome').value, telefone: document.getElementById('quickClientTelefone').value, cpf: document.getElementById('quickClientCpf').value }; try { const response = await fetch(`${API_URL}/api/clientes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-access-token': token }, body: JSON.stringify(data) }); const newClient = await response.json(); if(response.ok) { quickClientModal.hide(); await fetchAllClients(); selectClient(newClient.id); } else { alert(`Erro: ${newClient.message || newClient.erro}`); } } catch (error) { console.error(error); } });
     document.getElementById('logoutButton').addEventListener('click', () => { localStorage.clear(); window.location.href = '/login.html'; });
     document.getElementById('quickAddClientBtn').addEventListener('click', () => { quickClientForm.reset(); quickClientModal.show(); });
-    
     document.body.addEventListener('click', (event) => { if (event.target.id === 'imprimirA4Btn') printReceipt('a4'); if (event.target.id === 'imprimirTermicaBtn') printReceipt('termica'); });
     window.onafterprint = () => document.getElementById('receiptContent').classList.remove('termica-print');
-    function printReceipt(format) { const receiptContent = document.getElementById('receiptContent'); receiptContent.classList.toggle('termica-print', format === 'termica'); setTimeout(() => window.print(), 100); }
 
     // --- INICIALIZAÇÃO ---
     fetchAllProducts();
     fetchAllClients();
-    setInterval(fetchAllProducts, 20000); // Continua atualizando o estoque periodicamente
+    setInterval(fetchAllProducts, 20000); // Atualiza o estoque periodicamente
 });
