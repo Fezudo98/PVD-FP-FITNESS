@@ -574,13 +574,13 @@ def registrar_venda(current_user):
         db.session.commit()
         
         for pg in nova_venda.pagamentos:
-            if pg.forma in ['Dinheiro', 'PIX']:
+            if pg.forma == 'Dinheiro': # <--- ALTERAÇÃO APLICADA AQUI
                 mov = MovimentacaoCaixa(
-                    tipo='VENDA',
-                    valor=pg.valor,
-                    id_usuario=current_user.id,
-                    id_venda_associada=nova_venda.id,
-                    observacao=f"Entrada referente à Venda ID #{nova_venda.id}"
+                tipo='VENDA',
+                valor=pg.valor,
+                id_usuario=current_user.id,
+                id_venda_associada=nova_venda.id,
+                observacao=f"Entrada referente à Venda ID #{nova_venda.id}"
                 )
                 db.session.add(mov)
 
@@ -627,7 +627,7 @@ def reembolsar_venda(current_user, venda_id):
     if venda.status == 'Reembolsada': return jsonify({'erro': 'Venda já reembolsada.'}), 400
     try:
         valor_reembolso_caixa = sum(
-            p.valor for p in venda.pagamentos if p.forma in ['Dinheiro', 'PIX']
+            p.valor for p in venda.pagamentos if p.forma == 'Dinheiro'
         )
         if valor_reembolso_caixa > 0:
             mov_reembolso = MovimentacaoCaixa(
