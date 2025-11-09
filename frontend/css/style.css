@@ -269,3 +269,50 @@ h2, h4 {
         justify-content: space-between;
     }
 }
+
+/* ===== ATUALIZADO: Estilos do Display de Saldo ===== */
+.cash-balance-display {
+    background-color: transparent;
+    border: 2px solid rgba(224, 180, 49, 0.5);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.cash-balance-display:hover {
+    background-color: rgba(224, 180, 49, 0.1);
+    border-color: rgba(224, 180, 49, 0.8);
+}
+
+.cash-balance-display svg {
+    color: var(--cor-principal);
+    flex-shrink: 0;
+}
+
+.cash-balance-display h5 {
+    color: #aaa;
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+}
+
+.cash-balance-display h2 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* ===== Estilos para botões com ícones ===== */
+.btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.btn-icon svg {
+    flex-shrink: 0;
+}
