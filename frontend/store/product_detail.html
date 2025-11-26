@@ -1,0 +1,195 @@
+{% extends "store/base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row g-5">
+        <!-- Product Image -->
+        <div class="col-md-6">
+            <div class="card border-0 bg-dark overflow-hidden rounded-4 shadow-lg">
+                <div class="position-relative" style="height: 500px;">
+                    <img id="productImage" src="" class="w-100 h-100 object-fit-cover" alt="Product Image">
+                    <div class="position-absolute top-0 start-0 m-4">
+                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold"
+                            id="productCategory"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Product Details -->
+        <div class="col-md-6">
+            <div class="d-flex flex-column h-100 justify-content-center">
+                <h1 class="display-4 fw-bold text-white mb-2" id="productName">Carregando...</h1>
+                <div class="d-flex align-items-center mb-4">
+                    <div class="text-warning me-3">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star-half-alt"></i>
+                    </div>
+                    <span class="text-muted small">(4.8 de 5 avaliações)</span>
+                </div>
+
+                <h2 class="display-5 fw-bold text-warning mb-4" id="productPrice">R$ --,--</h2>
+
+                <p class="lead text-light mb-5" id="productDescription">
+                    Carregando detalhes do produto...
+                </p>
+
+                <!-- Options -->
+                <div class="row g-3 mb-5">
+                    <div class="col-6">
+                        <label class="form-label text-muted small text-uppercase fw-bold">Tamanho</label>
+                        <select class="form-select bg-dark text-white border-secondary rounded-pill" id="productSize">
+                            <option selected>Selecione</option>
+                            <option value="P">P</option>
+                            <option value="M">M</option>
+                            <option value="G">G</option>
+                            <option value="GG">GG</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-muted small text-uppercase fw-bold">Quantidade</label>
+                        <div class="input-group">
+                            <button class="btn btn-outline-secondary rounded-start-pill" type="button"
+                                onclick="adjustQty(-1)">-</button>
+                            <input type="text" class="form-control bg-dark text-white border-secondary text-center"
+                                value="1" id="productQty" readonly>
+                            <button class="btn btn-outline-secondary rounded-end-pill" type="button"
+                                onclick="adjustQty(1)">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="d-grid gap-3">
+                    <button class="btn btn-warning btn-lg rounded-pill py-3 fw-bold shadow-lg"
+                        onclick="addToCartCurrent()">
+                        <i class="fa-solid fa-cart-plus me-2"></i> Adicionar ao Carrinho
+                    </button>
+                    <button class="btn btn-outline-warning btn-lg rounded-pill py-3 fw-bold">
+                        <i class="fa-regular fa-heart me-2"></i> Adicionar aos Favoritos
+                    </button>
+                </div>
+
+                <!-- Extra Info -->
+                <div class="mt-5 pt-4 border-top border-secondary">
+                    <div class="d-flex align-items-center text-muted small mb-2">
+                        <i class="fas fa-truck me-2"></i> Frete Grátis para compras acima de R$ 299
+                    </div>
+                    <div class="d-flex align-items-center text-muted small">
+                        <i class="fas fa-undo me-2"></i> Devolução grátis em até 30 dias
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const productId = window.location.pathname.split('/').pop();
+    let currentProduct = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProductDetails();
+    });
+
+    async function loadProductDetails() {
+        try {
+            const response = await fetch(`/api/store/products/${productId}`);
+            if (!response.ok) throw new Error('Produto não encontrado');
+
+            currentProduct = await response.json();
+
+            document.title = `${currentProduct.nome} | FP Moda Fitness`;
+            document.getElementById('productName').textContent = currentProduct.nome;
+            document.getElementById('productPrice').textContent = `R$ ${currentProduct.preco_venda.toFixed(2)}`;
+            document.getElementById('productDescription').textContent = currentProduct.descricao || 'Sem descrição disponível.';
+            document.getElementById('productCategory').textContent = currentProduct.categoria || 'Geral';
+
+            const imgEl = document.getElementById('productImage');
+            imgEl.src = currentProduct.imagem_url ? `/uploads/${currentProduct.imagem_url}` : 'https://via.placeholder.com/600x800?text=Sem+Imagem';
+
+            // Pre-select size if available in product data (simplified for now)
+            if (currentProduct.tamanho) {
+                const sizeSelect = document.getElementById('productSize');
+                // Logic to select or add option if strictly defined
+            }
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro',
+                text: 'Não foi possível carregar o produto.',
+                background: '#1e1e1e',
+                color: '#fff'
+            }).then(() => {
+                window.location.href = '/store';
+            });
+        }
+    }
+
+    function adjustQty(delta) {
+        const input = document.getElementById('productQty');
+        let val = parseInt(input.value) + delta;
+        if (val < 1) val = 1;
+        // Check stock limit if available
+        if (currentProduct && val > currentProduct.quantidade) {
+            val = currentProduct.quantidade;
+            Swal.fire({ icon: 'warning', title: 'Estoque Limitado', text: `Apenas ${currentProduct.quantidade} unidades disponíveis.`, toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+        }
+        input.value = val;
+    }
+
+    function addToCartCurrent() {
+        console.log('Adding to cart...', currentProduct);
+        if (!currentProduct) {
+            console.error('No product loaded');
+            return;
+        }
+
+        const qty = parseInt(document.getElementById('productQty').value);
+        const size = document.getElementById('productSize').value;
+
+        if (size === 'Selecione') {
+            Swal.fire({ icon: 'info', title: 'Selecione um tamanho', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+
+        let cart = JSON.parse(localStorage.getItem('fp_fitness_cart')) || [];
+        const existingItem = cart.find(item => item.id === currentProduct.id && item.size === size);
+
+        if (existingItem) {
+            existingItem.quantity += qty;
+        } else {
+            cart.push({
+                id: currentProduct.id,
+                quantity: qty,
+                size: size,
+                nome: currentProduct.nome,
+                price: currentProduct.preco_venda,
+                image: currentProduct.imagem_url
+            });
+        }
+
+        localStorage.setItem('fp_fitness_cart', JSON.stringify(cart));
+        updateCartCount();
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Adicionado!',
+            text: `${qty}x ${currentProduct.nome} (${size}) adicionado ao carrinho.`,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2000,
+            background: '#1e1e1e',
+            color: '#fff'
+        });
+    }
+</script>
+{% endblock %}

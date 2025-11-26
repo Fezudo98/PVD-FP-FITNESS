@@ -1,0 +1,80 @@
+{% extends "store/base.html" %}
+
+{% block content %}
+<section class="py-5 bg-darker" style="min-height: 80vh;">
+    <div class="container py-5">
+        <h1 class="display-5 fw-bold text-white mb-5 text-center">Seu Carrinho</h1>
+
+        <div class="row g-5">
+            <!-- Cart Items -->
+            <div class="col-lg-8">
+                <div class="card bg-dark border-0 shadow-lg">
+                    <div class="card-body p-4">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover align-middle mb-0" id="cartTable">
+                                <thead>
+                                    <tr class="text-muted text-uppercase small">
+                                        <th scope="col" style="width: 40%;">Produto</th>
+                                        <th scope="col" style="width: 20%;">Preço</th>
+                                        <th scope="col" style="width: 20%;">Qtd.</th>
+                                        <th scope="col" style="width: 20%;">Total</th>
+                                        <th scope="col"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cartItemsContainer">
+                                    <!-- Items will be injected here via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="emptyCartMessage" class="text-center py-5 d-none">
+                            <i class="fa-solid fa-cart-shopping fa-3x text-muted mb-3"></i>
+                            <p class="text-muted lead">Seu carrinho está vazio.</p>
+                            <a href="/store/produtos" class="btn btn-warning rounded-pill px-4 mt-2">Continuar
+                                Comprando</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="col-lg-4">
+                <div class="card bg-dark border-0 shadow-lg">
+                    <div class="card-body p-4">
+                        <h4 class="fw-bold text-white mb-4">Resumo do Pedido</h4>
+
+                        <div class="d-flex justify-content-between mb-3 text-muted">
+                            <span>Subtotal</span>
+                            <span id="cartSubtotal">R$ 0,00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3 text-muted">
+                            <span>Entrega</span>
+                            <span class="text-success">Calculado no Checkout</span>
+                        </div>
+                        <hr class="border-secondary my-4">
+                        <div class="d-flex justify-content-between mb-4">
+                            <span class="fw-bold text-white h5">Total</span>
+                            <span class="fw-bold text-warning h5" id="cartTotal">R$ 0,00</span>
+                        </div>
+
+                        <button onclick="proceedToCheckout()"
+                            class="btn btn-warning w-100 py-3 rounded-pill fw-bold shadow-lg mb-3">
+                            Finalizar Compra
+                        </button>
+                        <a href="/store/produtos" class="btn btn-outline-light w-100 py-2 rounded-pill">
+                            Continuar Comprando
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        renderCartPage();
+    });
+</script>
+{% endblock %}

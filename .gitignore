@@ -16,3 +16,23 @@ barcodes/
 
 
 estoque.db
+
+# Arquivos temporários de debug e verificação
+*.log
+flask_log.txt
+*_output*.txt
+products_list*.txt
+teste.txt
+
+# Scripts de verificação e correção temporários
+check_*.py
+verify_*.py
+list_*.py
+create_test_*.py
+add_test_*.py
+read_debug_log.py
+debug_categories.py
+fix_categories.py
+read_output.py
+enable_products.py
+fix_product_images.py

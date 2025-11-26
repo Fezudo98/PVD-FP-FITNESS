@@ -4,7 +4,7 @@ import base64
 import math
 from datetime import datetime, timedelta
 from functools import wraps
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
@@ -16,7 +16,7 @@ from flask_migrate import Migrate
 
 # 1. CONFIGURAÇÃO INICIAL
 # ------------------------------------
-app = Flask(__name__)
+app = Flask(__name__, template_folder='frontend')
 CORS(app) 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(base_dir, 'estoque.db')
@@ -25,7 +25,11 @@ app.config['SECRET_KEY'] = 'my-super-secret-key-12345'
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
-migrate = Migrate(app, db)
+migrate = Migrate(app, db, render_as_batch=True)
+
+@app.route('/frontend/<path:filename>')
+def custom_static(filename):
+    return send_from_directory('frontend', filename)
 
 
 # 2. MODELOS DE DADOS
@@ -44,8 +48,20 @@ class Produto(db.Model):
     limite_estoque_baixo = db.Column(db.Integer, default=5)
     codigo_barras_url = db.Column(db.String(200), nullable=True)
     
+    # Campos para E-commerce
+    online_ativo = db.Column(db.Boolean, default=False)
+    descricao = db.Column(db.Text, nullable=True)
+    destaque = db.Column(db.Boolean, default=False)
+    
     def to_dict(self):
-        return { 'id': self.id, 'sku': self.sku, 'nome': self.nome, 'categoria': self.categoria, 'cor': self.cor, 'tamanho': self.tamanho, 'preco_custo': self.preco_custo, 'preco_venda': self.preco_venda, 'quantidade': self.quantidade, 'imagem_url': self.imagem_url, 'limite_estoque_baixo': self.limite_estoque_baixo, 'codigo_barras_url': self.codigo_barras_url }
+        return { 
+            'id': self.id, 'sku': self.sku, 'nome': self.nome, 'categoria': self.categoria, 
+            'cor': self.cor, 'tamanho': self.tamanho, 'preco_custo': self.preco_custo, 
+            'preco_venda': self.preco_venda, 'quantidade': self.quantidade, 
+            'imagem_url': self.imagem_url, 'limite_estoque_baixo': self.limite_estoque_baixo, 
+            'codigo_barras_url': self.codigo_barras_url,
+            'online_ativo': self.online_ativo, 'descricao': self.descricao, 'destaque': self.destaque
+        }
 
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -61,8 +77,24 @@ class Cliente(db.Model):
     nome = db.Column(db.String(120), nullable=False)
     telefone = db.Column(db.String(20), nullable=True)
     cpf = db.Column(db.String(14), nullable=True, unique=True)
+    
+    # Campos para E-commerce
+    email = db.Column(db.String(120), unique=True, nullable=True)
+    senha_hash = db.Column(db.String(128), nullable=True)
+    
+    # Endereço Principal
+    endereco_rua = db.Column(db.String(200), nullable=True)
+    endereco_numero = db.Column(db.String(20), nullable=True)
+    endereco_bairro = db.Column(db.String(100), nullable=True)
+    endereco_cidade = db.Column(db.String(100), nullable=True)
+    endereco_cep = db.Column(db.String(10), nullable=True)
+    endereco_complemento = db.Column(db.String(100), nullable=True)
+
     def to_dict(self):
-        return {'id': self.id, 'nome': self.nome, 'telefone': self.telefone, 'cpf': self.cpf}
+        return {
+            'id': self.id, 'nome': self.nome, 'telefone': self.telefone, 'cpf': self.cpf,
+            'email': self.email, 'endereco_rua': self.endereco_rua, 'endereco_cidade': self.endereco_cidade
+        }
 
 cupom_produtos = db.Table('cupom_produtos',
     db.Column('cupom_id', db.Integer, db.ForeignKey('cupom.id'), primary_key=True),
@@ -115,7 +147,7 @@ class Venda(db.Model):
     entrega_cep = db.Column(db.String(10), nullable=True)
     entrega_complemento = db.Column(db.String(100), nullable=True)
     id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
-    id_vendedor = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    id_vendedor = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True) # Nullable para vendas online
     cliente = db.relationship('Cliente')
     vendedor = db.relationship('Usuario')
     itens = db.relationship('ItemVenda', backref='venda', cascade="all, delete-orphan")
@@ -227,6 +259,10 @@ def serve_barcode_image(filename):
 def serve_static_files(filename):
     return send_from_directory('frontend', filename)
 
+@app.route('/static/<path:filename>')
+def serve_static_assets(filename):
+    return send_from_directory('static', filename)
+
 # 5. ENDPOINTS DA API
 # -----------------------------------------------------------
 
@@ -272,6 +308,75 @@ def login():
     token = jwt.encode({'id': user.id, 'exp' : datetime.utcnow() + timedelta(hours=24)}, app.config['SECRET_KEY'], algorithm="HS256")
     return jsonify({'token': token, 'user': user.to_dict()})
 
+# --- ROTAS DE CATEGORIAS ---
+
+@app.route('/api/categorias', methods=['GET'])
+@token_required
+def get_categorias(current_user):
+    try:
+        # Busca categorias distintas e não nulas
+        categorias = db.session.query(Produto.categoria).distinct().filter(Produto.categoria != None, Produto.categoria != "").all()
+        lista_categorias = [c[0] for c in categorias]
+        lista_categorias.sort(key=lambda s: s.lower())
+        return jsonify(lista_categorias)
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+@app.route('/api/categorias/manage', methods=['POST'])
+@token_required
+def manage_categorias(current_user):
+    if current_user.role != 'admin':
+        return jsonify({'erro': 'Acesso não autorizado'}), 403
+        
+    data = request.json
+    action = data.get('action')
+    old_name = data.get('old_name').strip() if data.get('old_name') else None
+    new_name = data.get('new_name').strip() if data.get('new_name') else None
+    target_category = data.get('target_category') # Para transferência em caso de delete
+
+    if not action or not old_name:
+        return jsonify({'erro': 'Dados incompletos'}), 400
+
+    try:
+        if action == 'rename':
+            if not new_name:
+                return jsonify({'erro': 'Novo nome é obrigatório para renomear'}), 400
+            
+            # Atualiza todos os produtos da categoria antiga para a nova
+            produtos = Produto.query.filter_by(categoria=old_name).all()
+            for p in produtos:
+                p.categoria = new_name
+            
+            db.session.commit()
+            return jsonify({'mensagem': f'Categoria renomeada de "{old_name}" para "{new_name}" com sucesso!', 'afetados': len(produtos)})
+
+        elif action == 'delete':
+            produtos = Produto.query.filter_by(categoria=old_name).all()
+            count = len(produtos)
+            
+            if target_category:
+                # Transfere produtos para outra categoria
+                for p in produtos:
+                    p.categoria = target_category
+                msg = f'Categoria "{old_name}" excluída. {count} produtos transferidos para "{target_category}".'
+            else:
+                # Apenas remove a categoria (define como None ou "Sem Categoria")
+                for p in produtos:
+                    p.categoria = None 
+                msg = f'Categoria "{old_name}" excluída. {count} produtos ficaram sem categoria.'
+            
+            db.session.commit()
+            return jsonify({'mensagem': msg, 'afetados': count})
+
+        else:
+            return jsonify({'erro': 'Ação inválida'}), 400
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'erro': str(e)}), 500
+
+# --- FIM ROTAS DE CATEGORIAS ---
+
 # --- Produtos ---
 @app.route('/api/produtos', methods=['GET', 'POST'])
 @token_required
@@ -280,18 +385,25 @@ def gerenciar_produtos(current_user):
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 15, type=int)
         search_query = request.args.get('q', '', type=str)
+        category_filter = request.args.get('categoria', '', type=str)
+        
         query = Produto.query.order_by(Produto.nome)
+        
         if search_query:
             termo_busca = f"%{search_query}%"
             query = query.filter(or_(Produto.nome.ilike(termo_busca), Produto.sku.ilike(termo_busca)))
+            
+        if category_filter:
+            query = query.filter(Produto.categoria == category_filter)
+            
         paginacao = query.paginate(page=page, per_page=per_page, error_out=False)
         return jsonify({'produtos': [p.to_dict() for p in paginacao.items], 'total_paginas': paginacao.pages, 'pagina_atual': paginacao.page, 'total_produtos': paginacao.total})
 
     if request.method == 'POST':
         if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
         dados = request.form
-        if Produto.query.filter_by(sku=dados['sku']).first(): return jsonify({'erro': f'SKU {dados["sku"]} já existe.'}), 400
-        novo_produto = Produto(sku=dados.get('sku'), nome=dados.get('nome'), categoria=dados.get('categoria'), cor=dados.get('cor'), tamanho=dados.get('tamanho'), preco_custo=float(dados.get('preco_custo')), preco_venda=float(dados.get('preco_venda')), quantidade=int(dados.get('quantidade', 0)))
+        if Produto.query.filter_by(sku=dados['sku']).first(): return jsonify({'erro': 'SKU {dados["sku"]} já existe.'}), 400
+        novo_produto = Produto(sku=dados.get('sku'), nome=dados.get('nome'), categoria=dados.get('categoria', '').strip(), cor=dados.get('cor'), tamanho=dados.get('tamanho'), preco_custo=float(dados.get('preco_custo')), preco_venda=float(dados.get('preco_venda')), quantidade=int(dados.get('quantidade', 0)))
         if 'imagem' in request.files and request.files['imagem'].filename != '':
             uploads_dir = os.path.join(base_dir, 'uploads')
             os.makedirs(uploads_dir, exist_ok=True)
@@ -314,7 +426,7 @@ def gerenciar_produto_especifico(current_user, produto_id):
     if request.method == 'PUT':
         dados = request.form
         produto.nome = dados.get('nome', produto.nome)
-        produto.categoria = dados.get('categoria', produto.categoria)
+        produto.categoria = dados.get('categoria', produto.categoria).strip()
         produto.cor = dados.get('cor', produto.cor)
         produto.tamanho = dados.get('tamanho', produto.tamanho)
         produto.preco_custo = float(dados.get('preco_custo', produto.preco_custo))
@@ -422,7 +534,6 @@ def gerenciar_cliente_especifico(current_user, cliente_id):
         db.session.delete(cliente)
         db.session.commit()
         return jsonify({'mensagem': 'Cliente deletado!'})
-
 # --- Cupons ---
 @app.route('/api/cupons', methods=['GET', 'POST'])
 @token_required
@@ -755,13 +866,159 @@ def ajustar_caixa(current_user):
         id_usuario=current_user.id
     )
     db.session.add(mov)
-    registrar_log(current_user, "Ajuste de Caixa", f"Tipo: {tipo_ajuste}, Valor: R$ {valor:.2f}, Obs: {observacao}")
     db.session.commit()
-    
-    return jsonify({'mensagem': 'Caixa ajustado com sucesso!'}), 200
+    return jsonify({'mensagem': 'Ajuste realizado com sucesso!', 'id': mov.id})
 
-# 6. INICIALIZAÇÃO DO SERVIDOR
-# -----------------------------------------------------------
+# --- Store Pages ---
+@app.route('/store')
+def store_home():
+    return render_template('store/index.html')
+
+@app.route('/store/produtos')
+def store_products_page():
+    return render_template('store/products.html')
+
+@app.route('/store/produto/<int:produto_id>')
+def store_product_detail_page(produto_id):
+    return render_template('store/product_detail.html')
+
+@app.route('/store/carrinho')
+def store_cart_page():
+    return render_template('store/cart.html')
+
+@app.route('/store/checkout')
+def store_checkout_page():
+    return render_template('store/checkout.html')
+
+# --- Store API (Public) ---
+@app.route('/api/store/products', methods=['GET'])
+def store_get_products():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 12, type=int)
+    categoria = request.args.get('categoria')
+    search = request.args.get('q')
+    
+    query = Produto.query.filter_by(online_ativo=True)
+    
+    if categoria:
+        query = query.filter(Produto.categoria == categoria)
+    if search:
+        query = query.filter(Produto.nome.ilike(f"%{search}%"))
+        
+    paginacao = query.order_by(Produto.destaque.desc(), Produto.nome).paginate(page=page, per_page=per_page, error_out=False)
+    
+    # Get all unique categories for the filter
+    categorias_query = db.session.query(Produto.categoria).filter_by(online_ativo=True).distinct().all()
+    categorias = [c[0] for c in categorias_query if c[0]]
+
+    return jsonify({
+        'produtos': [p.to_dict() for p in paginacao.items],
+        'total_paginas': paginacao.pages,
+        'pagina_atual': paginacao.page,
+        'total_produtos': paginacao.total,
+        'categorias': categorias
+    })
+
+@app.route('/api/store/products/<int:produto_id>', methods=['GET'])
+def store_get_product_detail(produto_id):
+    produto = Produto.query.filter_by(id=produto_id, online_ativo=True).first_or_404()
+    return jsonify(produto.to_dict())
+
+@app.route('/api/store/checkout', methods=['POST'])
+def store_checkout():
+    dados = request.get_json()
+    # Esperado: { 'cliente': { 'nome', 'email', 'cpf', 'telefone', 'endereco': {...} }, 'itens': [...], 'pagamento': {...} }
+    
+    cliente_data = dados.get('cliente')
+    itens_data = dados.get('itens')
+    
+    if not cliente_data or not itens_data:
+        return jsonify({'erro': 'Dados incompletos.'}), 400
+        
+    # 1. Identificar ou Criar Cliente
+    cliente = Cliente.query.filter_by(email=cliente_data.get('email')).first()
+    if not cliente:
+        # Tenta pelo CPF se não achou por email
+        if cliente_data.get('cpf'):
+             cliente = Cliente.query.filter_by(cpf=cliente_data.get('cpf')).first()
+    
+    if not cliente:
+        cliente = Cliente(
+            nome=cliente_data['nome'],
+            email=cliente_data['email'],
+            cpf=cliente_data.get('cpf'),
+            telefone=cliente_data.get('telefone')
+        )
+        db.session.add(cliente)
+    else:
+        # Atualiza dados se necessário (opcional)
+        if not cliente.email: cliente.email = cliente_data['email']
+    
+    # Atualiza endereço
+    end_data = cliente_data.get('endereco', {})
+    cliente.endereco_rua = end_data.get('rua')
+    cliente.endereco_numero = end_data.get('numero')
+    cliente.endereco_bairro = end_data.get('bairro')
+    cliente.endereco_cidade = end_data.get('cidade')
+    cliente.endereco_cep = end_data.get('cep')
+    cliente.endereco_complemento = end_data.get('complemento')
+    
+    db.session.flush() # Garante ID do cliente
+    
+    # 2. Processar Itens e Estoque
+    total_venda = 0
+    itens_venda_objs = []
+    
+    for item in itens_data:
+        produto = Produto.query.get(item['id_produto'])
+        if not produto or not produto.online_ativo:
+            return jsonify({'erro': f'Produto ID {item["id_produto"]} indisponível.'}), 400
+        if produto.quantidade < item['quantidade']:
+            return jsonify({'erro': f'Estoque insuficiente para {produto.nome}.'}), 400
+            
+        produto.quantidade -= item['quantidade']
+        total_venda += produto.preco_venda * item['quantidade']
+        
+        itens_venda_objs.append(ItemVenda(
+            id_produto=produto.id,
+            quantidade=item['quantidade'],
+            preco_unitario_momento=produto.preco_venda
+        ))
+    
+    # 3. Criar Venda
+    nova_venda = Venda(
+        total_venda=total_venda,
+        id_cliente=cliente.id,
+        id_vendedor=None, # Venda Online
+        status='Pendente', # Novo status
+        entrega_rua=cliente.endereco_rua,
+        entrega_numero=cliente.endereco_numero,
+        entrega_bairro=cliente.endereco_bairro,
+        entrega_cidade=cliente.endereco_cidade,
+        entrega_cep=cliente.endereco_cep,
+        entrega_complemento=cliente.endereco_complemento
+    )
+    
+    # Adicionar Pagamento (Mock por enquanto)
+    pg_data = dados.get('pagamento', {})
+    nova_venda.pagamentos.append(Pagamento(
+        forma=pg_data.get('forma', 'Cartão Online'),
+        valor=total_venda
+    ))
+    
+    nova_venda.itens = itens_venda_objs
+    db.session.add(nova_venda)
+    
+    # Log
+    registrar_log(None, "Venda Online", f"ID: {nova_venda.id} - Cliente: {cliente.nome}")
+    
+    try:
+        db.session.commit()
+        return jsonify({'mensagem': 'Pedido realizado com sucesso!', 'id_pedido': nova_venda.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'erro': 'Erro ao processar pedido.', 'detalhes': str(e)}), 500
+
 if __name__ == '__main__':
     with app.app_context():
         pass

@@ -1,0 +1,123 @@
+{% extends "store/base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section position-relative d-flex align-items-center justify-content-center text-center text-white"
+    style="height: 80vh; background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('/static/img/background.png') no-repeat center center/cover;">
+    <div class="container position-relative z-2">
+        <h1 class="display-3 fw-bold mb-4 animate__animated animate__fadeInDown"
+            style="font-family: 'Outfit', sans-serif;">
+            Elegância e Performance
+        </h1>
+        <p class="lead mb-5 animate__animated animate__fadeInUp animate__delay-1s">
+            Descubra a nova coleção FP Fitness. Estilo que impulsiona seus resultados.
+        </p>
+        <a href="#featured"
+            class="btn btn-warning btn-lg rounded-pill px-5 py-3 fw-bold animate__animated animate__fadeInUp animate__delay-2s shadow-lg">
+            Ver Coleção
+        </a>
+    </div>
+</section>
+
+<!-- Featured Products -->
+<section id="featured" class="py-5">
+    <div class="container py-5">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold text-warning mb-3">Destaques</h2>
+            <p class="text-muted lead">As peças mais desejadas do momento.</p>
+        </div>
+
+        <div class="row g-4" id="featuredProductsContainer">
+            <!-- Products will be loaded here via JS -->
+            <div class="col-12 text-center">
+                <div class="spinner-border text-warning" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-5">
+            <a href="/store/produtos" class="btn btn-outline-dark rounded-pill px-5">Ver Todos os Produtos</a>
+        </div>
+    </div>
+</section>
+
+<!-- Categories/Banner -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card bg-dark text-white border-0 overflow-hidden h-100 position-relative">
+                    <img src="/frontend/cat-legging.jpg" class="card-img opacity-50" alt="Leggings"
+                        style="height: 300px; object-fit: cover;">
+                    <div class="card-img-overlay d-flex flex-column justify-content-center align-items-start p-5">
+                        <h3 class="card-title display-6 fw-bold">Leggings</h3>
+                        <p class="card-text">Conforto e flexibilidade para qualquer treino.</p>
+                        <a href="/store/produtos?categoria=Legging" class="btn btn-light rounded-pill mt-3">Comprar
+                            Agora</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-dark text-white border-0 overflow-hidden h-100 position-relative">
+                    <img src="/frontend/cat-top.jpg" class="card-img opacity-50" alt="Tops"
+                        style="height: 300px; object-fit: cover;">
+                    <div class="card-img-overlay d-flex flex-column justify-content-center align-items-start p-5">
+                        <h3 class="card-title display-6 fw-bold">Tops</h3>
+                        <p class="card-text">Sustentação e estilo em cada detalhe.</p>
+                        <a href="/store/produtos?categoria=Top" class="btn btn-light rounded-pill mt-3">Comprar
+                            Agora</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        loadFeaturedProducts();
+    });
+
+    async function loadFeaturedProducts() {
+        try {
+            const response = await fetch('/api/store/products?per_page=4');
+            const data = await response.json();
+            const container = document.getElementById('featuredProductsContainer');
+
+            if (data.produtos && data.produtos.length > 0) {
+                container.innerHTML = data.produtos.map(p => `
+                    <div class="col-md-6 col-lg-3">
+                        <div class="product-card h-100 position-relative">
+                            <div class="product-img-wrapper position-relative">
+                                <span class="badge badge-gold position-absolute top-0 end-0 m-3 px-3 py-2 rounded-pill z-2">
+                                    R$ ${p.preco_venda.toFixed(2)}
+                                </span>
+                                <a href="/store/produto/${p.id}">
+                                    <img src="${p.imagem_url ? '/uploads/' + p.imagem_url : 'https://via.placeholder.com/300x400?text=Sem+Imagem'}" alt="${p.nome}" class="img-fluid">
+                                </a>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="text-muted small mb-2 text-uppercase">${p.categoria || 'Geral'}</div>
+                                <h5 class="card-title fw-bold mb-3">
+                                    <a href="/store/produto/${p.id}" class="text-dark text-decoration-none stretched-link">${p.nome}</a>
+                                </h5>
+                                <button class="btn btn-outline-warning w-100 rounded-pill position-relative z-2" onclick="addToCart(${p.id}, '${p.nome}', ${p.preco_venda}, '${p.imagem_url || ''}')">
+                                    <i class="fa-solid fa-cart-plus me-2"></i>Adicionar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="col-12 text-center text-muted"><p>Nenhum produto em destaque no momento.</p></div>';
+            }
+        } catch (error) {
+            console.error('Erro ao carregar produtos:', error);
+            document.getElementById('featuredProductsContainer').innerHTML = '<div class="col-12 text-center text-danger"><p>Erro ao carregar produtos.</p></div>';
+        }
+    }
+</script>
+{% endblock %}

@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 throw new Error('Falha ao carregar o estoque.');
             }
-            
+
             const data = await response.json();
             renderTable(data.produtos); // Renderiza os produtos da página
             renderPagination(data.pagina_atual, data.total_paginas); // Renderiza a paginação
@@ -61,8 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 tr.classList.add('table-danger');
             }
 
-            const barcodeButton = produto.codigo_barras_url 
-                ? `<a href="/barcodes/${produto.codigo_barras_url}" target="_blank" class="btn btn-sm btn-outline-light">Ver</a>` 
+            const barcodeButton = produto.codigo_barras_url
+                ? `<a href="/barcodes/${produto.codigo_barras_url}" target="_blank" class="btn btn-sm btn-outline-light">Ver</a>`
                 : 'N/A';
 
             tr.innerHTML = `
@@ -81,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Cria e exibe os botões de navegação da paginação.
-     * (Esta função é idêntica à do produtos.js)
      */
     function renderPagination(paginaAtual, totalPaginas) {
         const oldPagination = document.querySelector('.pagination-nav');
@@ -93,18 +92,72 @@ document.addEventListener('DOMContentLoaded', () => {
         const ul = document.createElement('ul');
         ul.className = 'pagination';
 
+        const maxVisibleButtons = 5;
+        let startPage, endPage;
+
+        if (totalPaginas <= maxVisibleButtons) {
+            startPage = 1;
+            endPage = totalPaginas;
+        } else {
+            const maxPagesBeforeCurrent = Math.floor(maxVisibleButtons / 2);
+            const maxPagesAfterCurrent = Math.ceil(maxVisibleButtons / 2) - 1;
+
+            if (paginaAtual <= maxPagesBeforeCurrent) {
+                startPage = 1;
+                endPage = maxVisibleButtons;
+            } else if (paginaAtual + maxPagesAfterCurrent >= totalPaginas) {
+                startPage = totalPaginas - maxVisibleButtons + 1;
+                endPage = totalPaginas;
+            } else {
+                startPage = paginaAtual - maxPagesBeforeCurrent;
+                endPage = paginaAtual + maxPagesAfterCurrent;
+            }
+        }
+
+        // Previous button
         const prevLi = document.createElement('li');
         prevLi.className = `page-item ${paginaAtual === 1 ? 'disabled' : ''}`;
         prevLi.innerHTML = `<a class="page-link" href="#" data-page="${paginaAtual - 1}">Anterior</a>`;
         ul.appendChild(prevLi);
 
-        for (let i = 1; i <= totalPaginas; i++) {
+        // First page and ellipsis
+        if (startPage > 1) {
+            const liFirst = document.createElement('li');
+            liFirst.className = 'page-item';
+            liFirst.innerHTML = `<a class="page-link" href="#" data-page="1">1</a>`;
+            ul.appendChild(liFirst);
+
+            if (startPage > 2) {
+                const liEllipsis = document.createElement('li');
+                liEllipsis.className = 'page-item disabled';
+                liEllipsis.innerHTML = `<span class="page-link">...</span>`;
+                ul.appendChild(liEllipsis);
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
             const li = document.createElement('li');
             li.className = `page-item ${i === paginaAtual ? 'active' : ''}`;
             li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
             ul.appendChild(li);
         }
 
+        // Last page and ellipsis
+        if (endPage < totalPaginas) {
+            if (endPage < totalPaginas - 1) {
+                const liEllipsis = document.createElement('li');
+                liEllipsis.className = 'page-item disabled';
+                liEllipsis.innerHTML = `<span class="page-link">...</span>`;
+                ul.appendChild(liEllipsis);
+            }
+
+            const liLast = document.createElement('li');
+            liLast.className = 'page-item';
+            liLast.innerHTML = `<a class="page-link" href="#" data-page="${totalPaginas}">${totalPaginas}</a>`;
+            ul.appendChild(liLast);
+        }
+
+        // Next button
         const nextLi = document.createElement('li');
         nextLi.className = `page-item ${paginaAtual === totalPaginas ? 'disabled' : ''}`;
         nextLi.innerHTML = `<a class="page-link" href="#" data-page="${paginaAtual + 1}">Próximo</a>`;
