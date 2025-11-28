@@ -91,14 +91,13 @@
 
                         <!-- Área de Preview do Código de Barras -->
                         <div class="text-center my-3" id="barcodePreviewContainer" style="display: none;">
-                            <p class="mb-1">Pré-visualização do Código de Barras:</p>
-                            <img id="barcodePreview" src="" alt="Código de Barras"
-                                class="img-fluid rounded bg-white p-2" style="max-width: 250px;">
+                            <img id="barcodePreview" src="" alt="Código de Barras" class="img-fluid">
                         </div>
 
                         <div class="mb-3">
                             <label for="nome" class="form-label">Nome do Produto</label>
-                            <input type="text" class="form-control" id="nome" required>
+                            <input type="text" class="form-control" id="nome" name="nome" list="nomesProdutos" required>
+                            <datalist id="nomesProdutos"></datalist>
                         </div>
 
                         <div class="row">
@@ -123,6 +122,7 @@
                                 <input type="text" class="form-control" id="tamanho">
                             </div>
                         </div>
+
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="preco_custo" class="form-label">Preço de Custo (R$)</label>
@@ -137,10 +137,12 @@
                                 <input type="number" class="form-control" id="quantidade" required>
                             </div>
                         </div>
+
                         <div class="mb-3">
                             <label for="imagem" class="form-label">Imagem do Produto</label>
                             <input type="file" class="form-control" id="imagem" name="imagem" accept="image/*">
                         </div>
+
                         <div class="text-center">
                             <img id="imagePreview" src="" alt="Pré-visualização" class="img-fluid rounded"
                                 style="max-height: 200px; display: none;">

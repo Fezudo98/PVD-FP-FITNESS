@@ -1,54 +1,166 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Sistema FP Moda Fitness</title>
-    
-    <!-- Bootstrap CSS para um design responsivo e moderno -->
+    <title>Login Administrativo - FP Moda Fitness</title>
+
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Nosso CSS personalizado (para aplicar as cores da marca) -->
+
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="/css/style.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            overflow: hidden;
+            /* Prevent scrollbars */
+        }
+
+        .background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('/logo.jpg');
+            background-size: cover;
+            background-position: center;
+            filter: blur(15px) brightness(0.3);
+            z-index: -1;
+        }
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: rgba(30, 30, 30, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(224, 180, 49, 0.3);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            width: 100%;
+            max-width: 420px;
+            padding: 2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .login-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(224, 180, 49, 0.6);
+        }
+
+        .login-logo {
+            max-width: 180px;
+            margin-bottom: 1.5rem;
+            filter: drop-shadow(0 0 10px rgba(224, 180, 49, 0.3));
+        }
+
+        .form-control {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .form-control:focus {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: #e0b431;
+            box-shadow: 0 0 0 0.25rem rgba(224, 180, 49, 0.25);
+            color: #fff;
+        }
+
+        .form-label {
+            color: #aaa;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .btn-custom {
+            background: linear-gradient(45deg, #e0b431, #f3d068);
+            border: none;
+            color: #000;
+            font-weight: 600;
+            padding: 12px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-custom:hover {
+            background: linear-gradient(45deg, #c9a22b, #e0b431);
+            box-shadow: 0 0 15px rgba(224, 180, 49, 0.4);
+            transform: scale(1.02);
+        }
+
+        .card-title {
+            font-family: 'Outfit', sans-serif;
+            color: #e0b431;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+    </style>
 </head>
+
 <body>
 
-    <div class="container login-container">
+    <div class="background-container"></div>
+
+    <div class="login-container">
         <div class="card login-card">
-            <div class="card-body">
-                
-                <!-- Logo da Loja -->
-                <div class="text-center mb-4">
-                    <img src="logo.jpg" alt="Logo FP Moda Fitness" class="login-logo">
+            <div class="card-body p-0">
+
+                <div class="text-center">
+                    <img src="/logo.jpg" alt="Logo FP Moda Fitness" class="login-logo rounded-circle">
+                    <h4 class="card-title mb-4">Acesso Administrativo</h4>
                 </div>
 
-                <h5 class="card-title text-center mb-4">Acessar o Sistema</h5>
-                
-                <!-- Formulário de Login -->
                 <form id="loginForm">
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="email" required>
+                    <div class="mb-4">
+                        <label for="email" class="form-label">E-mail</label>
+                        <input type="email" class="form-control" id="email" placeholder="admin@fpfitness.com" required>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label for="password" class="form-label">Senha</label>
-                        <input type="password" class="form-control" id="password" required>
+                        <input type="password" class="form-control" id="password" placeholder="••••••••" required>
                     </div>
-                    <div class="d-grid">
+                    <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-custom">Entrar</button>
                     </div>
                 </form>
-                
-                <div id="errorMessage" class="alert alert-danger mt-3 d-none" role="alert">
-                    <!-- Mensagens de erro aparecerão aqui -->
+
+                <div id="errorMessage"
+                    class="alert alert-danger mt-4 d-none text-center small border-0 bg-danger bg-opacity-25 text-danger"
+                    role="alert">
+                    <!-- Erros aqui -->
+                </div>
+
+                <div class="text-center mt-4">
+                    <small class="text-muted">Sistema FP Moda Fitness &copy; 2025</small>
                 </div>
 
             </div>
         </div>
     </div>
 
-    <!-- Nosso JavaScript para lidar com a lógica de login -->
-    <script src="js/auth.js"></script>
+    <script src="/js/auth.js"></script>
 
 </body>
+
 </html>

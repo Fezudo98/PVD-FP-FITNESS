@@ -36,3 +36,6 @@ fix_categories.py
 read_output.py
 enable_products.py
 fix_product_images.py
+debug_*.py
+test_*.py
+reset_admin_password.py

@@ -1,113 +1,122 @@
 {% extends "store/base.html" %}
 
 {% block content %}
-<section class="py-5 bg-darker" style="min-height: 80vh;">
+<section class="py-5 bg-white" style="min-height: 80vh;">
     <div class="container py-5">
-        <h1 class="display-5 fw-bold text-white mb-5 text-center">Finalizar Compra</h1>
+        <h1 class="display-4 fw-bold text-dark mb-5 text-center" style="font-family: 'Outfit', sans-serif;">
+            Finalizar <span class="text-warning">Compra</span>
+        </h1>
 
         <div class="row g-5">
             <!-- Checkout Form -->
             <div class="col-lg-8">
-                <div class="card bg-dark border-0 shadow-lg">
-                    <div class="card-body p-4">
-                        <h4 class="fw-bold text-white mb-4">Seus Dados</h4>
-                        <form id="checkoutForm">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label for="nome" class="form-label text-muted">Nome Completo</label>
-                                    <input type="text" class="form-control bg-darker text-white border-secondary"
-                                        id="nome" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="email" class="form-label text-muted">Email</label>
-                                    <input type="email" class="form-control bg-darker text-white border-secondary"
-                                        id="email" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="cpf" class="form-label text-muted">CPF</label>
-                                    <input type="text" class="form-control bg-darker text-white border-secondary"
-                                        id="cpf" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="telefone" class="form-label text-muted">Telefone</label>
-                                    <input type="text" class="form-control bg-darker text-white border-secondary"
-                                        id="telefone" required>
-                                </div>
-
-                                <h5 class="fw-bold text-white mt-4 mb-3">Endereço de Entrega</h5>
-                                <div class="col-12">
-                                    <label for="rua" class="form-label text-muted">Rua</label>
-                                    <input type="text" class="form-control bg-darker text-white border-secondary"
-                                        id="rua" required>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="numero" class="form-label text-muted">Número</label>
-                                    <input type="text" class="form-control bg-darker text-white border-secondary"
-                                        id="numero" required>
-                                </div>
-                                <div class="col-md-8">
-                                    <label for="bairro" class="form-label text-muted">Bairro</label>
-                                    <input type="text" class="form-control bg-darker text-white border-secondary"
-                                        id="bairro" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="cidade" class="form-label text-muted">Cidade</label>
-                                    <input type="text" class="form-control bg-darker text-white border-secondary"
-                                        id="cidade" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="cep" class="form-label text-muted">CEP</label>
-                                    <input type="text" class="form-control bg-darker text-white border-secondary"
-                                        id="cep" required>
-                                </div>
+                <div class="p-4 rounded-4 bg-light border border-light-subtle shadow-sm">
+                    <h4 class="fw-bold text-dark mb-4" style="font-family: 'Outfit', sans-serif;">Seus Dados</h4>
+                    <form id="checkoutForm">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="nome" class="form-label text-muted small text-uppercase fw-bold">Nome
+                                    Completo</label>
+                                <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
+                                    id="nome" required style="padding: 0.75rem;">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email"
+                                    class="form-label text-muted small text-uppercase fw-bold">Email</label>
+                                <input type="email" class="form-control bg-white text-dark border-secondary-subtle"
+                                    id="email" required style="padding: 0.75rem;">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="cpf" class="form-label text-muted small text-uppercase fw-bold">CPF</label>
+                                <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
+                                    id="cpf" required style="padding: 0.75rem;">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="telefone"
+                                    class="form-label text-muted small text-uppercase fw-bold">Telefone</label>
+                                <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
+                                    id="telefone" required style="padding: 0.75rem;">
                             </div>
 
-                            <h5 class="fw-bold text-white mt-4 mb-3">Pagamento</h5>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="pagamento" id="cartao"
-                                    value="Cartão de Crédito" checked>
-                                <label class="form-check-label text-white" for="cartao">
-                                    Cartão de Crédito (Simulação)
-                                </label>
+                            <h5 class="fw-bold text-dark mt-4 mb-3" style="font-family: 'Outfit', sans-serif;">Endereço
+                                de Entrega</h5>
+                            <div class="col-12">
+                                <label for="rua" class="form-label text-muted small text-uppercase fw-bold">Rua</label>
+                                <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
+                                    id="rua" required style="padding: 0.75rem;">
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="pagamento" id="pix" value="PIX">
-                                <label class="form-check-label text-white" for="pix">
-                                    PIX (Simulação)
-                                </label>
+                            <div class="col-md-4">
+                                <label for="numero"
+                                    class="form-label text-muted small text-uppercase fw-bold">Número</label>
+                                <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
+                                    id="numero" required style="padding: 0.75rem;">
                             </div>
-                        </form>
-                    </div>
+                            <div class="col-md-8">
+                                <label for="bairro"
+                                    class="form-label text-muted small text-uppercase fw-bold">Bairro</label>
+                                <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
+                                    id="bairro" required style="padding: 0.75rem;">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="cidade"
+                                    class="form-label text-muted small text-uppercase fw-bold">Cidade</label>
+                                <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
+                                    id="cidade" required style="padding: 0.75rem;">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="cep" class="form-label text-muted small text-uppercase fw-bold">CEP</label>
+                                <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
+                                    id="cep" required style="padding: 0.75rem;">
+                            </div>
+                        </div>
+
+                        <h5 class="fw-bold text-dark mt-4 mb-3" style="font-family: 'Outfit', sans-serif;">Pagamento
+                        </h5>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="pagamento" id="cartao"
+                                value="Cartão de Crédito" checked>
+                            <label class="form-check-label text-dark" for="cartao">
+                                Cartão de Crédito (Simulação)
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="pagamento" id="pix" value="PIX">
+                            <label class="form-check-label text-dark" for="pix">
+                                PIX (Simulação)
+                            </label>
+                        </div>
+                    </form>
                 </div>
             </div>
 
             <!-- Order Summary -->
             <div class="col-lg-4">
-                <div class="card bg-dark border-0 shadow-lg">
-                    <div class="card-body p-4">
-                        <h4 class="fw-bold text-white mb-4">Resumo</h4>
-                        <ul class="list-group list-group-flush mb-3" id="checkoutItems">
-                            <!-- Items injected via JS -->
-                        </ul>
-                        <div class="d-flex justify-content-between mb-3 text-muted">
-                            <span>Subtotal</span>
-                            <span id="checkoutSubtotal">R$ 0,00</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-3 text-muted">
-                            <span>Entrega</span>
-                            <span class="text-success">Grátis</span>
-                        </div>
-                        <hr class="border-secondary my-4">
-                        <div class="d-flex justify-content-between mb-4">
-                            <span class="fw-bold text-white h5">Total</span>
-                            <span class="fw-bold text-warning h5" id="checkoutTotal">R$ 0,00</span>
-                        </div>
-
-                        <button onclick="submitOrder()"
-                            class="btn btn-warning w-100 py-3 rounded-pill fw-bold shadow-lg">
-                            Confirmar Pedido
-                        </button>
+                <div class="p-4 rounded-4 position-sticky bg-light border border-light-subtle shadow-sm"
+                    style="top: 100px;">
+                    <h4 class="fw-bold text-dark mb-4" style="font-family: 'Outfit', sans-serif;">Resumo</h4>
+                    <ul class="list-group list-group-flush mb-3 bg-transparent" id="checkoutItems">
+                        <!-- Items injected via JS -->
+                    </ul>
+                    <div class="d-flex justify-content-between mb-3 text-secondary">
+                        <span>Subtotal</span>
+                        <span id="checkoutSubtotal" class="text-dark fw-bold">R$ 0,00</span>
                     </div>
+                    <div class="d-flex justify-content-between mb-3 text-secondary">
+                        <span>Entrega</span>
+                        <span class="text-success small fw-bold"><i
+                                class="fa-solid fa-check-circle me-1"></i>Grátis</span>
+                    </div>
+                    <hr class="my-4 border-secondary-subtle">
+                    <div class="d-flex justify-content-between mb-4 align-items-center">
+                        <span class="fw-bold text-dark h5 mb-0">Total</span>
+                        <span class="fw-bold text-warning h4 mb-0" id="checkoutTotal">R$ 0,00</span>
+                    </div>
+
+                    <button onclick="submitOrder()"
+                        class="btn btn-warning w-100 py-3 rounded-pill fw-bold shadow-sm text-uppercase"
+                        style="letter-spacing: 1px; transition: all 0.3s ease;">
+                        Confirmar Pedido
+                    </button>
                 </div>
             </div>
         </div>

@@ -64,20 +64,20 @@ function renderCartPage() {
                     <div class="d-flex align-items-center">
                         <img src="${item.image ? '/uploads/' + item.image : 'https://via.placeholder.com/50'}" alt="${item.nome || 'Produto'}" class="rounded me-3" style="width: 50px; height: 50px; object-fit: cover;">
                         <div>
-                            <h6 class="mb-0 text-white">${item.nome || 'Produto sem nome'}</h6>
+                            <h6 class="mb-0 text-dark">${item.nome || 'Produto sem nome'}</h6>
                             ${item.size ? `<small class="text-muted">Tamanho: ${item.size}</small>` : ''}
                         </div>
                     </div>
                 </td>
-                <td class="text-white">R$ ${price.toFixed(2)}</td>
+                <td class="text-dark">R$ ${price.toFixed(2)}</td>
                 <td>
                     <div class="input-group input-group-sm" style="width: 100px;">
                         <button class="btn btn-outline-secondary" onclick="updateQuantity(${item.id}, -1)">-</button>
-                        <input type="text" class="form-control text-center bg-dark text-white border-secondary" value="${quantity}" readonly>
+                        <input type="text" class="form-control text-center bg-white text-dark border-secondary" value="${quantity}" readonly>
                         <button class="btn btn-outline-secondary" onclick="updateQuantity(${item.id}, 1)">+</button>
                     </div>
                 </td>
-                <td class="text-warning fw-bold">R$ ${subtotal.toFixed(2)}</td>
+                <td class="text-dark fw-bold">R$ ${subtotal.toFixed(2)}</td>
                 <td>
                     <button class="btn btn-link text-danger p-0" onclick="removeFromCart(${item.id})">
                         <i class="fa-solid fa-trash"></i>
@@ -137,12 +137,13 @@ function renderCheckoutPage() {
         const subtotal = item.price * item.quantity;
         total += subtotal;
         return `
-            <li class="list-group-item bg-dark text-white d-flex justify-content-between lh-sm">
+            <li class="list-group-item bg-transparent text-dark d-flex justify-content-between lh-sm border-bottom border-secondary-subtle">
                 <div>
-                    <h6 class="my-0">${item.nome}</h6>
-                    <small class="text-muted">Qtd: ${item.quantity}</small>
+                    <h6 class="my-0 fw-bold text-dark">${item.nome || 'Produto'}</h6>
+                    <small class="text-secondary">Qtd: ${item.quantity}</small>
+                    ${item.size ? `<br><small class="text-secondary">Tamanho: ${item.size}</small>` : ''}
                 </div>
-                <span class="text-muted">R$ ${subtotal.toFixed(2)}</span>
+                <span class="text-dark fw-bold">R$ ${subtotal.toFixed(2)}</span>
             </li>
         `;
     }).join('');

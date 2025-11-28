@@ -6,8 +6,9 @@
         <!-- Product Image -->
         <div class="col-md-6">
             <div class="card border-0 bg-dark overflow-hidden rounded-4 shadow-lg">
-                <div class="position-relative" style="height: 500px;">
-                    <img id="productImage" src="" class="w-100 h-100 object-fit-cover" alt="Product Image">
+                <div class="position-relative" style="height: 400px;">
+                    <img id="productImage" src="" class="w-100 h-100 object-fit-cover" alt="Product Image"
+                        style="object-fit: cover;">
                     <div class="position-absolute top-0 start-0 m-4">
                         <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold"
                             id="productCategory"></span>
@@ -18,9 +19,9 @@
 
         <!-- Product Details -->
         <div class="col-md-6">
-            <div class="d-flex flex-column h-100 justify-content-center">
-                <h1 class="display-4 fw-bold text-white mb-2" id="productName">Carregando...</h1>
-                <div class="d-flex align-items-center mb-4">
+            <div class="d-flex flex-column h-100">
+                <h1 class="display-5 fw-bold text-dark mb-1" id="productName">Carregando...</h1>
+                <div class="d-flex align-items-center mb-2">
                     <div class="text-warning me-3">
                         <i class="fas fa-star"></i>
                         <i class="fas fa-star"></i>
@@ -31,25 +32,24 @@
                     <span class="text-muted small">(4.8 de 5 avaliações)</span>
                 </div>
 
-                <h2 class="display-5 fw-bold text-warning mb-4" id="productPrice">R$ --,--</h2>
+                <h2 class="display-6 fw-bold text-warning mb-2" id="productPrice">R$ --,--</h2>
 
-                <p class="lead text-light mb-5" id="productDescription">
+                <p class="lead text-muted mb-3 fs-6" id="productDescription">
                     Carregando detalhes do produto...
                 </p>
 
                 <!-- Options -->
-                <div class="row g-3 mb-5">
-                    <div class="col-6">
-                        <label class="form-label text-muted small text-uppercase fw-bold">Tamanho</label>
-                        <select class="form-select bg-dark text-white border-secondary rounded-pill" id="productSize">
-                            <option selected>Selecione</option>
-                            <option value="P">P</option>
-                            <option value="M">M</option>
-                            <option value="G">G</option>
-                            <option value="GG">GG</option>
-                        </select>
+                <div class="row g-2 mb-3">
+                    <div class="col-12" id="colorOptionsContainer">
+                        <!-- Color options will be dynamically loaded here -->
                     </div>
-                    <div class="col-6">
+                    <div class="col-12" id="sizeOptionsContainer">
+                        <label class="form-label text-muted small text-uppercase fw-bold mb-1">Tamanho</label>
+                        <div class="d-flex flex-wrap gap-2" id="sizeButtons">
+                            <!-- Size buttons will be dynamically loaded here -->
+                        </div>
+                    </div>
+                    <div class="col-6 mt-2">
                         <label class="form-label text-muted small text-uppercase fw-bold">Quantidade</label>
                         <div class="input-group">
                             <button class="btn btn-outline-secondary rounded-start-pill" type="button"
@@ -74,7 +74,7 @@
                 </div>
 
                 <!-- Extra Info -->
-                <div class="mt-5 pt-4 border-top border-secondary">
+                <div class="mt-3 pt-3 border-top border-secondary">
                     <div class="d-flex align-items-center text-muted small mb-2">
                         <i class="fas fa-truck me-2"></i> Frete Grátis para compras acima de R$ 299
                     </div>
@@ -92,6 +92,34 @@
 <script>
     const productId = window.location.pathname.split('/').pop();
     let currentProduct = null;
+    let allVariants = [];
+    let selectedColor = null;
+    let selectedSize = null;
+
+    // Color Mapping (Portuguese -> Hex)
+    const colorMap = {
+        'preto': '#000000',
+        'branco': '#FFFFFF',
+        'cinza': '#808080',
+        'azul': '#0000FF',
+        'vermelho': '#FF0000',
+        'verde': '#008000',
+        'amarelo': '#FFFF00',
+        'rosa': '#FFC0CB',
+        'roxo': '#800080',
+        'laranja': '#FFA500',
+        'bege': '#F5F5DC',
+        'marrom': '#A52A2A',
+        'vinho': '#800000',
+        'marinho': '#000080',
+        'ciano': '#00FFFF',
+        'magenta': '#FF00FF',
+        'lilas': '#C8A2C8',
+        'coral': '#FF7F50',
+        'turquesa': '#40E0D0',
+        'dourado': '#FFD700',
+        'prata': '#C0C0C0'
+    };
 
     document.addEventListener('DOMContentLoaded', () => {
         loadProductDetails();
@@ -102,22 +130,40 @@
             const response = await fetch(`/api/store/products/${productId}`);
             if (!response.ok) throw new Error('Produto não encontrado');
 
-            currentProduct = await response.json();
+            const data = await response.json();
 
-            document.title = `${currentProduct.nome} | FP Moda Fitness`;
-            document.getElementById('productName').textContent = currentProduct.nome;
-            document.getElementById('productPrice').textContent = `R$ ${currentProduct.preco_venda.toFixed(2)}`;
-            document.getElementById('productDescription').textContent = currentProduct.descricao || 'Sem descrição disponível.';
-            document.getElementById('productCategory').textContent = currentProduct.categoria || 'Geral';
-
-            const imgEl = document.getElementById('productImage');
-            imgEl.src = currentProduct.imagem_url ? `/uploads/${currentProduct.imagem_url}` : 'https://via.placeholder.com/600x800?text=Sem+Imagem';
-
-            // Pre-select size if available in product data (simplified for now)
-            if (currentProduct.tamanho) {
-                const sizeSelect = document.getElementById('productSize');
-                // Logic to select or add option if strictly defined
+            // Filter variants to only include those with stock > 0
+            let variants = data.variants || [];
+            if (variants.length === 0 && data.quantidade > 0) {
+                variants = [data];
             }
+
+            // Ensure allVariants only contains in-stock items
+            allVariants = variants.filter(v => v.quantidade > 0);
+
+            if (allVariants.length === 0) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Esgotado',
+                    text: 'Este produto está esgotado.',
+                    background: '#1e1e1e',
+                    color: '#fff'
+                }).then(() => {
+                    window.location.href = '/store';
+                });
+                return;
+            }
+
+            // Check if the main loaded product has stock. If not, switch to the first available variant.
+            if (data.quantidade <= 0) {
+                currentProduct = allVariants[0];
+            } else {
+                currentProduct = data;
+            }
+
+            // Initial Render
+            renderProductInfo(currentProduct);
+            initializeOptions();
 
         } catch (error) {
             console.error(error);
@@ -133,46 +179,167 @@
         }
     }
 
+    function renderProductInfo(product) {
+        document.title = `${product.nome} | FP Moda Fitness`;
+        document.getElementById('productName').textContent = product.nome;
+        document.getElementById('productPrice').textContent = `R$ ${product.preco_venda.toFixed(2)}`;
+        document.getElementById('productDescription').textContent = product.descricao || 'Sem descrição disponível.';
+        document.getElementById('productCategory').textContent = product.categoria || 'Geral';
+
+        const imgEl = document.getElementById('productImage');
+        imgEl.src = product.imagem_url ? `/uploads/${product.imagem_url}` : 'https://via.placeholder.com/600x800?text=Sem+Imagem';
+    }
+
+    function initializeOptions() {
+        // Get unique colors and sizes
+        const colors = [...new Set(allVariants.map(v => v.cor).filter(Boolean))];
+
+        // Render Color Options
+        const colorContainer = document.getElementById('colorOptionsContainer');
+        if (colors.length > 0) {
+            colorContainer.innerHTML = `
+                <label class="form-label text-muted small text-uppercase fw-bold">Cor</label>
+                <div class="d-flex gap-2 flex-wrap">
+                    ${colors.map(color => {
+                const hex = colorMap[color.toLowerCase()] || '#CCCCCC'; // Default to gray if unknown
+                const isWhite = hex.toUpperCase() === '#FFFFFF';
+                return `
+                        <div class="position-relative">
+                            <input type="radio" class="btn-check" name="colorOption" id="color_${color}" value="${color}" autocomplete="off" onchange="handleColorChange('${color}')">
+                            <label class="btn rounded-circle p-0 d-flex align-items-center justify-content-center shadow-sm" 
+                                   for="color_${color}" 
+                                   style="width: 40px; height: 40px; background-color: ${hex}; border: 2px solid ${isWhite ? '#ccc' : hex}; cursor: pointer;"
+                                   title="${color}">
+                                   <i class="fas fa-check text-${isWhite ? 'dark' : 'white'} opacity-0 check-icon"></i>
+                            </label>
+                        </div>
+                    `}).join('')}
+                </div>
+                <style>
+                    .btn-check:checked + label {
+                        border-color: #ffc107 !important;
+                        transform: scale(1.1);
+                    }
+                    .btn-check:checked + label .check-icon {
+                        opacity: 1 !important;
+                    }
+                </style>
+            `;
+            // Auto-select first color if available
+            if (colors.length > 0) {
+                document.getElementById(`color_${colors[0]}`).checked = true;
+                handleColorChange(colors[0]);
+            }
+        } else {
+            colorContainer.innerHTML = ''; // No colors to select
+            selectedColor = null;
+            updateSizeOptions(); // Update sizes directly
+        }
+    }
+
+    function handleColorChange(color) {
+        selectedColor = color;
+        updateSizeOptions();
+
+        // Find a variant with this color to update image/price preview
+        const variant = allVariants.find(v => v.cor === color);
+        if (variant) {
+            renderProductInfo(variant);
+        }
+    }
+
+    function updateSizeOptions() {
+        // Filter variants by selected color (if any)
+        const availableVariants = selectedColor
+            ? allVariants.filter(v => v.cor === selectedColor)
+            : allVariants;
+
+        const sizes = [...new Set(availableVariants.map(v => v.tamanho).filter(Boolean))];
+
+        const sizeContainer = document.getElementById('sizeButtons');
+
+        if (sizes.length > 0) {
+            sizeContainer.innerHTML = sizes.map(size => `
+                <input type="radio" class="btn-check" name="sizeOption" id="size_${size}" value="${size}" autocomplete="off" onchange="handleSizeChange('${size}')">
+                <label class="btn btn-outline-dark px-3 py-2" for="size_${size}">${size}</label>
+            `).join('');
+
+            // Reset selected size
+            selectedSize = null;
+        } else {
+            sizeContainer.innerHTML = '<span class="text-muted small">Tamanho único / Indisponível</span>';
+            selectedSize = null;
+        }
+    }
+
+    function handleSizeChange(size) {
+        selectedSize = size;
+        const variant = findSelectedVariant();
+        if (variant) {
+            renderProductInfo(variant);
+        }
+    }
+
+    function findSelectedVariant() {
+        return allVariants.find(v =>
+            (!selectedColor || v.cor === selectedColor) &&
+            (!selectedSize || v.tamanho === selectedSize)
+        );
+    }
+
     function adjustQty(delta) {
         const input = document.getElementById('productQty');
         let val = parseInt(input.value) + delta;
         if (val < 1) val = 1;
-        // Check stock limit if available
-        if (currentProduct && val > currentProduct.quantidade) {
-            val = currentProduct.quantidade;
-            Swal.fire({ icon: 'warning', title: 'Estoque Limitado', text: `Apenas ${currentProduct.quantidade} unidades disponíveis.`, toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+
+        const variant = findSelectedVariant();
+        if (variant && val > variant.quantidade) {
+            val = variant.quantidade;
+            Swal.fire({ icon: 'warning', title: 'Estoque Limitado', text: `Apenas ${variant.quantidade} unidades disponíveis.`, toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
         }
         input.value = val;
     }
 
     function addToCartCurrent() {
-        console.log('Adding to cart...', currentProduct);
-        if (!currentProduct) {
-            console.error('No product loaded');
+        const variant = findSelectedVariant();
+
+        // Validation
+        if (allVariants.some(v => v.cor) && !selectedColor) {
+            Swal.fire({ icon: 'info', title: 'Selecione uma cor', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
             return;
         }
-
-        const qty = parseInt(document.getElementById('productQty').value);
-        const size = document.getElementById('productSize').value;
-
-        if (size === 'Selecione') {
+        if (allVariants.some(v => v.tamanho) && !selectedSize) {
             Swal.fire({ icon: 'info', title: 'Selecione um tamanho', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
             return;
         }
 
+        if (!variant && allVariants.length > 1) { // If there are variants, but no specific one is found
+            Swal.fire({ icon: 'error', title: 'Produto indisponível', text: 'Combinação não encontrada.', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+
+        const finalProduct = variant || currentProduct; // Use variant if found, otherwise the base product
+        const qty = parseInt(document.getElementById('productQty').value);
+
         let cart = JSON.parse(localStorage.getItem('fp_fitness_cart')) || [];
-        const existingItem = cart.find(item => item.id === currentProduct.id && item.size === size);
+        // Find existing item by product ID, color, and size to ensure unique cart entries for variants
+        const existingItem = cart.find(item =>
+            item.id === finalProduct.id &&
+            item.color === (finalProduct.cor || null) &&
+            item.size === (finalProduct.tamanho || null)
+        );
 
         if (existingItem) {
             existingItem.quantity += qty;
         } else {
             cart.push({
-                id: currentProduct.id,
+                id: finalProduct.id,
                 quantity: qty,
-                size: size,
-                nome: currentProduct.nome,
-                price: currentProduct.preco_venda,
-                image: currentProduct.imagem_url
+                size: finalProduct.tamanho || null, // Store null if no size
+                color: finalProduct.cor || null,   // Store null if no color
+                nome: finalProduct.nome,
+                price: finalProduct.preco_venda,
+                image: finalProduct.imagem_url
             });
         }
 
@@ -182,7 +349,7 @@
         Swal.fire({
             icon: 'success',
             title: 'Adicionado!',
-            text: `${qty}x ${currentProduct.nome} (${size}) adicionado ao carrinho.`,
+            text: `${qty}x ${finalProduct.nome} adicionado ao carrinho.`,
             toast: true,
             position: 'top-end',
             showConfirmButton: false,

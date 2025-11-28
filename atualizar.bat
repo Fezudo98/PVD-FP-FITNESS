@@ -47,6 +47,10 @@ pause
 exit
 )
 ECHO.
+ECHO --- CORRIGINDO NOMES DE PRODUTOS (PADRONIZACAO) ---
+python fix_product_names.py
+ECHO.
+ECHO.
 ECHO --- Banco de dados atualizado com sucesso. ---
 ECHO.
 :: --- ETAPA 3: FINALIZACAO ---

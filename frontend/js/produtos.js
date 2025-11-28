@@ -7,6 +7,7 @@ if (!token) {
 
 // Variáveis globais para controlar o estado da página
 let currentPage = 1;
+let totalPages = 1; // Nova variável global para o total de páginas
 let currentSearch = '';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -87,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             renderPagination(data.pagina_atual, data.total_paginas);
             currentPage = data.pagina_atual;
+            totalPages = data.total_paginas; // Atualiza o total de páginas globalmente
             currentSearch = searchQuery;
 
         } catch (error) {
@@ -171,7 +173,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (target.matches('.page-link') && target.dataset.page) {
             event.preventDefault();
             const pageNumber = parseInt(target.dataset.page);
-            if (pageNumber >= 1 && pageNumber <= (document.querySelectorAll('.page-item').length - 2) && pageNumber !== currentPage) {
+            // Correção: Valida contra o totalPages real, não contra o número de botões visíveis
+            if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
                 fetchProdutos(pageNumber, currentSearch);
             }
         }
@@ -318,6 +321,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Fim Gerenciamento de Categorias ---
 
+    // Carrega nomes para autocomplete
+    async function loadProductNames() {
+        try {
+            const response = await fetch(`${API_URL}/api/produtos/nomes`, {
+                headers: { 'x-access-token': token }
+            });
+            if (!response.ok) throw new Error('Erro ao carregar nomes');
+            const nomes = await response.json();
+            const datalist = document.getElementById('nomesProdutos');
+            datalist.innerHTML = '';
+            nomes.forEach(nome => {
+                const option = document.createElement('option');
+                option.value = nome;
+                datalist.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar nomes para autocomplete:', error);
+        }
+    }
+
     async function openEditModal(produtoId) {
         await loadCategories(); // Garante que as categorias estejam carregadas
         const response = await fetch(`${API_URL}/api/produtos/${produtoId}`, { headers: { 'x-access-token': token } });
@@ -354,24 +377,27 @@ document.addEventListener('DOMContentLoaded', () => {
         generateBarcodeBtn.disabled = false;
         barcodePreview.src = produto.codigo_barras_url ? `${API_URL}/barcodes/${produto.codigo_barras_url}` : '';
         barcodePreviewContainer.style.display = produto.codigo_barras_url ? 'block' : 'none';
+
+        loadProductNames(); // Carrega sugestões de nomes
+
         produtoModal.show();
     }
 
-    addProdutoBtn.addEventListener('click', async () => {
-        await loadCategories();
+    addProdutoBtn.addEventListener('click', () => {
+        document.getElementById('modalTitle').textContent = 'Adicionar Produto';
         produtoForm.reset();
         document.getElementById('produtoId').value = '';
-
-        // Reset categoria UI
-        isNewCategory = false;
+        document.getElementById('barcodePreviewContainer').style.display = 'none';
+        document.getElementById('imagePreview').style.display = 'none';
+        toggleCategoriaInputBtn.textContent = '+';
+        toggleCategoriaInputBtn.title = 'Nova Categoria';
         categoriaSelect.style.display = 'block';
         categoriaInput.style.display = 'none';
-        toggleCategoriaInputBtn.textContent = '+';
+        categoriaInput.required = false;
+        categoriaSelect.required = true;
 
-        imagePreview.style.display = 'none';
-        modalTitle.textContent = 'Adicionar Novo Produto';
-        generateBarcodeBtn.disabled = true;
-        barcodePreviewContainer.style.display = 'none';
+        loadProductNames(); // Carrega sugestões de nomes
+
         produtoModal.show();
     });
 

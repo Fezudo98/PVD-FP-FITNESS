@@ -4,7 +4,7 @@ import base64
 import math
 from datetime import datetime, timedelta
 from functools import wraps
-from flask import Flask, request, jsonify, send_from_directory, render_template
+from flask import Flask, request, jsonify, send_from_directory, render_template, redirect
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
@@ -245,6 +245,10 @@ def salvar_recibo_html(venda):
 # -----------------------------------------------------------
 @app.route('/')
 def index():
+    return redirect('/login')
+
+@app.route('/login')
+def login_page():
     return send_from_directory('frontend', 'login.html')
 
 @app.route('/uploads/<filename>')
@@ -402,8 +406,9 @@ def gerenciar_produtos(current_user):
     if request.method == 'POST':
         if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
         dados = request.form
-        if Produto.query.filter_by(sku=dados['sku']).first(): return jsonify({'erro': 'SKU {dados["sku"]} já existe.'}), 400
-        novo_produto = Produto(sku=dados.get('sku'), nome=dados.get('nome'), categoria=dados.get('categoria', '').strip(), cor=dados.get('cor'), tamanho=dados.get('tamanho'), preco_custo=float(dados.get('preco_custo')), preco_venda=float(dados.get('preco_venda')), quantidade=int(dados.get('quantidade', 0)))
+        if Produto.query.filter_by(sku=dados['sku']).first(): return jsonify({'erro': f'SKU {dados["sku"]} já existe.'}), 400
+        nome_normalizado = ' '.join(dados.get('nome', '').split()).title()
+        novo_produto = Produto(sku=dados.get('sku'), nome=nome_normalizado, categoria=dados.get('categoria', '').strip(), cor=dados.get('cor'), tamanho=dados.get('tamanho'), preco_custo=float(dados.get('preco_custo')), preco_venda=float(dados.get('preco_venda')), quantidade=int(dados.get('quantidade', 0)))
         if 'imagem' in request.files and request.files['imagem'].filename != '':
             uploads_dir = os.path.join(base_dir, 'uploads')
             os.makedirs(uploads_dir, exist_ok=True)
@@ -417,6 +422,16 @@ def gerenciar_produtos(current_user):
         db.session.commit()
         return jsonify(novo_produto.to_dict()), 201
 
+@app.route('/api/produtos/nomes', methods=['GET'])
+@token_required
+def get_nomes_produtos(current_user):
+    try:
+        nomes = db.session.query(Produto.nome).distinct().order_by(Produto.nome).all()
+        lista_nomes = [n[0] for n in nomes if n[0]]
+        return jsonify(lista_nomes)
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
 @app.route('/api/produtos/<int:produto_id>', methods=['GET', 'PUT', 'DELETE'])
 @token_required
 def gerenciar_produto_especifico(current_user, produto_id):
@@ -425,7 +440,10 @@ def gerenciar_produto_especifico(current_user, produto_id):
     if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
     if request.method == 'PUT':
         dados = request.form
-        produto.nome = dados.get('nome', produto.nome)
+        if 'nome' in dados:
+            produto.nome = ' '.join(dados.get('nome', '').split()).title()
+        else:
+            produto.nome = produto.nome.strip().title() # Fallback just in case, though split/join is safer
         produto.categoria = dados.get('categoria', produto.categoria).strip()
         produto.cor = dados.get('cor', produto.cor)
         produto.tamanho = dados.get('tamanho', produto.tamanho)
@@ -898,31 +916,59 @@ def store_get_products():
     categoria = request.args.get('categoria')
     search = request.args.get('q')
     
-    query = Produto.query.filter_by(online_ativo=True)
+    # Base query
+    query = db.session.query(
+        Produto.nome,
+        func.min(Produto.preco_venda).label('min_price'),
+        func.max(Produto.preco_venda).label('max_price'),
+        func.min(Produto.id).label('id'), # Use ID of the first product found
+        func.max(Produto.imagem_url).label('imagem_url'), # Pick one image
+        func.max(Produto.categoria).label('categoria') # Pick one category
+    ).filter(Produto.online_ativo == True, Produto.quantidade > 0)
     
     if categoria:
         query = query.filter(Produto.categoria == categoria)
     if search:
         query = query.filter(Produto.nome.ilike(f"%{search}%"))
         
-    paginacao = query.order_by(Produto.destaque.desc(), Produto.nome).paginate(page=page, per_page=per_page, error_out=False)
+    # Group by name to merge variants
+    query = query.group_by(Produto.nome)
+    
+    # Pagination
+    total = query.count()
+    items = query.order_by(Produto.nome).offset((page - 1) * per_page).limit(per_page).all()
     
     # Get all unique categories for the filter
     categorias_query = db.session.query(Produto.categoria).filter_by(online_ativo=True).distinct().all()
     categorias = [c[0] for c in categorias_query if c[0]]
 
     return jsonify({
-        'produtos': [p.to_dict() for p in paginacao.items],
-        'total_paginas': paginacao.pages,
-        'pagina_atual': paginacao.page,
-        'total_produtos': paginacao.total,
+        'produtos': [{
+            'id': item.id,
+            'nome': item.nome,
+            'preco_venda': item.min_price, # Show min price
+            'max_price': item.max_price,
+            'imagem_url': item.imagem_url,
+            'categoria': item.categoria
+        } for item in items],
+        'total_paginas': math.ceil(total / per_page),
+        'pagina_atual': page,
+        'total_produtos': total,
         'categorias': categorias
     })
 
 @app.route('/api/store/products/<int:produto_id>', methods=['GET'])
 def store_get_product_detail(produto_id):
+    # Find the requested product
     produto = Produto.query.filter_by(id=produto_id, online_ativo=True).first_or_404()
-    return jsonify(produto.to_dict())
+    
+    # Find all variants (products with same name)
+    variants = Produto.query.filter_by(nome=produto.nome, online_ativo=True).filter(Produto.quantidade > 0).all()
+    
+    return jsonify({
+        **produto.to_dict(),
+        'variants': [v.to_dict() for v in variants]
+    })
 
 @app.route('/api/store/checkout', methods=['POST'])
 def store_checkout():
@@ -1023,3 +1069,4 @@ if __name__ == '__main__':
     with app.app_context():
         pass
     app.run(host='0.0.0.0', port=5000, debug=True)
+# Force reload for products.html update
