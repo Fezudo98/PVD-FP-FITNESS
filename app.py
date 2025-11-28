@@ -792,8 +792,8 @@ def get_dashboard_data(current_user):
     vendas_concluidas = vendas_query.filter(Venda.status == 'Concluída').all()
     
     receita_total = sum(v.total_venda for v in vendas_concluidas)
-    total_taxas = sum(v.taxa_entrega for v in vendas_concluidas)
-    total_descontos = sum(v.desconto_total for v in vendas_concluidas)
+    total_taxas = sum((v.taxa_entrega or 0.0) for v in vendas_concluidas)
+    total_descontos = sum((v.desconto_total or 0.0) for v in vendas_concluidas)
     custo_total = sum(i.quantidade * (i.produto.preco_custo if i.produto else 0) for v in vendas_concluidas for i in v.itens)
     kpis = {'receita_total': round(receita_total, 2), 'total_vendas': len(vendas_concluidas), 'ticket_medio': round(receita_total / len(vendas_concluidas) if vendas_concluidas else 0, 2), 'total_descontos': round(total_descontos, 2), 'lucro_bruto': round(receita_total - custo_total, 2), 'total_taxas_entrega': round(total_taxas, 2)}
     
