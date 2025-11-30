@@ -87,13 +87,18 @@ class Cliente(db.Model):
     endereco_numero = db.Column(db.String(20), nullable=True)
     endereco_bairro = db.Column(db.String(100), nullable=True)
     endereco_cidade = db.Column(db.String(100), nullable=True)
+    endereco_estado = db.Column(db.String(2), nullable=True)
     endereco_cep = db.Column(db.String(10), nullable=True)
     endereco_complemento = db.Column(db.String(100), nullable=True)
 
     def to_dict(self):
         return {
             'id': self.id, 'nome': self.nome, 'telefone': self.telefone, 'cpf': self.cpf,
-            'email': self.email, 'endereco_rua': self.endereco_rua, 'endereco_cidade': self.endereco_cidade
+            'email': self.email, 
+            'endereco_rua': self.endereco_rua, 'endereco_numero': self.endereco_numero,
+            'endereco_bairro': self.endereco_bairro, 'endereco_cidade': self.endereco_cidade,
+            'endereco_estado': self.endereco_estado,
+            'endereco_cep': self.endereco_cep, 'endereco_complemento': self.endereco_complemento
         }
 
 cupom_produtos = db.Table('cupom_produtos',
@@ -144,6 +149,7 @@ class Venda(db.Model):
     entrega_numero = db.Column(db.String(20), nullable=True)
     entrega_bairro = db.Column(db.String(100), nullable=True)
     entrega_cidade = db.Column(db.String(100), nullable=True)
+    entrega_estado = db.Column(db.String(2), nullable=True)
     entrega_cep = db.Column(db.String(10), nullable=True)
     entrega_complemento = db.Column(db.String(100), nullable=True)
     id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
@@ -199,8 +205,22 @@ def token_required(f):
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = Usuario.query.get(data['id'])
-        except Exception: return jsonify({'message': 'Token é inválido!'}), 401
+        except Exception as e:
+            return jsonify({'message': 'Token é inválido!'}), 401
         return f(current_user, *args, **kwargs)
+    return decorated
+
+def client_token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('x-client-token')
+        if not token: return jsonify({'message': 'Token está faltando!'}), 401
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            current_client = Cliente.query.get(data['id'])
+            if not current_client: raise Exception('Cliente não encontrado')
+        except Exception: return jsonify({'message': 'Token é inválido!'}), 401
+        return f(current_client, *args, **kwargs)
     return decorated
 
 def salvar_recibo_html(venda):
@@ -232,7 +252,7 @@ def salvar_recibo_html(venda):
             else:
                  pagamentos_html += f"<p><strong>Pagamento:</strong> {pg.forma} - R$ {pg.valor:.2f}</p>"
 
-        html_content = f'<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo Venda #{venda.id}</title><style>body{{font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; color: #000;}}.receipt-container{{max-width: 800px; margin: 20px auto; border: 1px solid #ccc; padding: 30px; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1);}}.header{{text-align: center; margin-bottom: 25px;}} .header img{{max-width: 150px;}}table{{width: 100%; border-collapse: collapse; margin-top: 20px;}}th, td{{padding: 12px; border-bottom: 1px solid #ddd; text-align: left;}}th{{background-color: #f2f2f2;}}.totals{{text-align: right; margin-top: 25px; padding-right: 10px;}}.totals p{{margin: 5px 0;}} .totals h3{{margin: 10px 0;}}.footer{{text-align: center; margin-top: 35px; font-size: 0.9em; color: #777;}}hr{{border: 0; border-top: 1px solid #eee; margin: 20px 0;}}</style></head><body><div class="receipt-container"><div class="header">{logo_tag}</div><p><strong>Venda ID:</strong> {venda.id}</p><p><strong>Data:</strong> {venda.data_hora.strftime("%d/%m/%Y %H:%M:%S")}</p><p><strong>Cliente:</strong> {venda.cliente.nome if venda.cliente else "Consumidor Final"}</p><p><strong>Vendedor(a):</strong> {venda.vendedor.nome}</p><hr><table><thead><tr><th style="text-align: left;">Produto</th><th style="text-align: center;">Qtd.</th><th style="text-align: right;">Preço Unit.</th><th style="text-align: right;">Subtotal</th></tr></thead><tbody>{itens_html}</tbody></table><div class="totals"><p><strong>Subtotal Produtos:</strong> R$ {subtotal_produtos:.2f}</p>{desconto_html}<p><strong>Taxa de Entrega:</strong> R$ {venda.taxa_entrega:.2f}</p><h3><strong>Total Geral:</strong> R$ {venda.total_venda:.2f}</h3>{pagamentos_html}</div><hr><div class="footer"><p>Obrigado pela preferência!</p></div></div></body></html>'
+        html_content = f'<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo Venda #{venda.id}</title><style>body{{font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; color: #000;}}.receipt-container{{max-width: 800px; margin: 20px auto; border: 1px solid #ccc; padding: 30px; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1);}}.header{{text-align: center; margin-bottom: 25px;}} .header img{{max-width: 150px;}}table{{width: 100%; border-collapse: collapse; margin-top: 20px;}}th, td{{padding: 12px; border-bottom: 1px solid #ddd; text-align: left;}}th{{background-color: #f2f2f2;}}.totals{{text-align: right; margin-top: 25px; padding-right: 10px;}}.totals p{{margin: 5px 0;}} .totals h3{{margin: 10px 0;}}.footer{{text-align: center; margin-top: 35px; font-size: 0.9em; color: #777;}}hr{{border: 0; border-top: 1px solid #eee; margin: 20px 0;}}</style></head><body><div class="receipt-container"><div class="header">{logo_tag}</div><p><strong>Venda ID:</strong> {venda.id}</p><p><strong>Data:</strong> {venda.data_hora.strftime("%d/%m/%Y %H:%M:%S")}</p><p><strong>Cliente:</strong> {venda.cliente.nome if venda.cliente else "Consumidor Final"}</p><p><strong>Vendedor(a):</strong> {venda.vendedor.nome if venda.vendedor else "Online"}</p><hr><table><thead><tr><th style="text-align: left;">Produto</th><th style="text-align: center;">Qtd.</th><th style="text-align: right;">Preço Unit.</th><th style="text-align: right;">Subtotal</th></tr></thead><tbody>{itens_html}</tbody></table><div class="totals"><p><strong>Subtotal Produtos:</strong> R$ {subtotal_produtos:.2f}</p>{desconto_html}<p><strong>Taxa de Entrega:</strong> R$ {venda.taxa_entrega:.2f}</p><h3><strong>Total Geral:</strong> R$ {venda.total_venda:.2f}</h3>{pagamentos_html}</div><hr><div class="footer"><p>Obrigado pela preferência!</p></div></div></body></html>'
         file_name = f"venda_{venda.id}_{venda.data_hora.strftime('%Y-%m-%d_%H-%M-%S')}.html"
         file_path = os.path.join(recibos_dir, file_name)
         with open(file_path, 'w', encoding='utf-8') as f:
@@ -250,6 +270,14 @@ def index():
 @app.route('/login')
 def login_page():
     return send_from_directory('frontend', 'login.html')
+
+@app.route('/store/login')
+def store_login_page():
+    return render_template('store/login.html')
+
+@app.route('/store/conta')
+def store_account_page():
+    return render_template('store/account.html')
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -279,17 +307,6 @@ def register():
     if not is_first_user:
         token = request.headers.get('x-access-token')
         if not token: return jsonify({'erro': 'Apenas um administrador pode criar novos usuários.'}), 401
-        try:
-            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = Usuario.query.get(data['id'])
-            if current_user.role != 'admin':
-                 return jsonify({'erro': 'Apenas um administrador pode criar novos usuários.'}), 403
-        except Exception: return jsonify({'message': 'Token inválido!'}), 401
-    if Usuario.query.filter_by(email=dados['email']).first():
-        return jsonify({'erro': 'Email já cadastrado.'}), 400
-    senha_hash = bcrypt.generate_password_hash(dados['senha']).decode('utf-8')
-    role_to_set = 'admin' if is_first_user else dados.get('role', 'vendedor')
-    novo_usuario = Usuario(nome=dados['nome'], email=dados['email'], senha_hash=senha_hash, role=role_to_set)
     db.session.add(novo_usuario)
     registrar_log(current_user, "Usuário Criado", f"Novo usuário: {novo_usuario.nome} ({novo_usuario.email}), Cargo: {novo_usuario.role}")
     db.session.commit()
@@ -311,6 +328,99 @@ def login():
     db.session.commit()
     token = jwt.encode({'id': user.id, 'exp' : datetime.utcnow() + timedelta(hours=24)}, app.config['SECRET_KEY'], algorithm="HS256")
     return jsonify({'token': token, 'user': user.to_dict()})
+
+# --- Autenticação Cliente ---
+@app.route('/api/client/register', methods=['POST'])
+def register_client():
+    dados = request.get_json()
+    if Cliente.query.filter_by(email=dados['email']).first():
+        return jsonify({'erro': 'Email já cadastrado.'}), 400
+    
+    # Password Validation
+    senha = dados['senha']
+    if len(senha) < 6:
+        return jsonify({'erro': 'A senha deve ter no mínimo 6 caracteres.'}), 400
+    if not any(c.isalpha() for c in senha) or not any(c.isdigit() for c in senha):
+        return jsonify({'erro': 'A senha deve conter letras e números.'}), 400
+
+    senha_hash = bcrypt.generate_password_hash(senha).decode('utf-8')
+    novo_cliente = Cliente(
+        nome=dados['nome'], 
+        email=dados['email'], 
+        senha_hash=senha_hash,
+        telefone=dados.get('telefone'),
+        cpf=dados.get('cpf')
+    )
+    db.session.add(novo_cliente)
+    db.session.commit()
+    
+    token = jwt.encode({'id': novo_cliente.id, 'exp': datetime.utcnow() + timedelta(days=7)}, app.config['SECRET_KEY'], algorithm="HS256")
+    return jsonify({'token': token, 'cliente': novo_cliente.to_dict()}), 201
+
+@app.route('/api/client/login', methods=['POST'])
+def login_client():
+    auth = request.get_json()
+    if not auth or not auth.get('email') or not auth.get('senha'):
+        return jsonify({'message': 'Credenciais não fornecidas'}), 401
+        
+    cliente = Cliente.query.filter_by(email=auth['email']).first()
+    if not cliente or not cliente.senha_hash or not bcrypt.check_password_hash(cliente.senha_hash, auth['senha']):
+        return jsonify({'message': 'Credenciais inválidas!'}), 401
+        
+    token = jwt.encode({'id': cliente.id, 'exp': datetime.utcnow() + timedelta(days=7)}, app.config['SECRET_KEY'], algorithm="HS256")
+    return jsonify({'token': token, 'cliente': cliente.to_dict()})
+
+@app.route('/api/client/me', methods=['GET', 'PUT'])
+@client_token_required
+def manage_client_me(current_client):
+    if request.method == 'GET':
+        return jsonify(current_client.to_dict())
+    
+    dados = request.get_json()
+    if 'nome' in dados: current_client.nome = dados['nome']
+    if 'telefone' in dados: current_client.telefone = dados['telefone']
+    if 'cpf' in dados: current_client.cpf = dados['cpf']
+    if 'endereco_rua' in dados: current_client.endereco_rua = dados['endereco_rua']
+    if 'endereco_numero' in dados: current_client.endereco_numero = dados['endereco_numero']
+    if 'endereco_bairro' in dados: current_client.endereco_bairro = dados['endereco_bairro']
+    if 'endereco_cidade' in dados: current_client.endereco_cidade = dados['endereco_cidade']
+    if 'endereco_cep' in dados: current_client.endereco_cep = dados['endereco_cep']
+    if 'endereco_complemento' in dados: current_client.endereco_complemento = dados['endereco_complemento']
+    
+    db.session.commit()
+    return jsonify({'mensagem': 'Dados atualizados com sucesso!', 'cliente': current_client.to_dict()})
+
+@app.route('/api/client/orders', methods=['GET'])
+@client_token_required
+def get_client_orders(current_client):
+    vendas = Venda.query.filter_by(id_cliente=current_client.id).order_by(Venda.data_hora.desc()).all()
+    orders_data = []
+    for venda in vendas:
+        itens = []
+        for item in venda.itens:
+            itens.append({
+                'produto': item.produto.nome,
+                'quantidade': item.quantidade,
+                'preco_unitario': item.preco_unitario_momento,
+                'total': item.quantidade * item.preco_unitario_momento
+            })
+        orders_data.append({
+            'id': venda.id,
+            'data': venda.data_hora.strftime('%d/%m/%Y %H:%M'),
+            'total': venda.total_venda,
+            'status': venda.status,
+            'itens': itens
+        })
+    return jsonify(orders_data)
+
+@app.route('/api/client/coupons', methods=['GET'])
+@client_token_required
+def get_client_coupons(current_client):
+    # Retorna todos os cupons ativos
+    # Poderia ser filtrado por regras específicas, mas por enquanto retorna todos os ativos
+    cupons = Cupom.query.filter_by(ativo=True).all()
+    cupons_data = [c.to_dict() for c in cupons]
+    return jsonify(cupons_data)
 
 # --- ROTAS DE CATEGORIAS ---
 
@@ -741,11 +851,18 @@ def get_venda_details(current_user, venda_id):
         'pagamentos': pagamentos_list, 
         'taxa_entrega': venda.taxa_entrega, 
         'cliente_nome': venda.cliente.nome if venda.cliente else 'Consumidor Final', 
-        'vendedor_nome': venda.vendedor.nome, 
+        'vendedor_nome': venda.vendedor.nome if venda.vendedor else 'Online', 
         'itens': itens_list, 
         'cupons_utilizados': [c.codigo for c in venda.cupons], 
         'desconto_total': venda.desconto_total, 
-        'parcelas': venda.parcelas
+        'parcelas': venda.parcelas,
+        'status': venda.status,
+        'entrega_rua': venda.entrega_rua,
+        'entrega_numero': venda.entrega_numero,
+        'entrega_bairro': venda.entrega_bairro,
+        'entrega_cidade': venda.entrega_cidade,
+        'entrega_estado': venda.entrega_estado,
+        'entrega_cep': venda.entrega_cep
     })
 
 @app.route('/api/vendas/<int:venda_id>/reembolsar', methods=['POST'])
@@ -777,6 +894,64 @@ def reembolsar_venda(current_user, venda_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': 'Erro ao processar reembolso.', 'detalhes': str(e)}), 500
+
+@app.route('/api/vendas/online/pendentes/count', methods=['GET'])
+@token_required
+def count_pending_online_orders(current_user):
+    if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
+    count = Venda.query.filter(Venda.id_vendedor == None, Venda.status == 'Pendente').count()
+    return jsonify({'count': count})
+
+@app.route('/api/vendas/online', methods=['GET'])
+@token_required
+def get_online_orders(current_user):
+    if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
+    # Vendas sem vendedor (id_vendedor IS NULL) são consideradas online
+    vendas = Venda.query.filter(Venda.id_vendedor == None).order_by(Venda.data_hora.desc()).all()
+    
+    resultado = []
+    for v in vendas:
+        resultado.append({
+            'id': v.id,
+            'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'),
+            'cliente': v.cliente.nome if v.cliente else 'Cliente Removido',
+            'total': v.total_venda,
+            'status': v.status,
+            'itens_count': len(v.itens)
+        })
+    return jsonify(resultado)
+
+@app.route('/api/vendas/<int:venda_id>/status', methods=['PUT'])
+@token_required
+def update_venda_status(current_user, venda_id):
+    if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
+    
+    venda = Venda.query.get_or_404(venda_id)
+    dados = request.get_json()
+    novo_status = dados.get('status')
+    
+    if not novo_status:
+        return jsonify({'erro': 'Novo status não fornecido.'}), 400
+        
+    if venda.status == 'Cancelada' and novo_status != 'Cancelada':
+        return jsonify({'erro': 'Não é possível reativar uma venda cancelada.'}), 400
+
+    try:
+        # Lógica de Cancelamento/Reembolso de Estoque
+        if novo_status == 'Cancelada' and venda.status != 'Cancelada':
+            for item in venda.itens:
+                if item.produto:
+                    item.produto.quantidade += item.quantidade
+            registrar_log(current_user, "Venda Cancelada (Online)", f"ID: {venda.id} - Estoque estornado.")
+            
+        venda.status = novo_status
+        registrar_log(current_user, "Status Venda Atualizado", f"ID: {venda.id} -> {novo_status}")
+        db.session.commit()
+        return jsonify({'mensagem': f'Status atualizado para {novo_status}'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'erro': 'Erro ao atualizar status.', 'detalhes': str(e)}), 500
 
 @app.route('/api/relatorios/dashboard', methods=['GET'])
 @token_required
@@ -810,7 +985,7 @@ def get_dashboard_data(current_user):
     ranking_vendedores_list = [{'vendedor': r.nome, 'total': r.total_valor} for r in ranking_vendedores]
     
     vendas_periodo_total = vendas_query.order_by(Venda.data_hora.desc()).all()
-    lista_vendas = [{'id': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Final', 'vendedor': v.vendedor.nome, 'total': v.total_venda, 'pagamento': ", ".join([p.forma for p in v.pagamentos]), 'status': v.status} for v in vendas_periodo_total]
+    lista_vendas = [{'id': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Final', 'vendedor': v.vendedor.nome if v.vendedor else 'Online', 'total': v.total_venda, 'pagamento': ", ".join([p.forma for p in v.pagamentos]), 'status': v.status} for v in vendas_periodo_total]
 
     return jsonify({'kpis': kpis, 'grafico_vendas_tempo': grafico_vendas_tempo, 'grafico_forma_pagamento': grafico_forma_pagamento, 'ranking_produtos': ranking_produtos_list, 'ranking_vendedores': ranking_vendedores_list, 'lista_vendas': lista_vendas})
 
@@ -907,6 +1082,10 @@ def store_cart_page():
 @app.route('/store/checkout')
 def store_checkout_page():
     return render_template('store/checkout.html')
+
+@app.route('/loja_online.html')
+def admin_online_store_page():
+    return send_from_directory('frontend', 'loja_online.html')
 
 # --- Store API (Public) ---
 @app.route('/api/store/products', methods=['GET'])
@@ -1006,6 +1185,7 @@ def store_checkout():
     cliente.endereco_numero = end_data.get('numero')
     cliente.endereco_bairro = end_data.get('bairro')
     cliente.endereco_cidade = end_data.get('cidade')
+    cliente.endereco_estado = end_data.get('estado')
     cliente.endereco_cep = end_data.get('cep')
     cliente.endereco_complemento = end_data.get('complemento')
     
@@ -1041,6 +1221,7 @@ def store_checkout():
         entrega_numero=cliente.endereco_numero,
         entrega_bairro=cliente.endereco_bairro,
         entrega_cidade=cliente.endereco_cidade,
+        entrega_estado=cliente.endereco_estado,
         entrega_cep=cliente.endereco_cep,
         entrega_complemento=cliente.endereco_complemento
     )

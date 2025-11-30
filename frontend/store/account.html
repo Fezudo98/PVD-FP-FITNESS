@@ -1,0 +1,419 @@
+{% extends "store/base.html" %}
+
+{% block content %}
+<section class="py-5 bg-light" style="min-height: 80vh;">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div
+                        class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-4 px-4">
+                        <h3 class="fw-bold mb-0" style="font-family: 'Outfit', sans-serif;">Minha Conta</h3>
+                        <button id="logoutBtn" class="btn btn-outline-light btn-sm rounded-pill px-3">
+                            <i class="fa-solid fa-right-from-bracket me-2"></i>Sair
+                        </button>
+                    </div>
+                    <div class="card-body p-4 p-md-5">
+
+                        <!-- Tabs Navigation -->
+                        <ul class="nav nav-pills nav-fill mb-4 gap-2" id="accountTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active rounded-pill fw-bold" id="profile-tab"
+                                    data-bs-toggle="tab" data-bs-target="#profile" type="button"
+                                    role="tab">Perfil</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill fw-bold" id="orders-tab" data-bs-toggle="tab"
+                                    data-bs-target="#orders" type="button" role="tab">Meus Pedidos</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill fw-bold" id="coupons-tab" data-bs-toggle="tab"
+                                    data-bs-target="#coupons" type="button" role="tab">Cupons</button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="accountTabsContent">
+
+                            <!-- Profile Tab -->
+                            <div class="tab-pane fade show active" id="profile" role="tabpanel">
+                                <form id="accountForm">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label text-muted small fw-bold text-uppercase">Nome
+                                                Completo</label>
+                                            <input type="text" class="form-control bg-dark text-white border-0"
+                                                id="accName">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label
+                                                class="form-label text-muted small fw-bold text-uppercase">Email</label>
+                                            <input type="email" class="form-control bg-light border-0" id="accEmail"
+                                                readonly>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label
+                                                class="form-label text-muted small fw-bold text-uppercase">Telefone</label>
+                                            <input type="text" class="form-control bg-dark text-white border-0"
+                                                id="accPhone">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label
+                                                class="form-label text-muted small fw-bold text-uppercase">CPF</label>
+                                            <input type="text" class="form-control bg-dark text-white border-0"
+                                                id="accCpf">
+                                        </div>
+
+                                        <div class="col-12 mt-4">
+                                            <h5 class="fw-bold mb-3">Endereço de Entrega Padrão</h5>
+                                            <hr>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <label
+                                                class="form-label text-muted small fw-bold text-uppercase">CEP</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control bg-dark text-white border-0"
+                                                    id="accCep">
+                                                <button class="btn btn-outline-secondary" type="button"
+                                                    onclick="buscarCep()">
+                                                    <i class="bi bi-search"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label
+                                                class="form-label text-muted small fw-bold text-uppercase">Rua</label>
+                                            <input type="text" class="form-control bg-dark text-white border-0"
+                                                id="accRua">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label
+                                                class="form-label text-muted small fw-bold text-uppercase">Número</label>
+                                            <input type="text" class="form-control bg-dark text-white border-0"
+                                                id="accNumero">
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label
+                                                class="form-label text-muted small fw-bold text-uppercase">Bairro</label>
+                                            <input type="text" class="form-control bg-dark text-white border-0"
+                                                id="accBairro">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label
+                                                class="form-label text-muted small fw-bold text-uppercase">Cidade</label>
+                                            <input type="text" class="form-control bg-dark text-white border-0"
+                                                id="accCidade">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label
+                                                class="form-label text-muted small fw-bold text-uppercase">Complemento</label>
+                                            <input type="text" class="form-control bg-dark text-white border-0"
+                                                id="accComplemento">
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4 d-flex justify-content-end gap-2">
+                                        <button type="submit" class="btn btn-warning fw-bold px-4">Salvar
+                                            Alterações</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Orders Tab -->
+                            <div class="tab-pane fade" id="orders" role="tabpanel">
+                                <div id="ordersList" class="vstack gap-3">
+                                    <!-- Orders will be loaded here -->
+                                    <div class="text-center py-5 text-muted">
+                                        <i class="bi bi-box-seam display-1"></i>
+                                        <p class="mt-3">Carregando pedidos...</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Coupons Tab -->
+                            <div class="tab-pane fade" id="coupons" role="tabpanel">
+                                <div class="row g-3" id="couponsList">
+                                    <!-- Coupons will be loaded here -->
+                                    <div class="col-12 text-center py-5 text-muted">
+                                        <i class="bi bi-ticket-perforated display-1"></i>
+                                        <p class="mt-3">Carregando cupons...</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const token = localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken');
+        if (!token) {
+            window.location.href = '/store/login';
+            return;
+        }
+
+        // --- Input Masking Functions ---
+        const formatCPF = (value) => {
+            return value
+                .replace(/\D/g, '')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+                .replace(/(-\d{2})\d+?$/, '$1');
+        };
+
+        const formatPhone = (value) => {
+            return value
+                .replace(/\D/g, '')
+                .replace(/(\d{2})(\d)/, '($1) $2')
+                .replace(/(\d)(\d{4})(\d{4})$/, '$1 $2-$3')
+                .replace(/(-\d{4})\d+?$/, '$1');
+        };
+
+        const formatCEP = (value) => {
+            return value
+                .replace(/\D/g, '')
+                .replace(/(\d{5})(\d)/, '$1-$2')
+                .replace(/(-\d{3})\d+?$/, '$1');
+        };
+
+        // Apply masks
+        const cpfInput = document.getElementById('accCpf');
+        const phoneInput = document.getElementById('accPhone');
+        const cepInput = document.getElementById('accCep');
+
+        if (cpfInput) {
+            cpfInput.addEventListener('input', (e) => {
+                e.target.value = formatCPF(e.target.value);
+            });
+        }
+        if (phoneInput) {
+            phoneInput.addEventListener('input', (e) => {
+                e.target.value = formatPhone(e.target.value);
+            });
+        }
+        if (cepInput) {
+            cepInput.addEventListener('input', (e) => {
+                e.target.value = formatCEP(e.target.value);
+            });
+        }
+
+        // Load Profile Data
+        const loadProfile = async () => {
+            try {
+                const res = await fetch('/api/client/me', { headers: { 'x-client-token': token } });
+                if (!res.ok) throw new Error('Falha ao carregar perfil');
+                const data = await res.json();
+
+                document.getElementById('accName').value = data.nome || '';
+                document.getElementById('accEmail').value = data.email || '';
+                document.getElementById('accPhone').value = data.telefone || '';
+                document.getElementById('accCpf').value = data.cpf || '';
+                document.getElementById('accCep').value = data.endereco_cep || '';
+                document.getElementById('accRua').value = data.endereco_rua || '';
+                document.getElementById('accNumero').value = data.endereco_numero || '';
+                document.getElementById('accBairro').value = data.endereco_bairro || '';
+                document.getElementById('accCidade').value = data.endereco_cidade || '';
+                document.getElementById('accComplemento').value = data.endereco_complemento || '';
+            } catch (error) {
+                console.error(error);
+                localStorage.removeItem('clientToken');
+                window.location.href = '/store/login';
+            }
+        };
+
+        // Load Orders
+        const loadOrders = async () => {
+            try {
+                const res = await fetch('/api/client/orders', { headers: { 'x-client-token': token } });
+                const orders = await res.json();
+                const container = document.getElementById('ordersList');
+
+                if (orders.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-bag-x display-1"></i>
+                            <p class="mt-3">Você ainda não fez nenhum pedido.</p>
+                            <a href="/store" class="btn btn-warning rounded-pill fw-bold mt-2">Ir às Compras</a>
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = orders.map(order => `
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-bottom-0 py-3 d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-bold">Pedido #${order.id}</span>
+                                <span class="text-muted small ms-2">${order.data}</span>
+                            </div>
+                            <span class="badge ${getStatusBadge(order.status)} rounded-pill">${order.status}</span>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush mb-3">
+                                ${order.itens.map(item => `
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                        <div>
+                                            <span class="fw-bold">${item.quantidade}x</span> ${item.produto}
+                                        </div>
+                                        <span>R$ ${item.total.toFixed(2)}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                            <div class="d-flex justify-content-between align-items-center border-top pt-3">
+                                <span class="fw-bold">Total</span>
+                                <span class="fw-bold fs-5 text-warning">R$ ${order.total.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao carregar pedidos:', error);
+            }
+        };
+
+        // Load Coupons
+        const loadCoupons = async () => {
+            try {
+                const res = await fetch('/api/client/coupons', { headers: { 'x-client-token': token } });
+                const coupons = await res.json();
+                const container = document.getElementById('couponsList');
+
+                if (coupons.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-12 text-center py-5 text-muted">
+                            <i class="bi bi-ticket-perforated display-1"></i>
+                            <p class="mt-3">Não há cupons disponíveis no momento.</p>
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = coupons.map(coupon => `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #e0b431 !important;">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="fw-bold mb-0 text-warning">${coupon.codigo}</h5>
+                                    <span class="badge bg-success rounded-pill">Ativo</span>
+                                </div>
+                                <p class="text-muted small mb-3">
+                                    ${coupon.tipo_desconto === 'porcentagem' ? `${coupon.valor_desconto}% OFF` : `R$ ${coupon.valor_desconto.toFixed(2)} OFF`}
+                                    em ${coupon.aplicacao === 'total' ? 'toda a loja' : 'produtos selecionados'}
+                                </p>
+                                <button class="btn btn-outline-dark btn-sm w-100 rounded-pill" onclick="copiarCupom('${coupon.codigo}')">
+                                    <i class="bi bi-clipboard me-1"></i> Copiar Código
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao carregar cupons:', error);
+            }
+        };
+
+        const getStatusBadge = (status) => {
+            switch (status) {
+                case 'Concluída': return 'bg-success';
+                case 'Pendente': return 'bg-warning text-dark';
+                case 'Cancelada': return 'bg-danger';
+                default: return 'bg-secondary';
+            }
+        };
+
+        window.copiarCupom = (codigo) => {
+            navigator.clipboard.writeText(codigo);
+            Swal.fire({
+                icon: 'success',
+                title: 'Copiado!',
+                text: 'Código do cupom copiado para a área de transferência.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        };
+
+        // Initialize
+        loadProfile();
+        loadOrders();
+        loadCoupons();
+
+        // Save Profile
+        document.getElementById('accountForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const payload = {
+                nome: document.getElementById('accName').value,
+                telefone: document.getElementById('accPhone').value,
+                cpf: document.getElementById('accCpf').value,
+                endereco_cep: document.getElementById('accCep').value,
+                endereco_rua: document.getElementById('accRua').value,
+                endereco_numero: document.getElementById('accNumero').value,
+                endereco_bairro: document.getElementById('accBairro').value,
+                endereco_cidade: document.getElementById('accCidade').value,
+                endereco_complemento: document.getElementById('accComplemento').value
+            };
+
+            try {
+                const res = await fetch('/api/client/me', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-client-token': token
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    localStorage.setItem('clientUser', JSON.stringify(data.cliente));
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sucesso!',
+                        text: 'Seus dados foram atualizados.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                } else {
+                    throw new Error(data.erro || 'Erro ao atualizar');
+                }
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Erro', text: error.message });
+            }
+        });
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('clientToken');
+            localStorage.removeItem('clientUser');
+            sessionStorage.removeItem('clientToken');
+            sessionStorage.removeItem('clientUser');
+            window.location.href = '/store';
+        });
+    });
+
+    async function buscarCep() {
+        let cep = document.getElementById('accCep').value.replace(/\D/g, '');
+        if (cep.length === 8) {
+            try {
+                const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                const data = await response.json();
+                if (!data.erro) {
+                    document.getElementById('accRua').value = data.logradouro;
+                    document.getElementById('accBairro').value = data.bairro;
+                    document.getElementById('accCidade').value = `${data.localidade} - ${data.uf}`;
+                }
+            } catch (e) {
+                console.error('Erro ao buscar CEP:', e);
+            }
+        }
+    }
+</script>
+{% endblock %}

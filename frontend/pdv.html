@@ -1,24 +1,27 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDV - Sistema FP Moda Fitness</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/christmas.css">
 </head>
+
 <body>
     <div class="background-container"></div>
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="/index.html"><img src="/logo.jpg" alt="Logo" width="100"></a>
-        <div class="d-flex">
-            <a href="/index.html" class="btn btn-outline-secondary me-2">Voltar ao Painel</a>
-            <button class="btn btn-outline-warning" id="logoutButton">Sair</button>
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/index.html"><img src="/logo.jpg" alt="Logo" width="100"></a>
+            <div class="d-flex">
+                <a href="/index.html" class="btn btn-outline-secondary me-2">Voltar ao Painel</a>
+                <button class="btn btn-outline-warning" id="logoutButton">Sair</button>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
     <main class="container-fluid mt-4">
         <div class="row gx-4">
@@ -26,7 +29,8 @@
             <div class="col-lg-7">
                 <div class="pdv-panel">
                     <h4>Buscar Produto</h4>
-                    <input type="text" id="searchInput" class="form-control form-control-lg" placeholder="Digite o nome ou SKU do produto...">
+                    <input type="text" id="searchInput" class="form-control form-control-lg"
+                        placeholder="Digite o nome ou SKU do produto...">
                     <hr>
                     <div id="searchResults" class="list-group"></div>
                     <div id="last-item-preview" class="text-center mt-4" style="display: none;">
@@ -49,13 +53,14 @@
                             <span>Subtotal:</span>
                             <span id="cartSubtotal">R$ 0,00</span>
                         </div>
-                        
+
                         <!-- ===== SEÇÃO DE CUPOM ATUALIZADA ===== -->
                         <div id="appliedCouponsList" class="my-2">
                             <!-- Cupons aplicados aparecerão aqui como badges via JavaScript -->
                         </div>
                         <div class="input-group my-2">
-                            <input type="text" id="cupomInput" class="form-control" placeholder="CUPOM DE DESCONTO" style="text-transform: uppercase;">
+                            <input type="text" id="cupomInput" class="form-control" placeholder="CUPOM DE DESCONTO"
+                                style="text-transform: uppercase;">
                             <button class="btn btn-outline-success" type="button" id="applyCupomBtn">Aplicar</button>
                         </div>
                         <div id="totalDiscountDisplay" class="d-flex justify-content-between text-success d-none">
@@ -63,11 +68,12 @@
                             <span id="totalDiscountValue">R$ 0,00</span>
                         </div>
                         <!-- ======================================= -->
-                        
+
                         <div class="row mt-2 align-items-center">
                             <div class="col-6">
                                 <label for="taxaEntregaInput" class="col-form-label">Taxa de Entrega:</label>
-                                <input type="number" class="form-control" id="taxaEntregaInput" value="0" min="0" step="0.50">
+                                <input type="number" class="form-control" id="taxaEntregaInput" value="0" min="0"
+                                    step="0.50">
                             </div>
                             <div class="col-6 d-flex align-items-end" style="padding-bottom: 8px;">
                                 <div class="form-check">
@@ -91,34 +97,46 @@
                     <div id="deliveryAddressWrapper" class="d-none">
                         <h6>Endereço de Entrega</h6>
                         <div class="row">
-                            <div class="col-md-8 mb-2"><input type="text" id="entregaRua" class="form-control form-control-sm" placeholder="Rua"></div>
-                            <div class="col-md-4 mb-2"><input type="text" id="entregaNumero" class="form-control form-control-sm" placeholder="Número"></div>
+                            <div class="col-md-8 mb-2"><input type="text" id="entregaRua"
+                                    class="form-control form-control-sm" placeholder="Rua"></div>
+                            <div class="col-md-4 mb-2"><input type="text" id="entregaNumero"
+                                    class="form-control form-control-sm" placeholder="Número"></div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6 mb-2"><input type="text" id="entregaBairro" class="form-control form-control-sm" placeholder="Bairro"></div>
-                            <div class="col-md-6 mb-2"><input type="text" id="entregaCidade" class="form-control form-control-sm" placeholder="Cidade"></div>
+                            <div class="col-md-6 mb-2"><input type="text" id="entregaBairro"
+                                    class="form-control form-control-sm" placeholder="Bairro"></div>
+                            <div class="col-md-6 mb-2"><input type="text" id="entregaCidade"
+                                    class="form-control form-control-sm" placeholder="Cidade"></div>
                         </div>
-                         <div class="mb-2"><input type="text" id="entregaComplemento" class="form-control form-control-sm" placeholder="Complemento / Ponto de Referência"></div>
+                        <div class="mb-2"><input type="text" id="entregaComplemento"
+                                class="form-control form-control-sm" placeholder="Complemento / Ponto de Referência">
+                        </div>
                         <hr>
                     </div>
 
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center">
                             <label for="clientSearchInput" class="form-label">Associar Cliente (Opcional)</label>
-                            <button id="quickAddClientBtn" class="btn btn-sm btn-outline-success mb-1"> + Novo Cliente</button>
+                            <button id="quickAddClientBtn" class="btn btn-sm btn-outline-success mb-1"> + Novo
+                                Cliente</button>
                         </div>
                         <div id="selectedClientDisplay" class="d-none">
-                            <div class="alert alert-info d-flex justify-content-between align-items-center"><span id="selectedClientName"></span><button id="removeClientBtn" type="button" class="btn-close"></button></div>
+                            <div class="alert alert-info d-flex justify-content-between align-items-center"><span
+                                    id="selectedClientName"></span><button id="removeClientBtn" type="button"
+                                    class="btn-close"></button></div>
                         </div>
                         <div id="clientSearchWrapper">
-                            <input type="text" id="clientSearchInput" class="form-control" placeholder="Buscar cliente por nome ou CPF...">
-                            <div id="clientSearchResults" class="list-group mt-1 position-absolute w-100" style="z-index: 1000;"></div>
+                            <input type="text" id="clientSearchInput" class="form-control"
+                                placeholder="Buscar cliente por nome ou CPF...">
+                            <div id="clientSearchResults" class="list-group mt-1 position-absolute w-100"
+                                style="z-index: 1000;"></div>
                         </div>
                     </div>
                     <input type="hidden" id="selectedClientId" value="">
 
                     <div class="d-grid mt-4">
-                        <button id="openPaymentModalBtn" class="btn btn-custom btn-lg" disabled>PROSSEGUIR PARA PAGAMENTO</button>
+                        <button id="openPaymentModalBtn" class="btn btn-custom btn-lg" disabled>PROSSEGUIR PARA
+                            PAGAMENTO</button>
                     </div>
                 </div>
             </div>
@@ -157,11 +175,13 @@
                                 </div>
                                 <div class="mb-3 d-none" id="paymentInstallmentsWrapper">
                                     <label for="paymentInstallmentsInput" class="form-label">Nº de Parcelas</label>
-                                    <input type="number" class="form-control" id="paymentInstallmentsInput" value="1" min="1" max="12">
+                                    <input type="number" class="form-control" id="paymentInstallmentsInput" value="1"
+                                        min="1" max="12">
                                 </div>
                                 <div class="mb-3">
                                     <label for="paymentValueInput" class="form-label">Valor a Pagar</label>
-                                    <input type="number" step="0.01" class="form-control" id="paymentValueInput" required>
+                                    <input type="number" step="0.01" class="form-control" id="paymentValueInput"
+                                        required>
                                 </div>
                                 <div class="d-grid">
                                     <button type="submit" class="btn btn-info">Adicionar Pagamento</button>
@@ -184,20 +204,28 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Modal para Cadastro Rápido de Cliente -->
     <div class="modal fade" id="quickClientModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content bg-dark text-white">
-                <div class="modal-header"><h5 class="modal-title">Cadastro Rápido de Cliente</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header">
+                    <h5 class="modal-title">Cadastro Rápido de Cliente</h5><button type="button"
+                        class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
                 <div class="modal-body">
                     <form id="quickClientForm">
-                        <div class="mb-3"><label for="quickClientNome" class="form-label">Nome Completo</label><input type="text" class="form-control" id="quickClientNome" required></div>
-                        <div class="mb-3"><label for="quickClientTelefone" class="form-label">Telefone</label><input type="text" class="form-control" id="quickClientTelefone"></div>
-                        <div class="mb-3"><label for="quickClientCpf" class="form-label">CPF (opcional)</label><input type="text" class="form-control" id="quickClientCpf"></div>
+                        <div class="mb-3"><label for="quickClientNome" class="form-label">Nome Completo</label><input
+                                type="text" class="form-control" id="quickClientNome" required></div>
+                        <div class="mb-3"><label for="quickClientTelefone" class="form-label">Telefone</label><input
+                                type="text" class="form-control" id="quickClientTelefone"></div>
+                        <div class="mb-3"><label for="quickClientCpf" class="form-label">CPF (opcional)</label><input
+                                type="text" class="form-control" id="quickClientCpf"></div>
                     </form>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" form="quickClientForm" class="btn btn-custom">Salvar e Selecionar</button></div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">Cancelar</button><button type="submit" form="quickClientForm"
+                        class="btn btn-custom">Salvar e Selecionar</button></div>
             </div>
         </div>
     </div>
@@ -206,32 +234,54 @@
     <div class="modal fade" id="receiptModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content receipt-modal-content">
-                <div class="modal-header"><h5 class="modal-title">Comprovante de Venda</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header">
+                    <h5 class="modal-title">Comprovante de Venda</h5><button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
+                </div>
                 <div class="modal-body" id="receiptContent">
-                    <div class="text-center mb-3"><img src="/logo.jpg" alt="Logo" style="width: 150px;"><h5>FP Moda Fitness</h5></div><hr>
+                    <div class="text-center mb-3"><img src="/logo.jpg" alt="Logo" style="width: 150px;">
+                        <h5>FP Moda Fitness</h5>
+                    </div>
+                    <hr>
                     <p><strong>Venda ID:</strong> <span id="receiptVendaId"></span></p>
                     <p><strong>Data:</strong> <span id="receiptData"></span></p>
                     <p><strong>Cliente:</strong> <span id="receiptCliente"></span></p>
-                    <p><strong>Vendedor(a):</strong> <span id="receiptVendedor"></span></p><hr>
+                    <p><strong>Vendedor(a):</strong> <span id="receiptVendedor"></span></p>
+                    <hr>
                     <table class="table">
-                        <thead><tr><th>Produto</th><th>Qtd.</th><th>Preço</th><th>Subtotal</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Qtd.</th>
+                                <th>Preço</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
                         <tbody id="receiptItemsTable"></tbody>
-                    </table><hr>
+                    </table>
+                    <hr>
                     <div class="text-end">
                         <p><strong>Subtotal Produtos:</strong> <span id="receiptSubtotal"></span></p>
-                        <p id="receiptDiscountRow" class="d-none"><strong>Descontos (<span id="receiptCupomCode"></span>):</strong> <span id="receiptDiscountValue"></span></p>
+                        <p id="receiptDiscountRow" class="d-none"><strong>Descontos (<span
+                                    id="receiptCupomCode"></span>):</strong> <span id="receiptDiscountValue"></span></p>
                         <p><strong>Taxa de Entrega:</strong> <span id="receiptTaxaEntrega"></span></p>
                         <h4><strong>Total Geral:</strong> <span id="receiptTotalGeral"></span></h4>
                         <div id="receiptPayments"></div>
-                    </div><hr>
+                    </div>
+                    <hr>
                     <p class="text-center small">Obrigado pela preferência!</p>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button><button type="button" class="btn btn-success" id="imprimirTermicaBtn">Imprimir Cupom (Térmica)</button><button type="button" class="btn btn-primary" id="imprimirA4Btn">Imprimir (A4)</button></div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">Fechar</button><button type="button" class="btn btn-success"
+                        id="imprimirTermicaBtn">Imprimir Cupom (Térmica)</button><button type="button"
+                        class="btn btn-primary" id="imprimirA4Btn">Imprimir (A4)</button></div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/christmas.js"></script>
     <script src="/js/pdv.js"></script>
 </body>
+
 </html>

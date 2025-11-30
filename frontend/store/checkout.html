@@ -57,16 +57,51 @@
                                 <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
                                     id="bairro" required style="padding: 0.75rem;">
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-5">
                                 <label for="cidade"
                                     class="form-label text-muted small text-uppercase fw-bold">Cidade</label>
                                 <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
                                     id="cidade" required style="padding: 0.75rem;">
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-3">
+                                <label for="estado" class="form-label text-muted small text-uppercase fw-bold">Estado
+                                    (UF)</label>
+                                <select class="form-select bg-white text-dark border-secondary-subtle" id="estado"
+                                    required style="padding: 0.75rem;">
+                                    <option value="">UF</option>
+                                    <option value="AC">AC</option>
+                                    <option value="AL">AL</option>
+                                    <option value="AP">AP</option>
+                                    <option value="AM">AM</option>
+                                    <option value="BA">BA</option>
+                                    <option value="CE">CE</option>
+                                    <option value="DF">DF</option>
+                                    <option value="ES">ES</option>
+                                    <option value="GO">GO</option>
+                                    <option value="MA">MA</option>
+                                    <option value="MT">MT</option>
+                                    <option value="MS">MS</option>
+                                    <option value="MG">MG</option>
+                                    <option value="PA">PA</option>
+                                    <option value="PB">PB</option>
+                                    <option value="PR">PR</option>
+                                    <option value="PE">PE</option>
+                                    <option value="PI">PI</option>
+                                    <option value="RJ">RJ</option>
+                                    <option value="RN">RN</option>
+                                    <option value="RS">RS</option>
+                                    <option value="RO">RO</option>
+                                    <option value="RR">RR</option>
+                                    <option value="SC">SC</option>
+                                    <option value="SP">SP</option>
+                                    <option value="SE">SE</option>
+                                    <option value="TO">TO</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
                                 <label for="cep" class="form-label text-muted small text-uppercase fw-bold">CEP</label>
                                 <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
-                                    id="cep" required style="padding: 0.75rem;">
+                                    id="cep" required style="padding: 0.75rem;" maxlength="9">
                             </div>
                         </div>
 
@@ -128,6 +163,52 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         renderCheckoutPage();
+
+        // --- Input Masking Functions ---
+        const formatCPF = (value) => {
+            return value
+                .replace(/\D/g, '')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+                .replace(/(-\d{2})\d+?$/, '$1');
+        };
+
+        const formatPhone = (value) => {
+            return value
+                .replace(/\D/g, '')
+                .replace(/(\d{2})(\d)/, '($1) $2')
+                .replace(/(\d)(\d{4})(\d{4})$/, '$1 $2-$3')
+                .replace(/(-\d{4})\d+?$/, '$1');
+        };
+
+        const formatCEP = (value) => {
+            return value
+                .replace(/\D/g, '')
+                .replace(/(\d{5})(\d)/, '$1-$2')
+                .replace(/(-\d{3})\d+?$/, '$1');
+        };
+
+        // Apply masks
+        const cpfInput = document.getElementById('cpf');
+        const phoneInput = document.getElementById('telefone');
+        const cepInput = document.getElementById('cep');
+
+        if (cpfInput) {
+            cpfInput.addEventListener('input', (e) => {
+                e.target.value = formatCPF(e.target.value);
+            });
+        }
+        if (phoneInput) {
+            phoneInput.addEventListener('input', (e) => {
+                e.target.value = formatPhone(e.target.value);
+            });
+        }
+        if (cepInput) {
+            cepInput.addEventListener('input', (e) => {
+                e.target.value = formatCEP(e.target.value);
+            });
+        }
     });
 </script>
 {% endblock %}

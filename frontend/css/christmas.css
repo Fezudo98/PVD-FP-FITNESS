@@ -1,0 +1,434 @@
+/* Christmas Theme Overrides */
+
+:root {
+    --christmas-red: #D42426;
+    --christmas-green: #2E8B57;
+    --christmas-gold: #FFD700;
+}
+
+/* Festive Navbar */
+.navbar {
+    border-bottom: 3px solid var(--christmas-red);
+    background-image: linear-gradient(to right, #1a1a1a, #2c0b0b, #0b2c16, #1a1a1a);
+}
+
+.navbar-brand img {
+    filter: drop-shadow(0 0 5px var(--christmas-gold));
+}
+
+/* Festive Buttons */
+.btn-custom {
+    background-color: var(--christmas-red) !important;
+    border-color: var(--christmas-red) !important;
+    color: #fff !important;
+    box-shadow: 0 0 10px rgba(212, 36, 38, 0.5);
+}
+
+.btn-custom:hover {
+    background-color: #b01b1d !important;
+    box-shadow: 0 0 15px rgba(212, 36, 38, 0.8);
+}
+
+.btn-outline-warning {
+    color: var(--christmas-gold) !important;
+    border-color: var(--christmas-gold) !important;
+}
+
+.btn-outline-warning:hover {
+    background-color: var(--christmas-gold) !important;
+    color: #000 !important;
+}
+
+/* Headers */
+h4,
+h5,
+h6 {
+    color: var(--christmas-green) !important;
+    text-shadow: 0 0 2px #000;
+}
+
+/* Cards/Panels */
+.pdv-panel {
+    border: 1px solid var(--christmas-green);
+    box-shadow: 0 0 15px rgba(46, 139, 87, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.pdv-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: repeating-linear-gradient(45deg,
+            var(--christmas-red),
+            var(--christmas-red) 10px,
+            var(--christmas-green) 10px,
+            var(--christmas-green) 20px);
+}
+
+/* Snowfall Container */
+#snow-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+.snowflake {
+    position: absolute;
+    top: -10px;
+    color: #fff;
+    font-size: 1em;
+    opacity: 0.8;
+    animation: fall linear forwards;
+}
+
+@keyframes fall {
+    to {
+        transform: translateY(100vh);
+    }
+}
+
+/* =========================================
+   Creative Christmas Enhancements
+   ========================================= */
+
+/* Feliz Natal Greeting */
+.christmas-greeting {
+    font-family: 'Brush Script MT', cursive, sans-serif;
+    /* Fallback to sans-serif */
+    font-size: 4rem;
+    font-weight: bold;
+    background: linear-gradient(to right, #D42426, #FFD700, #2E8B57);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.1);
+    animation: pulseGreeting 3s infinite ease-in-out;
+    margin-top: 20px;
+}
+
+@keyframes pulseGreeting {
+    0% {
+        transform: scale(1);
+        filter: brightness(100%);
+    }
+
+    50% {
+        transform: scale(1.05);
+        filter: brightness(120%);
+    }
+
+    100% {
+        transform: scale(1);
+        filter: brightness(100%);
+    }
+}
+
+/* Flying Santa Animation */
+#santa-container {
+    position: fixed;
+    top: 10%;
+    left: -300px;
+    /* Start off-screen */
+    width: 300px;
+    z-index: 9999;
+    pointer-events: none;
+    /* Don't block clicks */
+    animation: flySanta 20s linear infinite;
+    animation-delay: 5s;
+    /* Wait a bit before starting */
+    mix-blend-mode: multiply;
+    /* Makes white background transparent */
+}
+
+#santa-sleigh {
+    width: 100%;
+}
+
+@keyframes flySanta {
+    0% {
+        left: -300px;
+        top: 10%;
+        transform: rotate(0deg);
+    }
+
+    25% {
+        top: 15%;
+        transform: rotate(5deg);
+    }
+
+    50% {
+        top: 5%;
+        transform: rotate(-5deg);
+    }
+
+    100% {
+        left: 100vw;
+        top: 10%;
+        transform: rotate(0deg);
+    }
+}
+
+/* Hidden Gnomes */
+.christmas-gnome {
+    position: fixed;
+    width: 100px;
+    z-index: 50;
+    transition: transform 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.christmas-gnome:hover {
+    transform: translateY(-20px) scale(1.1);
+}
+
+.gnome-1 {
+    bottom: -40px;
+    left: 2%;
+    transform: rotate(-10deg);
+}
+
+:root {
+    --christmas-red: #D42426;
+    --christmas-green: #2E8B57;
+    --christmas-gold: #FFD700;
+}
+
+/* Festive Navbar */
+.navbar {
+    border-bottom: 3px solid var(--christmas-red);
+    background-image: linear-gradient(to right, #1a1a1a, #2c0b0b, #0b2c16, #1a1a1a);
+}
+
+.navbar-brand img {
+    filter: drop-shadow(0 0 5px var(--christmas-gold));
+}
+
+/* Festive Buttons */
+.btn-custom {
+    background-color: var(--christmas-red) !important;
+    border-color: var(--christmas-red) !important;
+    color: #fff !important;
+    box-shadow: 0 0 10px rgba(212, 36, 38, 0.5);
+}
+
+.btn-custom:hover {
+    background-color: #b01b1d !important;
+    box-shadow: 0 0 15px rgba(212, 36, 38, 0.8);
+}
+
+.btn-outline-warning {
+    color: var(--christmas-gold) !important;
+    border-color: var(--christmas-gold) !important;
+}
+
+.btn-outline-warning:hover {
+    background-color: var(--christmas-gold) !important;
+    color: #000 !important;
+}
+
+/* Headers */
+h4,
+h5,
+h6 {
+    color: var(--christmas-green) !important;
+    text-shadow: 0 0 2px #000;
+}
+
+/* Cards/Panels */
+.pdv-panel {
+    border: 1px solid var(--christmas-green);
+    box-shadow: 0 0 15px rgba(46, 139, 87, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.pdv-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: repeating-linear-gradient(45deg,
+            var(--christmas-red),
+            var(--christmas-red) 10px,
+            var(--christmas-green) 10px,
+            var(--christmas-green) 20px);
+}
+
+/* Snowfall Container */
+#snow-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+.snowflake {
+    position: absolute;
+    top: -10px;
+    color: #fff;
+    font-size: 1em;
+    opacity: 0.8;
+    animation: fall linear forwards;
+}
+
+@keyframes fall {
+    to {
+        transform: translateY(100vh);
+    }
+}
+
+/* =========================================
+   Creative Christmas Enhancements
+   ========================================= */
+
+/* Feliz Natal Greeting */
+.christmas-greeting {
+    font-family: 'Brush Script MT', cursive, sans-serif;
+    /* Fallback to sans-serif */
+    font-size: 4rem;
+    font-weight: bold;
+    background: linear-gradient(to right, #D42426, #FFD700, #2E8B57);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.1);
+    animation: pulseGreeting 3s infinite ease-in-out;
+    margin-top: 20px;
+}
+
+@keyframes pulseGreeting {
+    0% {
+        transform: scale(1);
+        filter: brightness(100%);
+    }
+
+    50% {
+        transform: scale(1.05);
+        filter: brightness(120%);
+    }
+
+    100% {
+        transform: scale(1);
+        filter: brightness(100%);
+    }
+}
+
+/* Flying Santa Animation */
+#santa-container {
+    position: fixed;
+    top: 10%;
+    left: -300px;
+    /* Start off-screen */
+    width: 300px;
+    z-index: 9999;
+    pointer-events: none;
+    /* Don't block clicks */
+    animation: flySanta 20s linear infinite;
+    animation-delay: 5s;
+    /* Wait a bit before starting */
+    mix-blend-mode: multiply;
+    /* Makes white background transparent */
+}
+
+#santa-sleigh {
+    width: 100%;
+}
+
+@keyframes flySanta {
+    0% {
+        left: -300px;
+        top: 10%;
+        transform: rotate(0deg);
+    }
+
+    25% {
+        top: 15%;
+        transform: rotate(5deg);
+    }
+
+    50% {
+        top: 5%;
+        transform: rotate(-5deg);
+    }
+
+    100% {
+        left: 100vw;
+        top: 10%;
+        transform: rotate(0deg);
+    }
+}
+
+/* Hidden Gnomes */
+.christmas-gnome {
+    position: fixed;
+    width: 100px;
+    z-index: 50;
+    transition: transform 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.christmas-gnome:hover {
+    transform: translateY(-20px) scale(1.1);
+}
+
+.gnome-1 {
+    bottom: -40px;
+    left: 2%;
+    transform: rotate(-10deg);
+}
+
+.gnome-1:hover {
+    transform: translateY(-50px) rotate(0deg) scale(1.1);
+}
+
+.gnome-2 {
+    bottom: -40px;
+    right: 2%;
+    transform: rotate(10deg);
+}
+
+.gnome-2:hover {
+    transform: translateY(-50px) rotate(0deg) scale(1.1);
+}
+
+/* Couple Avatar */
+#couple-container {
+    position: fixed;
+    bottom: 20px;
+    right: 150px;
+    /* Positioned to not overlap with gnome */
+    width: 150px;
+    z-index: 60;
+    animation: floatAvatar 3s ease-in-out infinite;
+}
+
+#couple-avatar {
+    width: 100%;
+    filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));
+    /* Gold glow */
+}
+
+@keyframes floatAvatar {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}

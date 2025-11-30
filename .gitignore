@@ -39,3 +39,6 @@ fix_product_images.py
 debug_*.py
 test_*.py
 reset_admin_password.py
+system_check.py
+exhaustive_test.py
+instance/

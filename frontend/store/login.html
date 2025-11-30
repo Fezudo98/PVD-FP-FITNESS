@@ -1,0 +1,279 @@
+{% extends "store/base.html" %}
+
+{% block content %}
+<section class="py-5 bg-light" style="min-height: 80vh;">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-5 col-md-8">
+                <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="card-header bg-dark text-white text-center py-4">
+                        <h3 class="fw-bold mb-0" style="font-family: 'Outfit', sans-serif;">Minha Conta</h3>
+                    </div>
+                    <div class="card-body p-4 p-md-5">
+
+                        <!-- Tabs -->
+                        <ul class="nav nav-pills nav-fill mb-4 gap-2" id="authTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active rounded-pill fw-bold" id="login-tab" data-bs-toggle="tab"
+                                    data-bs-target="#login" type="button" role="tab">Entrar</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill fw-bold" id="register-tab" data-bs-toggle="tab"
+                                    data-bs-target="#register" type="button" role="tab">Criar Conta</button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="authTabsContent">
+                            <!-- Login Form -->
+                            <div class="tab-pane show active" id="login" role="tabpanel">
+                                <form id="loginForm">
+                                    <div class="mb-3">
+                                        <label for="loginEmail"
+                                            class="form-label text-muted small fw-bold text-uppercase">Email</label>
+                                        <input type="email"
+                                            class="form-control form-control-lg bg-light border-light-subtle"
+                                            id="loginEmail" required>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label for="loginPassword"
+                                            class="form-label text-muted small fw-bold text-uppercase">Senha</label>
+                                        <input type="password"
+                                            class="form-control form-control-lg bg-light border-light-subtle"
+                                            id="loginPassword" required>
+                                    </div>
+                                    <div class="mb-4 form-check">
+                                        <input type="checkbox" class="form-check-input" id="rememberMe">
+                                        <label class="form-check-label text-muted small" for="rememberMe">Permanecer
+                                            conectado</label>
+                                    </div>
+                                    <button type="submit"
+                                        class="btn btn-warning w-100 btn-lg rounded-pill fw-bold shadow-sm">Entrar</button>
+                                </form>
+                            </div>
+
+                            <!-- Register Form -->
+                            <div class="tab-pane" id="register" role="tabpanel">
+                                <form id="registerForm">
+                                    <div class="mb-3">
+                                        <label for="regName"
+                                            class="form-label text-muted small fw-bold text-uppercase">Nome
+                                            Completo</label>
+                                        <input type="text" class="form-control bg-light border-light-subtle"
+                                            id="regName" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="regEmail"
+                                            class="form-label text-muted small fw-bold text-uppercase">Email</label>
+                                        <input type="email" class="form-control bg-light border-light-subtle"
+                                            id="regEmail" required>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-6">
+                                            <label for="regPhone"
+                                                class="form-label text-muted small fw-bold text-uppercase">Telefone</label>
+                                            <input type="text" class="form-control bg-light border-light-subtle"
+                                                id="regPhone" placeholder="(00) 00000-0000">
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="regCpf"
+                                                class="form-label text-muted small fw-bold text-uppercase">CPF</label>
+                                            <input type="text" class="form-control bg-light border-light-subtle"
+                                                id="regCpf" placeholder="000.000.000-00">
+                                        </div>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label for="regPassword"
+                                            class="form-label text-muted small fw-bold text-uppercase">Senha</label>
+                                        <input type="password" class="form-control bg-light border-light-subtle"
+                                            id="regPassword" required>
+                                    </div>
+                                    <button type="submit"
+                                        class="btn btn-dark w-100 btn-lg rounded-pill fw-bold shadow-sm">Criar
+                                        Conta</button>
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Check if already logged in
+        if (localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken')) {
+            window.location.href = '/store/conta';
+        }
+
+        // --- Input Masking Functions ---
+        const formatCPF = (value) => {
+            return value
+                .replace(/\D/g, '') // Remove non-digits
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+                .replace(/(-\d{2})\d+?$/, '$1'); // Limit length
+        };
+
+        const formatPhone = (value) => {
+            return value
+                .replace(/\D/g, '')
+                .replace(/(\d{2})(\d)/, '($1) $2')
+                .replace(/(\d)(\d{4})(\d{4})$/, '$1 $2-$3') // Format (XX) X XXXX-XXXX
+                .replace(/(-\d{4})\d+?$/, '$1');
+        };
+
+        // Apply masks to inputs
+        const cpfInput = document.getElementById('regCpf');
+        const phoneInput = document.getElementById('regPhone');
+
+        if (cpfInput) {
+            cpfInput.addEventListener('input', (e) => {
+                e.target.value = formatCPF(e.target.value);
+            });
+        }
+        if (phoneInput) {
+            phoneInput.addEventListener('input', (e) => {
+                e.target.value = formatPhone(e.target.value);
+            });
+        }
+
+        // Login Handler (Unified: Client -> Admin)
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const senha = document.getElementById('loginPassword').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+
+            try {
+                // 1. Tenta Login como Cliente
+                const resClient = await fetch('/api/client/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, senha })
+                });
+
+                if (resClient.ok) {
+                    const data = await resClient.json();
+
+                    if (rememberMe) {
+                        localStorage.setItem('clientToken', data.token);
+                        localStorage.setItem('clientUser', JSON.stringify(data.cliente));
+                    } else {
+                        sessionStorage.setItem('clientToken', data.token);
+                        sessionStorage.setItem('clientUser', JSON.stringify(data.cliente));
+                    }
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Bem-vindo!',
+                        text: 'Login de cliente realizado com sucesso.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = '/store/conta';
+                    });
+                    return; // Sucesso como cliente, encerra aqui
+                }
+
+                // 2. Se falhar como Cliente (401), tenta como Admin/Vendedor
+                if (resClient.status === 401) {
+                    const resAdmin = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, senha })
+                    });
+
+                    if (resAdmin.ok) {
+                        const data = await resAdmin.json();
+                        // Admin login always uses localStorage for now as it's the dashboard
+                        localStorage.setItem('authToken', data.token);
+                        localStorage.setItem('userData', JSON.stringify(data.user));
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Bem-vindo, Admin!',
+                            text: 'Login administrativo realizado com sucesso.',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = '/index.html'; // Redireciona para o painel PVD
+                        });
+                        return; // Sucesso como admin, encerra aqui
+                    }
+                }
+
+                // 3. Se ambos falharem
+                throw new Error('Credenciais inválidas para Cliente ou Administrador.');
+
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Erro de Login', text: error.message });
+            }
+        });
+
+        // Register Handler
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nome = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const telefone = document.getElementById('regPhone').value;
+            const cpf = document.getElementById('regCpf').value;
+            const senha = document.getElementById('regPassword').value;
+
+            // Password Validation
+            if (senha.length < 6) {
+                Swal.fire({ icon: 'warning', title: 'Senha Fraca', text: 'A senha deve ter no mínimo 6 caracteres.' });
+                return;
+            }
+            if (!/[a-zA-Z]/.test(senha) || !/[0-9]/.test(senha)) {
+                Swal.fire({ icon: 'warning', title: 'Senha Fraca', text: 'A senha deve conter letras e números.' });
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/client/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome, email, telefone, cpf, senha })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    localStorage.setItem('clientToken', data.token);
+                    localStorage.setItem('clientUser', JSON.stringify(data.cliente));
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Conta Criada!',
+                        text: 'Seu cadastro foi realizado com sucesso.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = '/store/conta';
+                    });
+                } else {
+                    throw new Error(data.erro || 'Erro ao criar conta');
+                }
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Erro', text: error.message });
+            }
+        });
+    });
+</script>
+<style>
+    .nav-pills .nav-link {
+        color: #6c757d;
+        background-color: transparent;
+        border: 1px solid transparent;
+    }
+
+    .nav-pills .nav-link.active {
+        background-color: #e0b431;
+        color: #000;
+    }
+</style>
+{% endblock %}

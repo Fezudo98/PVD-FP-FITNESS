@@ -1,9 +1,13 @@
 /* Definindo as cores da marca para fácil reutilização */
 :root {
-    --cor-principal: #e0b431; /* Amarelo/Dourado da logo */
-    --cor-fundo: #1c1c1c;      /* Fundo escuro da logo */
-    --cor-card: #2a2a2a;       /* Um cinza um pouco mais claro para o card */
-    --cor-texto: #f8f9fa;      /* Texto branco/claro */
+    --cor-principal: #e0b431;
+    /* Amarelo/Dourado da logo */
+    --cor-fundo: #1c1c1c;
+    /* Fundo escuro da logo */
+    --cor-card: #2a2a2a;
+    /* Um cinza um pouco mais claro para o card */
+    --cor-texto: #f8f9fa;
+    /* Texto branco/claro */
 }
 
 body {
@@ -54,7 +58,8 @@ body {
 }
 
 .btn-custom:hover {
-    background-color: #c9a22b; /* Um tom um pouco mais escuro para o hover */
+    background-color: #c9a22b;
+    /* Um tom um pouco mais escuro para o hover */
     border-color: #c9a22b;
     color: #000;
 }
@@ -80,7 +85,8 @@ body {
     border-radius: 10px;
 }
 
-h2, h4 {
+h2,
+h4 {
     color: var(--cor-principal);
 }
 
@@ -99,7 +105,8 @@ h2, h4 {
     height: 100%;
 }
 
-#searchResults, #cartItems {
+#searchResults,
+#cartItems {
     max-height: 400px;
     overflow-y: auto;
 }
@@ -156,8 +163,10 @@ h2, h4 {
 
 /* --- ESTILO PADRÃO (A4) - CORRIGIDO PARA EVITAR PÁGINAS EM BRANCO --- */
 @media print {
+
     /* CORREÇÃO: Força um reset completo no layout da página */
-    html, body {
+    html,
+    body {
         height: auto !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -165,16 +174,19 @@ h2, h4 {
     }
 
     /* Esconde tudo que não está dentro do modal do recibo */
-    body > *:not(.modal) {
+    body>*:not(.modal) {
         display: none !important;
     }
 
     /* Garante que o modal e seu conteúdo sejam visíveis */
-    .modal, .modal-dialog, .modal-content, #receiptContent {
+    .modal,
+    .modal-dialog,
+    .modal-content,
+    #receiptContent {
         display: block !important;
         visibility: visible !important;
     }
-    
+
     /* CORREÇÃO: Remove qualquer propriedade de espaçamento do modal */
     .modal {
         position: static !important;
@@ -185,15 +197,17 @@ h2, h4 {
         padding: 0 !important;
         margin: 0 !important;
     }
-    
+
     .modal-dialog {
         max-width: 100% !important;
         margin: 0 !important;
         box-shadow: none !important;
     }
-    
-    .modal-header, .modal-footer {
-        display: none !important; /* Esconde o cabeçalho e o rodapé do modal (botões) */
+
+    .modal-header,
+    .modal-footer {
+        display: none !important;
+        /* Esconde o cabeçalho e o rodapé do modal (botões) */
     }
 
     /* Garante que o conteúdo do recibo ocupe o espaço necessário */
@@ -206,16 +220,19 @@ h2, h4 {
 
 /* --- ESTILOS PARA IMPRESSÃO TÉRMICA --- */
 @media print {
+
     /* Define o tamanho do papel para impressoras de 80mm de largura */
     @page {
-        size: 80mm auto; /* Largura de 80mm, altura automática */
+        size: 80mm auto;
+        /* Largura de 80mm, altura automática */
         margin: 3mm;
     }
 
     /* Regras aplicadas SOMENTE quando o recibo estiver no modo "térmica" */
     #receiptContent.termica-print {
         font-family: 'Courier New', Courier, monospace;
-        font-size: 10pt; /* Tamanho de fonte legível para cupons */
+        font-size: 10pt;
+        /* Tamanho de fonte legível para cupons */
         color: #000;
         background: #fff;
     }
@@ -224,9 +241,10 @@ h2, h4 {
     #receiptContent.termica-print .text-end {
         text-align: left !important;
     }
-    
+
     #receiptContent.termica-print img {
-        max-width: 60mm; /* Limita a largura da logo */
+        max-width: 60mm;
+        /* Limita a largura da logo */
         display: block;
         margin: 0 auto 10px auto;
     }
@@ -244,7 +262,8 @@ h2, h4 {
     }
 
     #receiptContent.termica-print thead {
-        display: none; /* Esconde o cabeçalho da tabela */
+        display: none;
+        /* Esconde o cabeçalho da tabela */
     }
 
     #receiptContent.termica-print tr {
@@ -252,14 +271,23 @@ h2, h4 {
         padding-bottom: 5px;
         margin-bottom: 5px;
     }
-    
+
     /* Adiciona descrições antes de cada célula de dados */
-    #receiptContent.termica-print td:nth-of-type(2)::before { content: "Qtd: "; }
-    #receiptContent.termica-print td:nth-of-type(3)::before { content: "Preço Unit.: "; }
-    #receiptContent.termica-print td:nth-of-type(4)::before { content: "Subtotal: "; }
-    
+    #receiptContent.termica-print td:nth-of-type(2)::before {
+        content: "Qtd: ";
+    }
+
+    #receiptContent.termica-print td:nth-of-type(3)::before {
+        content: "Preço Unit.: ";
+    }
+
+    #receiptContent.termica-print td:nth-of-type(4)::before {
+        content: "Subtotal: ";
+    }
+
     #receiptContent.termica-print td:nth-of-type(1) {
-        font-weight: bold; /* Destaca o nome do produto */
+        font-weight: bold;
+        /* Destaca o nome do produto */
     }
 
     /* Formata a seção de totais */
@@ -315,4 +343,18 @@ h2, h4 {
 
 .btn-icon svg {
     flex-shrink: 0;
+}
+
+/* --- Fix for Store Inputs (Light Theme) --- */
+.form-control.bg-light {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+    border: 1px solid #dee2e6;
+}
+
+.form-control.bg-light:focus {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+    border-color: var(--cor-principal);
+    box-shadow: 0 0 0 0.25rem rgba(224, 180, 49, 0.25);
 }

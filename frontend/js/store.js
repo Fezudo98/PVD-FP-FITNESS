@@ -169,6 +169,7 @@ async function submitOrder() {
             numero: document.getElementById('numero').value,
             bairro: document.getElementById('bairro').value,
             cidade: document.getElementById('cidade').value,
+            estado: document.getElementById('estado').value,
             cep: document.getElementById('cep').value
         }
     };
@@ -227,4 +228,78 @@ async function submitOrder() {
 
 document.addEventListener('DOMContentLoaded', () => {
     updateCartCount();
+    updateAuthUI();
+    if (window.location.pathname.includes('/checkout')) {
+        autoFillCheckout();
+    }
 });
+
+function updateAuthUI() {
+    const authContainer = document.getElementById('authButtons');
+    if (!authContainer) return;
+
+    const token = localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken');
+
+    if (token) {
+        authContainer.innerHTML = `
+            <div class="dropdown">
+                <button class="btn btn-warning btn-sm rounded-pill px-3 dropdown-toggle fw-bold" type="button" data-bs-toggle="dropdown">
+                    <i class="fa-regular fa-user me-2"></i>Minha Conta
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                    <li><a class="dropdown-item" href="/store/conta">Perfil</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="logoutClient()">Sair</a></li>
+                </ul>
+            </div>
+        `;
+    } else {
+        authContainer.innerHTML = `
+            <a href="/store/login" class="btn btn-outline-warning btn-sm rounded-pill px-3">
+                <i class="fa-regular fa-user me-2"></i>Login
+            </a>
+        `;
+    }
+}
+
+function logoutClient() {
+    localStorage.removeItem('clientToken');
+    localStorage.removeItem('clientUser');
+    sessionStorage.removeItem('clientToken');
+    sessionStorage.removeItem('clientUser');
+    window.location.href = '/store';
+}
+
+async function autoFillCheckout() {
+    const token = localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken');
+    if (!token) return;
+
+    try {
+        // Try to get fresh data first
+        const res = await fetch('/api/client/me', { headers: { 'x-client-token': token } });
+        if (res.ok) {
+            const data = await res.json();
+            fillForm(data);
+        } else {
+            // Fallback to stored user data
+            const storedUser = JSON.parse(localStorage.getItem('clientUser') || sessionStorage.getItem('clientUser'));
+            if (storedUser) fillForm(storedUser);
+        }
+    } catch (e) {
+        console.error('Erro ao auto-preencher checkout:', e);
+    }
+}
+
+function fillForm(data) {
+    if (document.getElementById('nome')) document.getElementById('nome').value = data.nome || '';
+    if (document.getElementById('email')) document.getElementById('email').value = data.email || '';
+    if (document.getElementById('cpf')) document.getElementById('cpf').value = data.cpf || '';
+    if (document.getElementById('telefone')) document.getElementById('telefone').value = data.telefone || '';
+
+    if (document.getElementById('rua')) document.getElementById('rua').value = data.endereco_rua || '';
+    if (document.getElementById('numero')) document.getElementById('numero').value = data.endereco_numero || '';
+    if (document.getElementById('bairro')) document.getElementById('bairro').value = data.endereco_bairro || '';
+    if (document.getElementById('cidade')) document.getElementById('cidade').value = data.endereco_cidade || '';
+    if (document.getElementById('estado')) document.getElementById('estado').value = data.endereco_estado || '';
+    if (document.getElementById('cep')) document.getElementById('cep').value = data.endereco_cep || '';
+}
