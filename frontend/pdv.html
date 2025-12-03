@@ -25,24 +25,45 @@
 
     <main class="container-fluid mt-4">
         <div class="row gx-4">
-            <!-- Coluna da Esquerda: Busca de Produtos -->
+            <!-- Coluna da Esquerda: Busca de Produtos e Preview -->
             <div class="col-lg-7">
-                <div class="pdv-panel">
-                    <h4>Buscar Produto</h4>
-                    <input type="text" id="searchInput" class="form-control form-control-lg"
-                        placeholder="Digite o nome ou SKU do produto...">
-                    <hr>
-                    <div id="searchResults" class="list-group"></div>
-                    <div id="last-item-preview" class="text-center mt-4" style="display: none;">
-                        <p class="text-muted mb-2">Último item adicionado:</p>
-                        <img id="preview-image" src="" alt="Imagem do Produto" class="img-fluid">
+                <div class="pdv-panel h-100">
+                    <!-- Seção de Busca -->
+                    <div class="input-group input-group-lg mb-3">
+                        <span class="input-group-text bg-dark text-white border-secondary">🔍</span>
+                        <input type="text" id="searchInput" class="form-control bg-dark text-white border-secondary"
+                            placeholder="Buscar produto (Nome ou SKU)..." autofocus>
+                    </div>
+                    <div id="searchResults" class="list-group position-absolute w-100"
+                        style="z-index: 1000; max-width: 95%;"></div>
+
+                    <hr class="my-4 border-secondary">
+
+                    <!-- Seção de Preview -->
+                    <div id="last-item-preview" class="text-center" style="display: none;">
+                        <h4 class="mb-3">Último Item Adicionado</h4>
+                        <div class="position-relative d-inline-block" style="min-width: 300px;">
+                            <img id="preview-image" src="" alt="Preview" class="img-fluid rounded shadow-lg mb-2"
+                                style="max-height: 500px; object-fit: contain;">
+
+                            <button id="prevImageBtn"
+                                class="btn btn-sm btn-dark position-absolute top-50 start-0 translate-middle-y ms-2"
+                                style="display: none;">❮</button>
+                            <button id="nextImageBtn"
+                                class="btn btn-sm btn-dark position-absolute top-50 end-0 translate-middle-y me-2"
+                                style="display: none;">❯</button>
+
+                            <div id="imageCounter"
+                                class="position-absolute bottom-0 start-50 translate-middle-x badge bg-dark mb-2"
+                                style="display: none;">1/1</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Coluna da Direita: Carrinho e Finalização -->
+            <!-- Coluna da Direita: Carrinho e Pagamento -->
             <div class="col-lg-5">
-                <div class="pdv-panel">
+                <div class="pdv-panel h-100">
                     <h4>Carrinho de Compras</h4>
                     <div id="cartItems" class="list-group mb-3">
                         <div class="list-group-item text-center">Carrinho vazio</div>
@@ -54,10 +75,8 @@
                             <span id="cartSubtotal">R$ 0,00</span>
                         </div>
 
-                        <!-- ===== SEÇÃO DE CUPOM ATUALIZADA ===== -->
-                        <div id="appliedCouponsList" class="my-2">
-                            <!-- Cupons aplicados aparecerão aqui como badges via JavaScript -->
-                        </div>
+                        <!-- ===== SEÇÃO DE CUPOM ===== -->
+                        <div id="appliedCouponsList" class="my-2"></div>
                         <div class="input-group my-2">
                             <input type="text" id="cupomInput" class="form-control" placeholder="CUPOM DE DESCONTO"
                                 style="text-transform: uppercase;">
@@ -67,7 +86,6 @@
                             <span>Desconto Total:</span>
                             <span id="totalDiscountValue">R$ 0,00</span>
                         </div>
-                        <!-- ======================================= -->
 
                         <div class="row mt-2 align-items-center">
                             <div class="col-6">
@@ -78,9 +96,8 @@
                             <div class="col-6 d-flex align-items-end" style="padding-bottom: 8px;">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="freeDeliveryCheckbox">
-                                    <label class="form-check-label" for="freeDeliveryCheckbox">
-                                        Oferecer Entrega Grátis
-                                    </label>
+                                    <label class="form-check-label" for="freeDeliveryCheckbox">Oferecer Entrega
+                                        Grátis</label>
                                 </div>
                             </div>
                         </div>
@@ -121,9 +138,10 @@
                                 Cliente</button>
                         </div>
                         <div id="selectedClientDisplay" class="d-none">
-                            <div class="alert alert-info d-flex justify-content-between align-items-center"><span
-                                    id="selectedClientName"></span><button id="removeClientBtn" type="button"
-                                    class="btn-close"></button></div>
+                            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                <span id="selectedClientName"></span>
+                                <button id="removeClientBtn" type="button" class="btn-close"></button>
+                            </div>
                         </div>
                         <div id="clientSearchWrapper">
                             <input type="text" id="clientSearchInput" class="form-control"
@@ -153,7 +171,6 @@
                 </div>
                 <div class="modal-body">
                     <div class="row">
-                        <!-- Coluna da Esquerda: Formulário de Pagamento -->
                         <div class="col-md-6 border-end border-secondary">
                             <div class="mb-3">
                                 <span class="text-muted">Total a Pagar</span>
@@ -168,27 +185,37 @@
                                     <label for="paymentMethodSelect" class="form-label">Forma de Pagamento</label>
                                     <select id="paymentMethodSelect" class="form-select">
                                         <option value="Dinheiro">Dinheiro</option>
-                                        <option value="PIX">PIX</option>
                                         <option value="Cartão de Crédito">Cartão de Crédito</option>
                                         <option value="Cartão de Débito">Cartão de Débito</option>
+                                        <option value="PIX">PIX</option>
                                     </select>
                                 </div>
-                                <div class="mb-3 d-none" id="paymentInstallmentsWrapper">
-                                    <label for="paymentInstallmentsInput" class="form-label">Nº de Parcelas</label>
-                                    <input type="number" class="form-control" id="paymentInstallmentsInput" value="1"
-                                        min="1" max="12">
+                                <div id="paymentInstallmentsWrapper" class="mb-3 d-none">
+                                    <label for="paymentInstallmentsInput" class="form-label">Parcelas</label>
+                                    <select id="paymentInstallmentsInput" class="form-select">
+                                        <option value="1">1x (À vista)</option>
+                                        <option value="2">2x</option>
+                                        <option value="3">3x</option>
+                                        <option value="4">4x</option>
+                                        <option value="5">5x</option>
+                                        <option value="6">6x</option>
+                                    </select>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="paymentValueInput" class="form-label">Valor a Pagar</label>
-                                    <input type="number" step="0.01" class="form-control" id="paymentValueInput"
-                                        required>
+                                <div id="paymentAmountWrapper" class="mb-3">
+                                    <label for="paymentAmountInput" class="form-label" id="paymentAmountLabel">Valor a
+                                        Pagar (R$)</label>
+                                    <input type="number" class="form-control" id="paymentAmountInput" step="0.01"
+                                        min="0">
+                                </div>
+                                <div id="changePreviewWrapper" class="mb-3 d-none">
+                                    <span class="text-muted">Troco Estimado:</span>
+                                    <strong id="changePreviewValue" class="text-info">R$ 0,00</strong>
                                 </div>
                                 <div class="d-grid">
                                     <button type="submit" class="btn btn-info">Adicionar Pagamento</button>
                                 </div>
                             </form>
                         </div>
-                        <!-- Coluna da Direita: Lista de Pagamentos Adicionados -->
                         <div class="col-md-6">
                             <h6>Pagamentos Adicionados</h6>
                             <div id="addedPaymentsList" class="list-group">
@@ -210,8 +237,8 @@
         <div class="modal-dialog">
             <div class="modal-content bg-dark text-white">
                 <div class="modal-header">
-                    <h5 class="modal-title">Cadastro Rápido de Cliente</h5><button type="button"
-                        class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title">Cadastro Rápido de Cliente</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="quickClientForm">
@@ -223,9 +250,10 @@
                                 type="text" class="form-control" id="quickClientCpf"></div>
                     </form>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary"
-                        data-bs-dismiss="modal">Cancelar</button><button type="submit" form="quickClientForm"
-                        class="btn btn-custom">Salvar e Selecionar</button></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" form="quickClientForm" class="btn btn-custom">Salvar e Selecionar</button>
+                </div>
             </div>
         </div>
     </div>
@@ -235,8 +263,8 @@
         <div class="modal-dialog">
             <div class="modal-content receipt-modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Comprovante de Venda</h5><button type="button" class="btn-close"
-                        data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title">Comprovante de Venda</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" id="receiptContent">
                     <div class="text-center mb-3"><img src="/logo.jpg" alt="Logo" style="width: 150px;">
@@ -271,10 +299,12 @@
                     <hr>
                     <p class="text-center small">Obrigado pela preferência!</p>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary"
-                        data-bs-dismiss="modal">Fechar</button><button type="button" class="btn btn-success"
-                        id="imprimirTermicaBtn">Imprimir Cupom (Térmica)</button><button type="button"
-                        class="btn btn-primary" id="imprimirA4Btn">Imprimir (A4)</button></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-success" id="imprimirTermicaBtn">Imprimir Cupom
+                        (Térmica)</button>
+                    <button type="button" class="btn btn-primary" id="imprimirA4Btn">Imprimir (A4)</button>
+                </div>
             </div>
         </div>
     </div>

@@ -68,19 +68,18 @@
                                             <hr>
                                         </div>
 
-                                        <div class="col-md-4">
+                                        <div class="col-md-6">
                                             <label
                                                 class="form-label text-muted small fw-bold text-uppercase">CEP</label>
                                             <div class="input-group">
                                                 <input type="text" class="form-control bg-dark text-white border-0"
                                                     id="accCep">
-                                                <button class="btn btn-outline-secondary" type="button"
-                                                    onclick="buscarCep()">
-                                                    <i class="bi bi-search"></i>
-                                                </button>
+                                                <span class="input-group-text bg-dark border-0 text-white">
+                                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                                </span>
                                             </div>
                                         </div>
-                                        <div class="col-md-8">
+                                        <div class="col-md-6">
                                             <label
                                                 class="form-label text-muted small fw-bold text-uppercase">Rua</label>
                                             <input type="text" class="form-control bg-dark text-white border-0"
@@ -201,7 +200,13 @@
         }
         if (cepInput) {
             cepInput.addEventListener('input', (e) => {
-                e.target.value = formatCEP(e.target.value);
+                let value = e.target.value;
+                e.target.value = formatCEP(value);
+
+                const cleanCep = value.replace(/\D/g, '');
+                if (cleanCep.length === 8) {
+                    buscarCep();
+                }
             });
         }
 
@@ -238,41 +243,41 @@
 
                 if (orders.length === 0) {
                     container.innerHTML = `
-                        <div class="text-center py-5 text-muted">
-                            <i class="bi bi-bag-x display-1"></i>
-                            <p class="mt-3">Você ainda não fez nenhum pedido.</p>
-                            <a href="/store" class="btn btn-warning rounded-pill fw-bold mt-2">Ir às Compras</a>
-                        </div>`;
+                            <div class="text-center py-5 text-muted">
+                                <i class="bi bi-bag-x display-1"></i>
+                                <p class="mt-3">Você ainda não fez nenhum pedido.</p>
+                                <a href="/store" class="btn btn-warning rounded-pill fw-bold mt-2">Ir às Compras</a>
+                            </div>`;
                     return;
                 }
 
                 container.innerHTML = orders.map(order => `
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header bg-white border-bottom-0 py-3 d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="fw-bold">Pedido #${order.id}</span>
-                                <span class="text-muted small ms-2">${order.data}</span>
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-white border-bottom-0 py-3 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="fw-bold">Pedido #${order.id}</span>
+                                    <span class="text-muted small ms-2">${order.data}</span>
+                                </div>
+                                <span class="badge ${getStatusBadge(order.status)} rounded-pill">${order.status}</span>
                             </div>
-                            <span class="badge ${getStatusBadge(order.status)} rounded-pill">${order.status}</span>
-                        </div>
-                        <div class="card-body">
-                            <ul class="list-group list-group-flush mb-3">
-                                ${order.itens.map(item => `
-                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                                        <div>
-                                            <span class="fw-bold">${item.quantidade}x</span> ${item.produto}
-                                        </div>
-                                        <span>R$ ${item.total.toFixed(2)}</span>
-                                    </li>
-                                `).join('')}
-                            </ul>
-                            <div class="d-flex justify-content-between align-items-center border-top pt-3">
-                                <span class="fw-bold">Total</span>
-                                <span class="fw-bold fs-5 text-warning">R$ ${order.total.toFixed(2)}</span>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush mb-3">
+                                    ${order.itens.map(item => `
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                            <div>
+                                                <span class="fw-bold">${item.quantidade}x</span> ${item.produto}
+                                            </div>
+                                            <span>R$ ${item.total.toFixed(2)}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                                <div class="d-flex justify-content-between align-items-center border-top pt-3">
+                                    <span class="fw-bold">Total</span>
+                                    <span class="fw-bold fs-5 text-warning">R$ ${order.total.toFixed(2)}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
 
             } catch (error) {
                 console.error('Erro ao carregar pedidos:', error);
@@ -288,32 +293,32 @@
 
                 if (coupons.length === 0) {
                     container.innerHTML = `
-                        <div class="col-12 text-center py-5 text-muted">
-                            <i class="bi bi-ticket-perforated display-1"></i>
-                            <p class="mt-3">Não há cupons disponíveis no momento.</p>
-                        </div>`;
+                            <div class="col-12 text-center py-5 text-muted">
+                                <i class="bi bi-ticket-perforated display-1"></i>
+                                <p class="mt-3">Não há cupons disponíveis no momento.</p>
+                            </div>`;
                     return;
                 }
 
                 container.innerHTML = coupons.map(coupon => `
-                    <div class="col-md-6 col-lg-4">
-                        <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #e0b431 !important;">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h5 class="fw-bold mb-0 text-warning">${coupon.codigo}</h5>
-                                    <span class="badge bg-success rounded-pill">Ativo</span>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #e0b431 !important;">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="fw-bold mb-0 text-warning">${coupon.codigo}</h5>
+                                        <span class="badge bg-success rounded-pill">Ativo</span>
+                                    </div>
+                                    <p class="text-muted small mb-3">
+                                        ${coupon.tipo_desconto === 'porcentagem' ? `${coupon.valor_desconto}% OFF` : `R$ ${coupon.valor_desconto.toFixed(2)} OFF`}
+                                        em ${coupon.aplicacao === 'total' ? 'toda a loja' : 'produtos selecionados'}
+                                    </p>
+                                    <button class="btn btn-outline-dark btn-sm w-100 rounded-pill" onclick="copiarCupom('${coupon.codigo}')">
+                                        <i class="bi bi-clipboard me-1"></i> Copiar Código
+                                    </button>
                                 </div>
-                                <p class="text-muted small mb-3">
-                                    ${coupon.tipo_desconto === 'porcentagem' ? `${coupon.valor_desconto}% OFF` : `R$ ${coupon.valor_desconto.toFixed(2)} OFF`}
-                                    em ${coupon.aplicacao === 'total' ? 'toda a loja' : 'produtos selecionados'}
-                                </p>
-                                <button class="btn btn-outline-dark btn-sm w-100 rounded-pill" onclick="copiarCupom('${coupon.codigo}')">
-                                    <i class="bi bi-clipboard me-1"></i> Copiar Código
-                                </button>
                             </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
 
             } catch (error) {
                 console.error('Erro ao carregar cupons:', error);

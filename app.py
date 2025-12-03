@@ -53,6 +53,9 @@ class Produto(db.Model):
     descricao = db.Column(db.Text, nullable=True)
     destaque = db.Column(db.Boolean, default=False)
     
+    # Relacionamento com imagens adicionais
+    imagens = db.relationship('ProdutoImagem', backref='produto', lazy=True, cascade="all, delete-orphan")
+    
     def to_dict(self):
         return { 
             'id': self.id, 'sku': self.sku, 'nome': self.nome, 'categoria': self.categoria, 
@@ -60,8 +63,25 @@ class Produto(db.Model):
             'preco_venda': self.preco_venda, 'quantidade': self.quantidade, 
             'imagem_url': self.imagem_url, 'limite_estoque_baixo': self.limite_estoque_baixo, 
             'codigo_barras_url': self.codigo_barras_url,
-            'online_ativo': self.online_ativo, 'descricao': self.descricao, 'destaque': self.destaque
+            'online_ativo': self.online_ativo, 'descricao': self.descricao, 'destaque': self.destaque,
+            'imagens': [img.to_dict() for img in self.imagens]
         }
+
+class ProdutoImagem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    produto_id = db.Column(db.Integer, db.ForeignKey('produto.id'), nullable=False)
+    imagem_url = db.Column(db.String(200), nullable=False)
+
+    def to_dict(self):
+        return {'id': self.id, 'imagem_url': self.imagem_url}
+
+# Relacionamento (Adicione isso APÓS definir ProdutoImagem se não usar string no relationship, 
+# mas como Produto já está definido acima, podemos adicionar o backref lá ou aqui. 
+# O jeito mais limpo no Flask-SQLAlchemy é definir dentro da classe Produto.
+# Vou redefinir a classe Produto para incluir o relacionamento corretamente ou usar monkey patch se fosse runtime,
+# mas aqui vou editar a classe Produto acima na próxima tool call ou editar tudo junto.
+# ESPERA, eu posso editar a classe Produto na mesma chamada se eu pegar o bloco todo.
+# Vou cancelar e pegar um bloco maior.)
 
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -141,6 +161,7 @@ class Venda(db.Model):
     taxa_entrega = db.Column(db.Float, nullable=True, default=0.0)
     status = db.Column(db.String(20), nullable=False, default='Concluída')
     desconto_total = db.Column(db.Float, nullable=True, default=0.0)
+    troco = db.Column(db.Float, nullable=True, default=0.0)
     cupons = db.relationship('Cupom', secondary=venda_cupons, lazy='selectin',
                              backref=db.backref('vendas', lazy=True))
     parcelas = db.Column(db.Integer, nullable=True, default=1)
@@ -516,94 +537,184 @@ def gerenciar_produtos(current_user):
     if request.method == 'POST':
         if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
         dados = request.form
-        if Produto.query.filter_by(sku=dados['sku']).first(): return jsonify({'erro': f'SKU {dados["sku"]} já existe.'}), 400
-        nome_normalizado = ' '.join(dados.get('nome', '').split()).title()
-        novo_produto = Produto(sku=dados.get('sku'), nome=nome_normalizado, categoria=dados.get('categoria', '').strip(), cor=dados.get('cor'), tamanho=dados.get('tamanho'), preco_custo=float(dados.get('preco_custo')), preco_venda=float(dados.get('preco_venda')), quantidade=int(dados.get('quantidade', 0)))
-        if 'imagem' in request.files and request.files['imagem'].filename != '':
+        if Produto.query.filter_by(sku=dados['sku']).first():
+            return jsonify({'erro': 'SKU já cadastrado.'}), 400
+        
+        novo_produto = Produto(
+            sku=dados['sku'],
+            nome=dados['nome'],
+            categoria=dados.get('categoria'),
+            cor=dados.get('cor'),
+            tamanho=dados.get('tamanho'),
+            preco_custo=float(dados['preco_custo']),
+            preco_venda=float(dados['preco_venda']),
+            quantidade=int(dados['quantidade'])
+        )
+        
+        # Processamento de Imagens Múltiplas
+        imagens_files = request.files.getlist('imagem')
+        if imagens_files:
             uploads_dir = os.path.join(base_dir, 'uploads')
             os.makedirs(uploads_dir, exist_ok=True)
-            file = request.files['imagem']
-            extensao = file.filename.rsplit('.', 1)[1].lower()
-            filename = f"{secure_filename(novo_produto.sku)}.{extensao}"
-            file.save(os.path.join(uploads_dir, filename))
-            novo_produto.imagem_url = filename
+            
+            for i, file in enumerate(imagens_files):
+                if file.filename == '':
+                    continue
+                
+                extensao = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+                filename = secure_filename(file.filename)
+                # Adiciona timestamp para evitar duplicatas
+                filename = f"{int(datetime.now().timestamp())}_{i}_{filename}"
+                file.save(os.path.join(uploads_dir, filename))
+                
+                # A primeira imagem é definida como capa
+                if i == 0:
+                    novo_produto.imagem_url = filename
+                
+                # Adiciona à tabela de imagens
+                nova_img = ProdutoImagem(imagem_url=filename)
+                novo_produto.imagens.append(nova_img)
+
+        # Gerar Código de Barras
+        try:
+            from barcode.writer import SVGWriter
+            barcodes_dir = os.path.join(base_dir, 'barcodes')
+            os.makedirs(barcodes_dir, exist_ok=True)
+            filename = f"{secure_filename(novo_produto.sku)}"
+            filepath = os.path.join(barcodes_dir, filename)
+            CODE128 = barcode.get_barcode_class('code128')
+            codigo_gerado = CODE128(novo_produto.sku, writer=SVGWriter())
+            codigo_gerado.save(filepath)
+            novo_produto.codigo_barras_url = f"{filename}.svg"
+        except Exception as e:
+            print(f"Erro ao gerar barcode: {e}")
+
         db.session.add(novo_produto)
         registrar_log(current_user, "Produto Criado", f"SKU: {novo_produto.sku}, Nome: {novo_produto.nome}")
         db.session.commit()
         return jsonify(novo_produto.to_dict()), 201
 
-@app.route('/api/produtos/nomes', methods=['GET'])
-@token_required
-def get_nomes_produtos(current_user):
-    try:
-        nomes = db.session.query(Produto.nome).distinct().order_by(Produto.nome).all()
-        lista_nomes = [n[0] for n in nomes if n[0]]
-        return jsonify(lista_nomes)
-    except Exception as e:
-        return jsonify({'erro': str(e)}), 500
-
 @app.route('/api/produtos/<int:produto_id>', methods=['GET', 'PUT', 'DELETE'])
 @token_required
 def gerenciar_produto_especifico(current_user, produto_id):
     produto = Produto.query.get_or_404(produto_id)
-    if request.method == 'GET': return jsonify(produto.to_dict())
+    
+    if request.method == 'GET':
+        return jsonify(produto.to_dict())
+
     if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
+
     if request.method == 'PUT':
         dados = request.form
-        if 'nome' in dados:
-            produto.nome = ' '.join(dados.get('nome', '').split()).title()
-        else:
-            produto.nome = produto.nome.strip().title() # Fallback just in case, though split/join is safer
-        produto.categoria = dados.get('categoria', produto.categoria).strip()
+        
+        # Atualização do SKU
+        novo_sku = dados.get('sku', produto.sku).strip()
+        if novo_sku != produto.sku:
+            if Produto.query.filter_by(sku=novo_sku).first():
+                return jsonify({'erro': f'SKU {novo_sku} já existe.'}), 400
+            
+            # Remove barcode antigo se existir
+            if produto.codigo_barras_url:
+                old_barcode_path = os.path.join(base_dir, 'barcodes', produto.codigo_barras_url)
+                if os.path.exists(old_barcode_path):
+                    try: os.remove(old_barcode_path)
+                    except: pass
+            
+            produto.sku = novo_sku
+            
+            # Regenera barcode automaticamente
+            try:
+                from barcode.writer import SVGWriter
+                barcodes_dir = os.path.join(base_dir, 'barcodes')
+                os.makedirs(barcodes_dir, exist_ok=True)
+                filename = f"{secure_filename(produto.sku)}"
+                filepath = os.path.join(barcodes_dir, filename)
+                CODE128 = barcode.get_barcode_class('code128')
+                codigo_gerado = CODE128(produto.sku, writer=SVGWriter())
+                codigo_gerado.save(filepath)
+                produto.codigo_barras_url = f"{filename}.svg"
+            except Exception as e:
+                print(f"Erro ao regenerar barcode: {e}")
+                return jsonify({'erro': f'Erro ao gerar código de barras: {str(e)}'}), 500
+
+        produto.nome = dados.get('nome', produto.nome)
+        produto.categoria = dados.get('categoria', produto.categoria)
         produto.cor = dados.get('cor', produto.cor)
         produto.tamanho = dados.get('tamanho', produto.tamanho)
         produto.preco_custo = float(dados.get('preco_custo', produto.preco_custo))
         produto.preco_venda = float(dados.get('preco_venda', produto.preco_venda))
         produto.quantidade = int(dados.get('quantidade', produto.quantidade))
-        produto.limite_estoque_baixo = int(dados.get('limite_estoque_baixo', produto.limite_estoque_baixo))
-        if 'imagem' in request.files and request.files['imagem'].filename != '':
+        
+        # Processamento de Imagens Múltiplas (Adicionar novas)
+        imagens_files = request.files.getlist('imagem')
+        if imagens_files:
             uploads_dir = os.path.join(base_dir, 'uploads')
             os.makedirs(uploads_dir, exist_ok=True)
-            file = request.files['imagem']
-            if produto.imagem_url and os.path.exists(os.path.join(uploads_dir, produto.imagem_url)):
-                os.remove(os.path.join(uploads_dir, produto.imagem_url))
-            extensao = file.filename.rsplit('.', 1)[1].lower()
-            filename = f"{secure_filename(produto.sku)}.{extensao}"
-            file.save(os.path.join(uploads_dir, filename))
-            produto.imagem_url = filename
+            
+            for i, file in enumerate(imagens_files):
+                if file.filename == '':
+                    continue
+                
+                extensao = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+                filename = secure_filename(file.filename)
+                filename = f"{int(datetime.now().timestamp())}_{i}_{filename}"
+                file.save(os.path.join(uploads_dir, filename))
+                
+                # Se o produto não tem imagem de capa, a primeira nova vira capa
+                if not produto.imagem_url:
+                    produto.imagem_url = filename
+                
+                nova_img = ProdutoImagem(produto_id=produto.id, imagem_url=filename)
+                db.session.add(nova_img)
+
         registrar_log(current_user, "Produto Atualizado", f"SKU: {produto.sku}")
         db.session.commit()
         return jsonify(produto.to_dict())
+
     if request.method == 'DELETE':
-        if produto.imagem_url and os.path.exists(os.path.join(base_dir, 'uploads', produto.imagem_url)):
-            os.remove(os.path.join(base_dir, 'uploads', produto.imagem_url))
-        db.session.delete(produto)
+        # Remove imagens do disco
+        if produto.imagem_url:
+            try: os.remove(os.path.join(base_dir, 'uploads', produto.imagem_url))
+            except: pass
+            
+        for img in produto.imagens:
+            try: os.remove(os.path.join(base_dir, 'uploads', img.imagem_url))
+            except: pass
+            
+        # Remove barcode
+        if produto.codigo_barras_url:
+            try: os.remove(os.path.join(base_dir, 'barcodes', produto.codigo_barras_url))
+            except: pass
+
         registrar_log(current_user, "Produto Deletado", f"SKU: {produto.sku}, Nome: {produto.nome}")
+        db.session.delete(produto)
         db.session.commit()
         return jsonify({'mensagem': 'Produto deletado com sucesso!'})
 
 @app.route('/api/produtos/<int:produto_id>/gerar-barcode', methods=['POST'])
 @token_required
-def gerar_codigo_barras(current_user, produto_id):
+def gerar_barcode_manual(current_user, produto_id):
     if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
     produto = Produto.query.get_or_404(produto_id)
     if not produto.sku: return jsonify({'erro': 'Produto precisa de SKU.'}), 400
     try:
+        from barcode.writer import SVGWriter
         barcodes_dir = os.path.join(base_dir, 'barcodes')
         os.makedirs(barcodes_dir, exist_ok=True)
-        filename = f"{secure_filename(produto.sku)}.png"
+        filename = f"{secure_filename(produto.sku)}"
         filepath = os.path.join(barcodes_dir, filename)
         CODE128 = barcode.get_barcode_class('code128')
-        codigo_gerado = CODE128(produto.sku, writer=ImageWriter())
-        codigo_gerado.write(filepath)
-        produto.codigo_barras_url = filename
+        codigo_gerado = CODE128(produto.sku, writer=SVGWriter())
+        codigo_gerado.save(filepath)
+        produto.codigo_barras_url = f"{filename}.svg"
         registrar_log(current_user, "Código de Barras Gerado", f"SKU: {produto.sku}")
         db.session.commit()
-        return jsonify({'mensagem': 'Código de barras gerado!', 'url': filename})
+        return jsonify({'mensagem': 'Código de barras gerado com sucesso!', 'url': produto.codigo_barras_url})
     except Exception as e:
-        return jsonify({'erro': 'Falha ao gerar código de barras.', 'detalhes': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'erro': str(e)}), 500
 
-# --- Usuários ---
 @app.route('/api/usuarios', methods=['GET'])
 @token_required
 def get_all_users(current_user):
@@ -778,8 +889,28 @@ def registrar_venda(current_user):
             total_venda_final += taxa_entrega
 
         total_pago = sum(float(p['valor']) for p in pagamentos_data)
-        if not math.isclose(total_pago, total_venda_final, rel_tol=1e-2):
-            return jsonify({'erro': f'Soma dos pagamentos (R$ {total_pago:.2f}) difere do total da venda (R$ {total_venda_final:.2f}).'}), 400
+        
+        # Lógica de Troco
+        troco = 0.0
+        tem_pagamento_dinheiro = any(p['forma'] == 'Dinheiro' for p in pagamentos_data)
+        
+        if tem_pagamento_dinheiro:
+            if total_pago >= total_venda_final:
+                troco = total_pago - total_venda_final
+            else:
+                # Se for dinheiro mas faltar valor (e não for combinado com outros que cubram), erro.
+                # Mas a validação abaixo já cobre diferença > 0.01
+                pass
+        
+        # Validação de pagamento insuficiente (com tolerância)
+        if total_pago < total_venda_final - 0.01:
+             return jsonify({'erro': f'Pagamento insuficiente. Faltam R$ {total_venda_final - total_pago:.2f}.'}), 400
+
+        # Se não tem dinheiro envolvido, não deve haver troco (ex: cartão cobrando a mais?)
+        # Assumimos que cartão cobra o valor exato, mas se o frontend mandar a mais, o sistema aceita como "gorjeta" ou erro?
+        # Por segurança, se não for dinheiro, validamos exato.
+        if not tem_pagamento_dinheiro and not math.isclose(total_pago, total_venda_final, rel_tol=1e-2):
+             return jsonify({'erro': f'Soma dos pagamentos (R$ {total_pago:.2f}) difere do total da venda (R$ {total_venda_final:.2f}).'}), 400
 
         nova_venda = Venda(
             total_venda=round(total_venda_final, 2), 
@@ -795,7 +926,8 @@ def registrar_venda(current_user):
             entrega_bairro=dados.get('entrega_bairro'), 
             entrega_cidade=dados.get('entrega_cidade'), 
             entrega_cep=dados.get('entrega_cep'), 
-            entrega_complemento=dados.get('entrega_complemento')
+            entrega_complemento=dados.get('entrega_complemento'),
+            troco=round(troco, 2)
         )
 
         for pg_data in pagamentos_data:
@@ -813,15 +945,27 @@ def registrar_venda(current_user):
         db.session.commit()
         
         for pg in nova_venda.pagamentos:
-            if pg.forma == 'Dinheiro': # <--- ALTERAÇÃO APLICADA AQUI
+            if pg.forma == 'Dinheiro':
+                # Registra entrada do valor TOTAL pago em dinheiro
                 mov = MovimentacaoCaixa(
-                tipo='VENDA',
-                valor=pg.valor,
-                id_usuario=current_user.id,
-                id_venda_associada=nova_venda.id,
-                observacao=f"Entrada referente à Venda ID #{nova_venda.id}"
+                    tipo='VENDA',
+                    valor=pg.valor,
+                    id_usuario=current_user.id,
+                    id_venda_associada=nova_venda.id,
+                    observacao=f"Entrada referente à Venda ID #{nova_venda.id} (Dinheiro)"
                 )
                 db.session.add(mov)
+        
+        # Se houve troco, registra a SAÍDA do troco
+        if troco > 0:
+            mov_troco = MovimentacaoCaixa(
+                tipo='SAIDA', # Ou criar um tipo específico 'TROCO' se preferir, mas SAIDA funciona
+                valor=-troco,
+                id_usuario=current_user.id,
+                id_venda_associada=nova_venda.id,
+                observacao=f"Troco referente à Venda ID #{nova_venda.id}"
+            )
+            db.session.add(mov_troco)
 
         registrar_log(current_user, "Venda Registrada", f"ID: {nova_venda.id}, Total: R$ {nova_venda.total_venda:.2f}")
         salvar_recibo_html(nova_venda)
@@ -849,6 +993,7 @@ def get_venda_details(current_user, venda_id):
         'data_hora': venda.data_hora.strftime('%d/%m/%Y %H:%M:%S'), 
         'total_venda': venda.total_venda, 
         'pagamentos': pagamentos_list, 
+        'troco': venda.troco,
         'taxa_entrega': venda.taxa_entrega, 
         'cliente_nome': venda.cliente.nome if venda.cliente else 'Consumidor Final', 
         'vendedor_nome': venda.vendedor.nome if venda.vendedor else 'Online', 
@@ -1118,7 +1263,7 @@ def store_get_products():
     items = query.order_by(Produto.nome).offset((page - 1) * per_page).limit(per_page).all()
     
     # Get all unique categories for the filter
-    categorias_query = db.session.query(Produto.categoria).filter_by(online_ativo=True).distinct().all()
+    categorias_query = db.session.query(Produto.categoria).filter_by(online_ativo=True).distinct().order_by(Produto.categoria).all()
     categorias = [c[0] for c in categorias_query if c[0]]
 
     return jsonify({

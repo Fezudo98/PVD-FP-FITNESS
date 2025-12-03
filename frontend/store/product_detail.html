@@ -6,13 +6,35 @@
         <!-- Product Image -->
         <div class="col-md-6">
             <div class="card border-0 bg-dark overflow-hidden rounded-4 shadow-lg">
-                <div class="position-relative" style="height: 400px;">
-                    <img id="productImage" src="" class="w-100 h-100 object-fit-cover" alt="Product Image"
-                        style="object-fit: cover;">
-                    <div class="position-absolute top-0 start-0 m-4">
+                <div id="productCarousel" class="carousel slide" data-bs-ride="false">
+                    <div class="carousel-inner" id="carouselInner" style="height: 500px;">
+                        <!-- Images will be loaded here -->
+                        <div class="carousel-item active h-100">
+                            <img id="productImage" src="" class="d-block w-100 h-100 object-fit-cover"
+                                alt="Product Image" style="object-fit: contain;">
+                        </div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel"
+                        data-bs-slide="prev" id="carouselPrevBtn" style="display: none;">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#productCarousel"
+                        data-bs-slide="next" id="carouselNextBtn" style="display: none;">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+
+                    <div class="position-absolute top-0 start-0 m-4" style="z-index: 10;">
                         <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold"
                             id="productCategory"></span>
                     </div>
+                </div>
+
+                <!-- Thumbnails Container -->
+                <div class="d-flex justify-content-center gap-2 p-3 bg-secondary bg-opacity-10 overflow-auto"
+                    id="carouselThumbnails">
+                    <!-- Thumbnails will be loaded here -->
                 </div>
             </div>
         </div>
@@ -186,8 +208,103 @@
         document.getElementById('productDescription').textContent = product.descricao || 'Sem descrição disponível.';
         document.getElementById('productCategory').textContent = product.categoria || 'Geral';
 
-        const imgEl = document.getElementById('productImage');
-        imgEl.src = product.imagem_url ? `/uploads/${product.imagem_url}` : 'https://via.placeholder.com/600x800?text=Sem+Imagem';
+        // --- Image Carousel Logic ---
+        const carouselInner = document.getElementById('carouselInner');
+        const carouselThumbnails = document.getElementById('carouselThumbnails');
+        const prevBtn = document.getElementById('carouselPrevBtn');
+        const nextBtn = document.getElementById('carouselNextBtn');
+
+        if (!carouselInner) return; // Guard clause if HTML structure is missing
+
+        // Collect all unique images
+        let images = [];
+        if (product.imagem_url) images.push(product.imagem_url);
+        if (product.imagens && product.imagens.length > 0) {
+            product.imagens.forEach(img => images.push(img.imagem_url));
+        }
+        // Remove duplicates
+        images = [...new Set(images)];
+
+        // Fallback if no images
+        if (images.length === 0) {
+            images.push('https://via.placeholder.com/600x800?text=Sem+Imagem');
+        }
+
+        // Clear existing content
+        carouselInner.innerHTML = '';
+        carouselThumbnails.innerHTML = '';
+
+        // Populate Carousel Items
+        images.forEach((imgUrl, index) => {
+            const isActive = index === 0 ? 'active' : '';
+            const src = imgUrl.startsWith('http') ? imgUrl : `/uploads/${imgUrl}`;
+
+            const itemHtml = `
+                <div class="carousel-item ${isActive} h-100">
+                    <img src="${src}" class="d-block w-100 h-100" alt="${product.nome}" style="object-fit: contain;">
+                </div>
+            `;
+            carouselInner.insertAdjacentHTML('beforeend', itemHtml);
+        });
+
+        // Populate Thumbnails and Controls
+        if (images.length > 1) {
+            images.forEach((imgUrl, index) => {
+                const src = imgUrl.startsWith('http') ? imgUrl : `/uploads/${imgUrl}`;
+                const thumb = document.createElement('img');
+                thumb.src = src;
+                thumb.className = `rounded border ${index === 0 ? 'border-warning' : 'border-secondary'} object-fit-cover`;
+                thumb.style.width = '60px';
+                thumb.style.height = '60px';
+                thumb.style.cursor = 'pointer';
+                thumb.style.opacity = index === 0 ? '1' : '0.6';
+                thumb.style.transition = 'all 0.2s';
+
+                thumb.onclick = () => {
+                    const carouselEl = document.getElementById('productCarousel');
+                    const carousel = bootstrap.Carousel.getOrCreateInstance(carouselEl);
+                    carousel.to(index);
+                };
+                carouselThumbnails.appendChild(thumb);
+            });
+
+            // Show controls
+            prevBtn.style.display = 'block';
+            nextBtn.style.display = 'block';
+        } else {
+            // Hide controls if single image
+            prevBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
+        }
+
+        // Update thumbnails on slide
+        const myCarousel = document.getElementById('productCarousel');
+
+        // Use a named function to avoid duplicates if possible, but for simplicity in this context:
+        // We can just add the listener. The element is static in the DOM (not re-created), so we should be careful.
+        // However, since we are not re-creating the carousel element itself, just its innerHTML, the listener persists.
+        // But we are adding it every time renderProductInfo is called. This IS a problem.
+        // Fix: Check if listener is already attached or attach it only once outside.
+        // Since renderProductInfo is called multiple times, let's attach the listener once in DOMContentLoaded or use a flag.
+
+        if (!myCarousel.dataset.listenerAttached) {
+            myCarousel.addEventListener('slide.bs.carousel', function (e) {
+                const index = e.to;
+                const thumbs = carouselThumbnails.querySelectorAll('img');
+                thumbs.forEach((t, i) => {
+                    if (i === index) {
+                        t.classList.remove('border-secondary');
+                        t.classList.add('border-warning');
+                        t.style.opacity = '1';
+                    } else {
+                        t.classList.remove('border-warning');
+                        t.classList.add('border-secondary');
+                        t.style.opacity = '0.6';
+                    }
+                });
+            });
+            myCarousel.dataset.listenerAttached = 'true';
+        }
     }
 
     function initializeOptions() {

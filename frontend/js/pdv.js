@@ -1,5 +1,5 @@
 // Define a URL base da sua API. Deixe vazio para rodar no mesmo local.
-const API_URL = ''; 
+const API_URL = '';
 const token = localStorage.getItem('authToken');
 
 // Barreira de segurança: Se não houver token, redireciona para o login.
@@ -15,6 +15,10 @@ let appliedCoupons = []; // Array para armazenar os múltiplos cupons aplicados
 let payments = [];
 let totalSaleValue = 0;
 
+// Variáveis para o carrossel de imagens
+let currentPreviewImages = [];
+let currentPreviewIndex = 0;
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- REFERÊNCIAS AOS ELEMENTOS DO DOM ---
     const searchInput = document.getElementById('searchInput');
@@ -22,9 +26,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartItemsDiv = document.getElementById('cartItems');
     const cartSubtotalSpan = document.getElementById('cartSubtotal');
     const cartTotalSpan = document.getElementById('cartTotal');
+
+    // Elementos do Preview de Imagem
     const lastItemPreview = document.getElementById('last-item-preview');
     const previewImage = document.getElementById('preview-image');
-    
+    const prevImageBtn = document.getElementById('prevImageBtn');
+    const nextImageBtn = document.getElementById('nextImageBtn');
+    const imageCounter = document.getElementById('imageCounter');
+
     const cupomInput = document.getElementById('cupomInput');
     const applyCupomBtn = document.getElementById('applyCupomBtn');
     const taxaEntregaInput = document.getElementById('taxaEntregaInput');
@@ -34,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const appliedCouponsList = document.getElementById('appliedCouponsList');
     const totalDiscountDisplay = document.getElementById('totalDiscountDisplay');
     const totalDiscountValueSpan = document.getElementById('totalDiscountValue');
-    
+
     const clientSearchInput = document.getElementById('clientSearchInput');
     const clientSearchResults = document.getElementById('clientSearchResults');
     const selectedClientDisplay = document.getElementById('selectedClientDisplay');
@@ -42,11 +51,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeClientBtn = document.getElementById('removeClientBtn');
     const clientSearchWrapper = document.getElementById('clientSearchWrapper');
     const selectedClientId = document.getElementById('selectedClientId');
-    
+
     const quickClientModal = new bootstrap.Modal(document.getElementById('quickClientModal'));
     const quickClientForm = document.getElementById('quickClientForm');
     const receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
-    
+
     const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
     const openPaymentModalBtn = document.getElementById('openPaymentModalBtn');
     const paymentTotalDisplay = document.getElementById('paymentTotalDisplay');
@@ -55,7 +64,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const paymentMethodSelect = document.getElementById('paymentMethodSelect');
     const paymentInstallmentsWrapper = document.getElementById('paymentInstallmentsWrapper');
     const paymentInstallmentsInput = document.getElementById('paymentInstallmentsInput');
-    const paymentValueInput = document.getElementById('paymentValueInput');
+
+    // UPDATED FOR SPLIT PAYMENTS
+    const paymentAmountWrapper = document.getElementById('paymentAmountWrapper');
+    const paymentAmountInput = document.getElementById('paymentAmountInput');
+    const paymentAmountLabel = document.getElementById('paymentAmountLabel');
+
+    const changePreviewWrapper = document.getElementById('changePreviewWrapper');
+    const changePreviewValue = document.getElementById('changePreviewValue');
     const addedPaymentsList = document.getElementById('addedPaymentsList');
     const confirmSaleBtn = document.getElementById('confirmSaleBtn');
 
@@ -63,13 +79,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchAllProducts() {
         try {
+            // DEBUG: Mostrar status no searchResults
+            searchResults.innerHTML = '<div class="list-group-item text-warning">DEBUG: Iniciando busca de produtos...</div>';
+
             const currentSearchQuery = searchInput.value;
             const response = await fetch(`${API_URL}/api/produtos?per_page=1000`, { headers: { 'x-access-token': token } });
-            if (!response.ok) throw new Error('Falha ao recarregar produtos.');
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Status: ${response.status}. ${errorText}`);
+            }
+
             const data = await response.json();
+
+            if (!data.produtos) {
+                searchResults.innerHTML = `<div class="list-group-item text-danger">ERRO API: Resposta sem chave "produtos". Keys: ${Object.keys(data).join(', ')}</div>`;
+                return;
+            }
+
             allProducts = data.produtos;
+
+            // DEBUG: Mostrar sucesso
+            searchResults.innerHTML = `<div class="list-group-item text-success">DEBUG: Sucesso! ${allProducts.length} produtos carregados.</div>`;
+            setTimeout(() => { if (!searchInput.value) searchResults.innerHTML = ''; }, 3000);
+
             if (currentSearchQuery) renderSearchResults(currentSearchQuery);
-        } catch (error) { console.error(error); }
+        } catch (error) {
+            console.error('Erro no fetchAllProducts:', error);
+            searchResults.innerHTML = `<div class="list-group-item text-danger">ERRO CRÍTICO: ${error.message}</div>`;
+            alert('Erro crítico ao carregar produtos: ' + error.message);
+        }
     }
 
     async function fetchAllClients() {
@@ -83,11 +122,25 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderSearchResults(query) {
         searchResults.innerHTML = '';
         if (!query) return;
+
+        if (allProducts.length === 0) {
+            searchResults.innerHTML = `<div class="list-group-item text-danger text-center">
+                ERRO: Lista de produtos vazia (0 itens).<br>
+                Tentando recarregar...<br>
+                <button class="btn btn-sm btn-outline-primary mt-2" onclick="location.reload()">Recarregar Página</button>
+             </div>`;
+            // Tentar recarregar se estiver vazia
+            fetchAllProducts();
+            return;
+        }
+
         const filtered = allProducts.filter(p => p.nome.toLowerCase().includes(query.toLowerCase()) || p.sku.toLowerCase().includes(query.toLowerCase()));
+
         if (filtered.length === 0) {
             searchResults.innerHTML = '<div class="list-group-item text-muted text-center">Nenhum produto encontrado.</div>';
             return;
         }
+
         filtered.slice(0, 7).forEach(p => {
             const item = document.createElement('a');
             item.href = '#';
@@ -101,8 +154,22 @@ document.addEventListener('DOMContentLoaded', () => {
     function addToCart(productId) {
         const product = allProducts.find(p => p.id === productId);
         if (!product || product.quantidade <= 0) { alert('Produto sem estoque!'); return; }
-        previewImage.src = `${API_URL}/uploads/${product.imagem_url || 'default.png'}`;
+
+        // Configurar imagens para o carrossel
+        currentPreviewImages = [];
+        if (product.imagem_url) currentPreviewImages.push(product.imagem_url);
+        if (product.imagens && product.imagens.length > 0) {
+            product.imagens.forEach(img => currentPreviewImages.push(img.imagem_url));
+        }
+        // Remove duplicatas se houver (caso a imagem principal esteja na lista de imagens extras)
+        currentPreviewImages = [...new Set(currentPreviewImages)];
+
+        if (currentPreviewImages.length === 0) currentPreviewImages.push('default.png');
+
+        currentPreviewIndex = 0;
+        updatePreviewDisplay();
         lastItemPreview.style.display = 'block';
+
         const cartItem = cart.find(item => item.id === productId);
         if (cartItem) {
             if (cartItem.quantidade < product.quantidade) cartItem.quantidade++;
@@ -112,7 +179,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         renderCart();
     }
-    
+
+    function updatePreviewDisplay() {
+        if (currentPreviewImages.length === 0) return;
+
+        const imageUrl = currentPreviewImages[currentPreviewIndex];
+        previewImage.src = `${API_URL}/uploads/${imageUrl}`;
+
+        // Atualizar contador
+        if (currentPreviewImages.length > 1) {
+            imageCounter.textContent = `${currentPreviewIndex + 1}/${currentPreviewImages.length}`;
+            imageCounter.style.display = 'block';
+            prevImageBtn.style.display = 'block';
+            nextImageBtn.style.display = 'block';
+        } else {
+            imageCounter.style.display = 'none';
+            prevImageBtn.style.display = 'none';
+            nextImageBtn.style.display = 'none';
+        }
+    }
+
+    function nextPreviewImage() {
+        if (currentPreviewImages.length <= 1) return;
+        currentPreviewIndex = (currentPreviewIndex + 1) % currentPreviewImages.length;
+        updatePreviewDisplay();
+    }
+
+    function prevPreviewImage() {
+        if (currentPreviewImages.length <= 1) return;
+        currentPreviewIndex = (currentPreviewIndex - 1 + currentPreviewImages.length) % currentPreviewImages.length;
+        updatePreviewDisplay();
+    }
+
     function renderCart() {
         cartItemsDiv.innerHTML = '';
         if (cart.length === 0) {
@@ -128,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateTotals();
     }
-    
+
     function renderAppliedCoupons() {
         appliedCouponsList.innerHTML = '';
         if (appliedCoupons.length > 0) {
@@ -141,20 +239,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ##### FUNÇÃO ATUALIZADA COM A CORREÇÃO DO BUG #####
     function updateTotals() {
         let subtotal = cart.reduce((sum, item) => sum + (item.quantidade * item.preco_venda), 0);
         let totalDiscountAmount = 0;
         let subtotalParaCalculo = subtotal;
 
         if (appliedCoupons.length > 0) {
-            
             const cuponsOrdenados = [...appliedCoupons].sort((a, b) => {
                 if (a.tipo_desconto === 'percentual' && b.tipo_desconto !== 'percentual') return -1;
                 if (a.tipo_desconto !== 'percentual' && b.tipo_desconto === 'percentual') return 1;
                 return b.valor_desconto - a.valor_desconto;
             });
-            
+
             cuponsOrdenados.forEach(coupon => {
                 let baseCalculo = 0;
                 if (coupon.aplicacao === 'total') {
@@ -177,11 +273,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 totalDiscountAmount += descontoRodada;
                 if (coupon.aplicacao === 'total') {
-                     subtotalParaCalculo -= descontoRodada;
+                    subtotalParaCalculo -= descontoRodada;
                 }
             });
         }
-        
+
         totalDiscountAmount = Math.min(totalDiscountAmount, subtotal);
 
         if (totalDiscountAmount > 0) {
@@ -190,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             totalDiscountDisplay.classList.add('d-none');
         }
-        
+
         const taxaEntrega = parseFloat(taxaEntregaInput.value) || 0;
         let totalGeral = subtotal - totalDiscountAmount;
         if (!freeDeliveryCheckbox.checked) {
@@ -216,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_URL}/api/cupons/validar/${code}`, { headers: { 'x-access-token': token } });
             const result = await response.json();
             if (!response.ok) throw new Error(result.erro || 'Erro ao validar cupom.');
-            
+
             appliedCoupons.push(result);
             cupomInput.value = '';
             renderAppliedCoupons();
@@ -233,20 +329,56 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function preparePaymentModal() {
-        payments = [];
-        totalSaleValue = parseFloat(cartTotalSpan.textContent.replace('R$ ', '').replace(',', '.'))
-        paymentValueInput.value = totalSaleValue.toFixed(2);
-        updatePaymentModal();
-        paymentModal.show();
+        try {
+            console.log('preparePaymentModal chamado');
+            // alert('DEBUG: Botão de pagamento clicado!'); 
+
+            const totalText = cartTotalSpan.textContent;
+            console.log('Texto do total:', totalText);
+
+            totalSaleValue = parseFloat(totalText.replace('R$ ', '').replace(',', '.'));
+            console.log('Valor total parseado:', totalSaleValue);
+
+            if (isNaN(totalSaleValue)) {
+                alert('Erro: Valor total inválido.');
+                return;
+            }
+
+            payments = [];
+
+            paymentMethodSelect.value = 'Dinheiro';
+            paymentInstallmentsWrapper.classList.add('d-none');
+
+            // UPDATED: paymentAmountWrapper is always visible
+            changePreviewWrapper.classList.remove('d-none');
+
+            // UPDATED: Initialize with total value
+            paymentAmountInput.value = totalSaleValue.toFixed(2);
+            paymentAmountLabel.textContent = 'Valor Recebido (R$)';
+            changePreviewValue.textContent = 'R$ 0,00';
+
+            updatePaymentModal();
+            paymentModal.show();
+        } catch (error) {
+            console.error('Erro em preparePaymentModal:', error);
+            alert('Erro ao abrir modal de pagamento: ' + error.message);
+        }
     }
 
     function updatePaymentModal() {
-        const totalPaid = payments.reduce((sum, p) => sum + p.valor, 0);
-        const remaining = totalSaleValue - totalPaid;
+        const totalPaidSoFar = payments.reduce((sum, p) => sum + p.valor, 0);
+        const remaining = totalSaleValue - totalPaidSoFar;
 
         paymentTotalDisplay.textContent = `R$ ${totalSaleValue.toFixed(2)}`;
-        paymentRemainingDisplay.textContent = `R$ ${remaining.toFixed(2)}`;
-        
+
+        if (remaining < -0.01) {
+            paymentRemainingDisplay.innerHTML = `<span class="text-success">Troco: R$ ${Math.abs(remaining).toFixed(2)}</span>`;
+            confirmSaleBtn.disabled = false;
+        } else {
+            paymentRemainingDisplay.textContent = `R$ ${Math.max(0, remaining).toFixed(2)}`;
+            confirmSaleBtn.disabled = remaining > 0.01;
+        }
+
         addedPaymentsList.innerHTML = '';
         if (payments.length === 0) {
             addedPaymentsList.innerHTML = '<div class="list-group-item text-muted text-center">Nenhum pagamento adicionado.</div>';
@@ -258,17 +390,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 addedPaymentsList.appendChild(item);
             });
         }
-        confirmSaleBtn.disabled = Math.abs(remaining) > 0.01;
-        paymentValueInput.value = remaining.toFixed(2);
+
+        // UPDATED: Auto-fill remaining amount
+        if (remaining > 0) {
+            paymentAmountInput.value = remaining.toFixed(2);
+        } else {
+            paymentAmountInput.value = '0.00';
+        }
     }
 
     function addPayment(event) {
         event.preventDefault();
         const forma = paymentMethodSelect.value;
-        const valor = parseFloat(paymentValueInput.value);
-        const remaining = totalSaleValue - payments.reduce((sum, p) => sum + p.valor, 0);
+        const valor = parseFloat(paymentAmountInput.value); // UPDATED
+        const totalPaidSoFar = payments.reduce((sum, p) => sum + p.valor, 0);
+        const remaining = totalSaleValue - totalPaidSoFar;
+
         if (isNaN(valor) || valor <= 0) { alert('Por favor, insira um valor de pagamento válido.'); return; }
-        if (valor > remaining + 0.01) { alert('O valor do pagamento não pode ser maior que o valor restante.'); return; }
+
+        // Se NÃO for dinheiro, não pode pagar a mais
+        if (forma !== 'Dinheiro' && valor > remaining + 0.01) {
+            alert('O valor do pagamento não pode ser maior que o valor restante (exceto em Dinheiro).');
+            return;
+        }
+
+        // Se for dinheiro, pode pagar a mais (gera troco)
+
         payments.push({ forma, valor });
         updatePaymentModal();
     }
@@ -300,15 +447,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const result = await response.json();
             if (!response.ok) throw new Error(result.erro || 'Erro ao finalizar a venda.');
-            
+
             paymentModal.hide();
             await showReceipt(result.id_venda);
-            
+
             cart = [];
             payments = [];
             appliedCoupons = [];
             renderAppliedCoupons();
-            
+
             taxaEntregaInput.value = 0;
             freeDeliveryCheckbox.checked = false;
             deliveryAddressWrapper.classList.add('d-none');
@@ -333,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_URL}/api/vendas/${vendaId}`, { headers: { 'x-access-token': token } });
             if (!response.ok) throw new Error('Não foi possível obter os detalhes da venda.');
             const data = await response.json();
-            
+
             document.getElementById('receiptVendaId').textContent = data.id;
             document.getElementById('receiptData').textContent = data.data_hora;
             document.getElementById('receiptCliente').textContent = data.cliente_nome;
@@ -348,9 +495,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.innerHTML = `<td>${item.produto_nome}</td><td>${item.quantidade}</td><td>R$ ${item.preco_unitario.toFixed(2)}</td><td>R$ ${item.subtotal.toFixed(2)}</td>`;
             });
             document.getElementById('receiptSubtotal').textContent = `R$ ${subtotalProdutos.toFixed(2)}`;
-            
+
             const receiptDiscountRow = document.getElementById('receiptDiscountRow');
-            if(data.desconto_total > 0) {
+            if (data.desconto_total > 0) {
                 receiptDiscountRow.classList.remove('d-none');
                 document.getElementById('receiptCupomCode').textContent = data.cupons_utilizados.join(', ');
                 document.getElementById('receiptDiscountValue').textContent = `- R$ ${data.desconto_total.toFixed(2)}`;
@@ -359,7 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             document.getElementById('receiptTaxaEntrega').textContent = `R$ ${data.taxa_entrega.toFixed(2)}`;
             document.getElementById('receiptTotalGeral').textContent = `R$ ${data.total_venda.toFixed(2)}`;
-            
+
             const paymentsDiv = document.getElementById('receiptPayments');
             paymentsDiv.innerHTML = '';
             data.pagamentos.forEach(p => {
@@ -371,7 +518,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 pElem.innerHTML = `<strong>Pagamento:</strong> <span>${paymentText}</span>`;
                 paymentsDiv.appendChild(pElem);
             });
-            
+
+            if (data.troco > 0) {
+                const trocoElem = document.createElement('h5');
+                trocoElem.className = 'text-success mt-2';
+                trocoElem.innerHTML = `<strong>Troco:</strong> R$ ${data.troco.toFixed(2)}`;
+                paymentsDiv.appendChild(trocoElem);
+            }
+
             receiptModal.show();
         } catch (error) { console.error('Erro ao mostrar o recibo:', error); alert(error.message); }
     }
@@ -414,10 +568,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- EVENT LISTENERS ---
-    
+
     searchInput.addEventListener('input', () => renderSearchResults(searchInput.value));
-    searchResults.addEventListener('click', (e) => { e.preventDefault(); const item = e.target.closest('[data-product-id]'); if(item) { addToCart(parseInt(item.dataset.productId)); searchInput.value=''; searchResults.innerHTML=''; searchInput.focus(); } });
-    cartItemsDiv.addEventListener('click', (e) => { const target = e.target; const id = parseInt(target.dataset.id); if(!id) return; if(target.classList.contains('adjust-qty-btn')) { const item = cart.find(i=>i.id===id); const stockProduct = allProducts.find(p=>p.id===id); if(target.dataset.action==='increase' && item.quantidade < stockProduct.quantidade) item.quantidade++; else if(target.dataset.action==='decrease' && item.quantidade > 0) item.quantidade--; if(item.quantidade===0) cart=cart.filter(i=>i.id!==id); renderCart(); } else if(target.classList.contains('remove-item-btn')) { cart=cart.filter(i=>i.id!==id); renderCart(); } });
+    searchResults.addEventListener('click', (e) => { e.preventDefault(); const item = e.target.closest('[data-product-id]'); if (item) { addToCart(parseInt(item.dataset.productId)); searchInput.value = ''; searchResults.innerHTML = ''; searchInput.focus(); } });
+    cartItemsDiv.addEventListener('click', (e) => { const target = e.target; const id = parseInt(target.dataset.id); if (!id) return; if (target.classList.contains('adjust-qty-btn')) { const item = cart.find(i => i.id === id); const stockProduct = allProducts.find(p => p.id === id); if (target.dataset.action === 'increase' && item.quantidade < stockProduct.quantidade) item.quantidade++; else if (target.dataset.action === 'decrease' && item.quantidade > 0) item.quantidade--; if (item.quantidade === 0) cart = cart.filter(i => i.id !== id); renderCart(); } else if (target.classList.contains('remove-item-btn')) { cart = cart.filter(i => i.id !== id); renderCart(); } });
     applyCupomBtn.addEventListener('click', applyCoupon);
     appliedCouponsList.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON' && e.target.dataset.code) { removeCoupon(e.target.dataset.code); } });
     taxaEntregaInput.addEventListener('input', () => { (parseFloat(taxaEntregaInput.value) || 0) > 0 ? deliveryAddressWrapper.classList.remove('d-none') : deliveryAddressWrapper.classList.add('d-none'); updateTotals(); });
@@ -425,12 +579,46 @@ document.addEventListener('DOMContentLoaded', () => {
     openPaymentModalBtn.addEventListener('click', preparePaymentModal);
     addPaymentForm.addEventListener('submit', addPayment);
     confirmSaleBtn.addEventListener('click', finalizeSale);
-    paymentMethodSelect.addEventListener('change', () => { paymentInstallmentsWrapper.classList.toggle('d-none', paymentMethodSelect.value !== 'Cartão de Crédito'); });
+
+    // Event Listeners para o Carrossel de Imagens
+    prevImageBtn.addEventListener('click', prevPreviewImage);
+    nextImageBtn.addEventListener('click', nextPreviewImage);
+
+    // UPDATED EVENT LISTENERS
+    paymentMethodSelect.addEventListener('change', () => {
+        const isCredit = paymentMethodSelect.value === 'Cartão de Crédito';
+        const isCash = paymentMethodSelect.value === 'Dinheiro';
+        paymentInstallmentsWrapper.classList.toggle('d-none', !isCredit);
+
+        // paymentAmountWrapper is always visible
+        changePreviewWrapper.classList.toggle('d-none', !isCash);
+
+        if (isCash) {
+            paymentAmountLabel.textContent = 'Valor Recebido (R$)';
+            changePreviewValue.textContent = 'R$ 0,00';
+        } else {
+            paymentAmountLabel.textContent = 'Valor a Pagar (R$)';
+        }
+    });
+
+    paymentAmountInput.addEventListener('input', () => {
+        const received = parseFloat(paymentAmountInput.value) || 0;
+        const totalPaidSoFar = payments.reduce((sum, p) => sum + p.valor, 0);
+        const debt = totalSaleValue - totalPaidSoFar;
+        const change = received - debt;
+
+        if (change > 0) {
+            changePreviewValue.textContent = `R$ ${change.toFixed(2)}`;
+        } else {
+            changePreviewValue.textContent = 'R$ 0,00';
+        }
+    });
+
     addedPaymentsList.addEventListener('click', (e) => { if (e.target.classList.contains('remove-payment-btn')) { const indexToRemove = parseInt(e.target.dataset.index); payments.splice(indexToRemove, 1); updatePaymentModal(); } });
     clientSearchInput.addEventListener('input', () => renderClientSearchResults(clientSearchInput.value));
-    clientSearchResults.addEventListener('click', (e) => { e.preventDefault(); if(e.target.dataset.clientId) selectClient(e.target.dataset.clientId); });
+    clientSearchResults.addEventListener('click', (e) => { e.preventDefault(); if (e.target.dataset.clientId) selectClient(e.target.dataset.clientId); });
     removeClientBtn.addEventListener('click', removeClient);
-    quickClientForm.addEventListener('submit', async (e) => { e.preventDefault(); const data = { nome: document.getElementById('quickClientNome').value, telefone: document.getElementById('quickClientTelefone').value, cpf: document.getElementById('quickClientCpf').value }; try { const response = await fetch(`${API_URL}/api/clientes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-access-token': token }, body: JSON.stringify(data) }); const newClient = await response.json(); if(response.ok) { quickClientModal.hide(); await fetchAllClients(); selectClient(newClient.id); } else { alert(`Erro: ${newClient.message || newClient.erro}`); } } catch (error) { console.error(error); } });
+    quickClientForm.addEventListener('submit', async (e) => { e.preventDefault(); const data = { nome: document.getElementById('quickClientNome').value, telefone: document.getElementById('quickClientTelefone').value, cpf: document.getElementById('quickClientCpf').value }; try { const response = await fetch(`${API_URL}/api/clientes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-access-token': token }, body: JSON.stringify(data) }); const newClient = await response.json(); if (response.ok) { quickClientModal.hide(); await fetchAllClients(); selectClient(newClient.id); } else { alert(`Erro: ${newClient.message || newClient.erro}`); } } catch (error) { console.error(error); } });
     document.getElementById('logoutButton').addEventListener('click', () => { localStorage.clear(); window.location.href = '/login.html'; });
     document.getElementById('quickAddClientBtn').addEventListener('click', () => { quickClientForm.reset(); quickClientModal.show(); });
     document.body.addEventListener('click', (event) => { if (event.target.id === 'imprimirA4Btn') printReceipt('a4'); if (event.target.id === 'imprimirTermicaBtn') printReceipt('termica'); });

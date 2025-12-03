@@ -161,59 +161,98 @@ h4 {
 /* --- ESTILOS DE IMPRESSÃO --- */
 /* ======================================================= */
 
-/* --- ESTILO PADRÃO (A4) - CORRIGIDO PARA EVITAR PÁGINAS EM BRANCO --- */
+/* --- ESTILO PADRÃO (A4) - CORRIGIDO PARA EVITAR PÁGINAS EM BRANCO E QUEBRAS --- */
 @media print {
 
-    /* CORREÇÃO: Força um reset completo no layout da página */
+    /* Reset global para impressão */
     html,
     body {
-        height: auto !important;
+        width: 100% !important;
+        height: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
         overflow: visible !important;
+        background-color: white !important;
     }
 
-    /* Esconde tudo que não está dentro do modal do recibo */
+    /* Esconde tudo exceto o modal */
     body>*:not(.modal) {
         display: none !important;
     }
 
-    /* Garante que o modal e seu conteúdo sejam visíveis */
-    .modal,
-    .modal-dialog,
-    .modal-content,
-    #receiptContent {
-        display: block !important;
-        visibility: visible !important;
-    }
-
-    /* CORREÇÃO: Remove qualquer propriedade de espaçamento do modal */
+    /* Configuração do Modal para ocupar toda a folha */
     .modal {
-        position: static !important;
-        background-color: white !important;
-        box-shadow: none !important;
-        border: none !important;
-        min-height: 0 !important;
-        padding: 0 !important;
+        display: block !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: auto !important;
         margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        border: none !important;
+        z-index: 9999 !important;
+        overflow: visible !important;
     }
 
     .modal-dialog {
         max-width: 100% !important;
+        width: 100% !important;
         margin: 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+        position: static !important;
+    }
+
+    .modal-content {
+        border: none !important;
         box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
     }
 
     .modal-header,
     .modal-footer {
         display: none !important;
-        /* Esconde o cabeçalho e o rodapé do modal (botões) */
     }
 
-    /* Garante que o conteúdo do recibo ocupe o espaço necessário */
-    #receiptContent {
-        position: relative !important;
+    .modal-body {
+        padding: 0 !important;
+        margin: 0 !important;
         width: 100% !important;
+    }
+
+    /* Conteúdo do Recibo */
+    #receiptContent {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 20px !important;
+        color: black !important;
+        page-break-inside: avoid !important;
+        /* Evita quebra de página no meio do recibo */
+    }
+
+    /* Evita quebras em elementos internos */
+    #receiptContent table,
+    #receiptContent tr,
+    #receiptContent td,
+    #receiptContent th,
+    #receiptContent h5,
+    #receiptContent p,
+    #receiptContent div {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    /* Remove estilos de tela */
+    * {
+        color: black !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
     }
 }
 
@@ -221,80 +260,99 @@ h4 {
 /* --- ESTILOS PARA IMPRESSÃO TÉRMICA --- */
 @media print {
 
-    /* Define o tamanho do papel para impressoras de 80mm de largura */
-    @page {
-        size: 80mm auto;
-        /* Largura de 80mm, altura automática */
-        margin: 3mm;
-    }
-
     /* Regras aplicadas SOMENTE quando o recibo estiver no modo "térmica" */
     #receiptContent.termica-print {
+        width: 74mm !important;
+        max-width: 74mm !important;
+        margin: 0 auto !important;
+        /* Centraliza na folha se for A4, ou ajusta na térmica */
+        padding: 0 !important;
         font-family: 'Courier New', Courier, monospace;
         font-size: 10pt;
-        /* Tamanho de fonte legível para cupons */
-        color: #000;
-        background: #fff;
+        line-height: 1.2;
     }
 
-    #receiptContent.termica-print .text-center,
-    #receiptContent.termica-print .text-end {
-        text-align: left !important;
+    @page {
+        margin: 0;
+        /* Remove margens da impressora para aproveitar o papel */
+    }
+
+    /* Ajustes específicos para térmica */
+    #receiptContent.termica-print .modal-body {
+        padding: 0 !important;
     }
 
     #receiptContent.termica-print img {
-        max-width: 60mm;
-        /* Limita a largura da logo */
+        max-width: 40mm !important;
         display: block;
-        margin: 0 auto 10px auto;
+        margin: 0 auto 5px auto;
     }
 
-    /* Transforma a tabela em blocos para caber na largura */
+    #receiptContent.termica-print h5 {
+        font-size: 12pt;
+        font-weight: bold;
+        text-align: center !important;
+        margin-bottom: 10px;
+    }
+
     #receiptContent.termica-print table,
-    #receiptContent.termica-print thead,
     #receiptContent.termica-print tbody,
     #receiptContent.termica-print tr,
-    #receiptContent.termica-print th,
     #receiptContent.termica-print td {
         display: block;
         width: 100% !important;
         text-align: left !important;
+        border: none !important;
+        padding: 0 !important;
     }
 
     #receiptContent.termica-print thead {
         display: none;
-        /* Esconde o cabeçalho da tabela */
     }
 
     #receiptContent.termica-print tr {
-        border-bottom: 1px dashed #666;
-        padding-bottom: 5px;
-        margin-bottom: 5px;
+        border-bottom: 1px dashed #000 !important;
+        padding-bottom: 5px !important;
+        margin-bottom: 5px !important;
     }
 
-    /* Adiciona descrições antes de cada célula de dados */
+    #receiptContent.termica-print td:nth-of-type(1) {
+        font-weight: bold;
+        margin-bottom: 2px;
+    }
+
     #receiptContent.termica-print td:nth-of-type(2)::before {
         content: "Qtd: ";
     }
 
     #receiptContent.termica-print td:nth-of-type(3)::before {
-        content: "Preço Unit.: ";
+        content: "Unit: ";
     }
 
     #receiptContent.termica-print td:nth-of-type(4)::before {
-        content: "Subtotal: ";
+        content: "Total: ";
     }
 
-    #receiptContent.termica-print td:nth-of-type(1) {
-        font-weight: bold;
-        /* Destaca o nome do produto */
+    #receiptContent.termica-print .text-end p {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2px;
     }
 
-    /* Formata a seção de totais */
-    #receiptContent.termica-print .text-end p,
     #receiptContent.termica-print .text-end h4 {
         display: flex;
         justify-content: space-between;
+        font-size: 12pt;
+        font-weight: bold;
+        margin-top: 5px;
+        border-top: 1px solid #000;
+        padding-top: 5px;
+    }
+
+    #receiptContent.termica-print hr {
+        border-top: 1px dashed #000 !important;
+        opacity: 1 !important;
+        margin: 10px 0 !important;
     }
 }
 

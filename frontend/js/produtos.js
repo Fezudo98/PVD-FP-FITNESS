@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const produtoForm = document.getElementById('produtoForm');
     const modalTitle = document.getElementById('modalTitle');
     const imagemInput = document.getElementById('imagem');
-    const imagePreview = document.getElementById('imagePreview');
+    const imagePreview = document.getElementById('imagePreview'); // Mantido para compatibilidade, mas usaremos container
     const generateBarcodeBtn = document.getElementById('generateBarcodeBtn');
     const barcodePreviewContainer = document.getElementById('barcodePreviewContainer');
     const barcodePreview = document.getElementById('barcodePreview');
@@ -371,8 +371,84 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('preco_custo').value = produto.preco_custo;
         document.getElementById('preco_venda').value = produto.preco_venda;
         document.getElementById('quantidade').value = produto.quantidade;
-        imagePreview.src = produto.imagem_url ? `${API_URL}/uploads/${produto.imagem_url}` : '';
-        imagePreview.style.display = produto.imagem_url ? 'block' : 'none';
+
+        // Exibir Imagens Existentes
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        previewContainer.innerHTML = '';
+
+        // Função auxiliar para criar elemento de imagem
+        const createImageElement = (url, id = null) => {
+            const div = document.createElement('div');
+            div.className = 'position-relative d-inline-block';
+            div.style.width = '100px';
+            div.style.height = '100px';
+
+            const img = document.createElement('img');
+            img.src = `${API_URL}/uploads/${url}`;
+            img.className = 'img-thumbnail w-100 h-100';
+            img.style.objectFit = 'cover';
+
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center';
+            btn.style.width = '20px';
+            btn.style.height = '20px';
+            btn.innerHTML = '&times;';
+            btn.onclick = async (e) => {
+                e.preventDefault();
+                if (confirm('Remover esta imagem?')) {
+                    if (id) {
+                        // Deletar via API se tiver ID (imagem extra)
+                        try {
+                            const res = await fetch(`${API_URL}/api/produtos/imagem/${id}`, {
+                                method: 'DELETE',
+                                headers: { 'x-access-token': token }
+                            });
+                            if (res.ok) {
+                                div.remove();
+                            } else {
+                                alert('Erro ao remover imagem.');
+                            }
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    } else {
+                        // Se for a imagem principal (url no produto), precisamos tratar diferente ou apenas remover visualmente se for upload novo (mas aqui é edit)
+                        // Para imagem principal antiga, a API de delete imagem não funciona pois ela deleta da tabela ProdutoImagem.
+                        // Mas agora todas as imagens estão em ProdutoImagem também?
+                        // O backend salva a primeira em ProdutoImagem também.
+                        // Então podemos deletar pelo ID da imagem se tivermos.
+                        // O objeto produto retornado deve ter a lista de imagens com IDs.
+                        alert('Para remover a imagem de capa, delete-a da lista de imagens adicionais ou substitua enviando uma nova.');
+                    }
+                }
+            };
+
+            div.appendChild(img);
+            div.appendChild(btn);
+            previewContainer.appendChild(div);
+        };
+
+        // Renderiza imagens da lista 'imagens' retornada pela API
+        if (produto.imagens && produto.imagens.length > 0) {
+            produto.imagens.forEach(img => {
+                createImageElement(img.imagem_url, img.id);
+            });
+        } else if (produto.imagem_url) {
+            // Fallback para produtos antigos que só têm imagem_url na tabela produto
+            const div = document.createElement('div');
+            div.className = 'position-relative d-inline-block';
+            div.style.width = '100px';
+            div.style.height = '100px';
+
+            const img = document.createElement('img');
+            img.src = `${API_URL}/uploads/${produto.imagem_url}`;
+            img.className = 'img-thumbnail w-100 h-100';
+            img.style.objectFit = 'cover';
+
+            div.appendChild(img);
+            previewContainer.appendChild(div);
+        }
+
         modalTitle.textContent = 'Editar Produto';
         generateBarcodeBtn.disabled = false;
         barcodePreview.src = produto.codigo_barras_url ? `${API_URL}/barcodes/${produto.codigo_barras_url}` : '';
@@ -388,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
         produtoForm.reset();
         document.getElementById('produtoId').value = '';
         document.getElementById('barcodePreviewContainer').style.display = 'none';
-        document.getElementById('imagePreview').style.display = 'none';
+        document.getElementById('imagePreviewContainer').innerHTML = ''; // Limpa previews
         toggleCategoriaInputBtn.textContent = '+';
         toggleCategoriaInputBtn.title = 'Nova Categoria';
         categoriaSelect.style.display = 'block';
@@ -419,8 +495,11 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('preco_custo', document.getElementById('preco_custo').value);
         formData.append('preco_venda', document.getElementById('preco_venda').value);
         formData.append('quantidade', document.getElementById('quantidade').value);
-        if (imagemInput.files[0]) {
-            formData.append('imagem', imagemInput.files[0]);
+
+        // Envia múltiplos arquivos
+        const files = imagemInput.files;
+        for (let i = 0; i < files.length; i++) {
+            formData.append('imagem', files[i]);
         }
 
         try {
@@ -438,10 +517,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     imagemInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            imagePreview.src = URL.createObjectURL(file);
-            imagePreview.style.display = 'block';
+        const files = event.target.files;
+        const previewContainer = document.getElementById('imagePreviewContainer');
+
+        // Remove previews de uploads anteriores (elementos sem botão de delete de API ou marcados como local)
+        const localPreviews = previewContainer.querySelectorAll('.local-preview');
+        localPreviews.forEach(el => el.remove());
+
+        if (files && files.length > 0) {
+            Array.from(files).forEach(file => {
+                const div = document.createElement('div');
+                div.className = 'position-relative d-inline-block local-preview';
+                div.style.width = '100px';
+                div.style.height = '100px';
+
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.className = 'img-thumbnail w-100 h-100';
+                img.style.objectFit = 'cover';
+
+                div.appendChild(img);
+                previewContainer.appendChild(div);
+            });
         }
     });
 

@@ -41,4 +41,7 @@ test_*.py
 reset_admin_password.py
 system_check.py
 exhaustive_test.py
+my_*.py
+diagnose_*.py
+remove_bg.py
 instance/
