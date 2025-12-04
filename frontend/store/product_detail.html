@@ -43,15 +43,12 @@
         <div class="col-md-6">
             <div class="d-flex flex-column h-100">
                 <h1 class="display-5 fw-bold text-dark mb-1" id="productName">Carregando...</h1>
-                <div class="d-flex align-items-center mb-2">
-                    <div class="text-warning me-3">
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star-half-alt"></i>
-                    </div>
-                    <span class="text-muted small">(4.8 de 5 avaliações)</span>
+
+                <!-- Dynamic Rating Summary -->
+                <div class="d-flex align-items-center mb-2" id="ratingSummaryContainer"
+                    style="display: none !important;">
+                    <div class="text-warning me-3" id="ratingStars"></div>
+                    <span class="text-muted small" id="ratingCount"></span>
                 </div>
 
                 <h2 class="display-6 fw-bold text-warning mb-2" id="productPrice">R$ --,--</h2>
@@ -101,13 +98,123 @@
                         <i class="fas fa-truck me-2"></i> Frete Grátis para compras acima de R$ 299
                     </div>
                     <div class="d-flex align-items-center text-muted small">
-                        <i class="fas fa-undo me-2"></i> Devolução grátis em até 30 dias
+                        <i class="fas fa-undo me-2"></i> Devolução grátis em até 7 dias
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Reviews Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+                <h3 class="fw-bold mb-0">Avaliações dos Clientes</h3>
+                <button class="btn btn-outline-dark rounded-pill" id="writeReviewBtn" onclick="openReviewModal()"
+                    style="display: none;">
+                    <i class="fas fa-pen me-2"></i>Escrever Avaliação
+                </button>
+            </div>
+
+            <div id="reviewsContainer" class="row g-4">
+                <!-- Reviews will be loaded here -->
+                <div class="col-12 text-center py-4 text-muted">
+                    <p>Carregando avaliações...</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- Review Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" style="font-family: 'Outfit', sans-serif;">Avaliar Produto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <form id="reviewForm">
+                    <div class="mb-4 text-center">
+                        <label class="form-label d-block fw-bold text-muted small text-uppercase mb-2">Sua Nota</label>
+                        <div class="rating-stars mb-2">
+                            <input type="radio" name="nota" value="5" id="star5"><label for="star5"
+                                title="Excelente">☆</label>
+                            <input type="radio" name="nota" value="4" id="star4"><label for="star4"
+                                title="Muito Bom">☆</label>
+                            <input type="radio" name="nota" value="3" id="star3"><label for="star3"
+                                title="Bom">☆</label>
+                            <input type="radio" name="nota" value="2" id="star2"><label for="star2"
+                                title="Ruim">☆</label>
+                            <input type="radio" name="nota" value="1" id="star1"><label for="star1"
+                                title="Péssimo">☆</label>
+                        </div>
+                        <div id="ratingLabel" class="fw-bold text-warning small" style="min-height: 20px;"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reviewComment"
+                            class="form-label fw-bold text-muted small text-uppercase">Comentário</label>
+                        <textarea class="form-control bg-light border-0" id="reviewComment" rows="4"
+                            placeholder="Conte-nos o que você achou do produto..." style="resize: none;"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label for="reviewMedia" class="form-label fw-bold text-muted small text-uppercase">Fotos ou
+                            Vídeo (Opcional)</label>
+                        <input class="form-control bg-light border-0" type="file" id="reviewMedia" multiple
+                            accept="image/*,video/*">
+                        <div class="form-text small text-muted mt-1"><i class="fas fa-info-circle me-1"></i>Máximo 3
+                            arquivos.</div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-warning fw-bold rounded-pill py-2 shadow-sm">Enviar
+                            Avaliação</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .rating-stars {
+        display: flex;
+        flex-direction: row-reverse;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .rating-stars input {
+        display: none;
+    }
+
+    .rating-stars label {
+        font-size: 2.5rem;
+        color: #e0e0e0;
+        cursor: pointer;
+        transition: color 0.2s, transform 0.2s;
+    }
+
+    .rating-stars input:checked~label,
+    .rating-stars label:hover,
+    .rating-stars label:hover~label {
+        color: #ffc107;
+    }
+
+    .rating-stars label:hover {
+        transform: scale(1.1);
+    }
+
+    .review-media-preview {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 8px;
+        cursor: pointer;
+        border: 2px solid #dee2e6;
+    }
+</style>
+
 {% endblock %}
 
 {% block scripts %}
@@ -117,35 +224,58 @@
     let allVariants = [];
     let selectedColor = null;
     let selectedSize = null;
+    const token = localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken');
 
     // Color Mapping (Portuguese -> Hex)
     const colorMap = {
-        'preto': '#000000',
-        'branco': '#FFFFFF',
-        'cinza': '#808080',
-        'azul': '#0000FF',
-        'vermelho': '#FF0000',
-        'verde': '#008000',
-        'amarelo': '#FFFF00',
-        'rosa': '#FFC0CB',
-        'roxo': '#800080',
-        'laranja': '#FFA500',
-        'bege': '#F5F5DC',
-        'marrom': '#A52A2A',
-        'vinho': '#800000',
-        'marinho': '#000080',
-        'ciano': '#00FFFF',
-        'magenta': '#FF00FF',
-        'lilas': '#C8A2C8',
-        'coral': '#FF7F50',
-        'turquesa': '#40E0D0',
-        'dourado': '#FFD700',
+        'preto': '#000000', 'branco': '#FFFFFF', 'cinza': '#808080', 'azul': '#0000FF',
+        'vermelho': '#FF0000', 'verde': '#008000', 'amarelo': '#FFFF00', 'rosa': '#FFC0CB',
+        'roxo': '#800080', 'laranja': '#FFA500', 'bege': '#F5F5DC', 'marrom': '#A52A2A',
+        'vinho': '#800000', 'marinho': '#000080', 'ciano': '#00FFFF', 'magenta': '#FF00FF',
+        'lilas': '#C8A2C8', 'coral': '#FF7F50', 'turquesa': '#40E0D0', 'dourado': '#FFD700',
         'prata': '#C0C0C0'
     };
 
     document.addEventListener('DOMContentLoaded', () => {
         loadProductDetails();
+        loadReviews();
+        checkReviewEligibility();
+        setupRatingInteractions();
     });
+
+    function setupRatingInteractions() {
+        const labels = {
+            '1': 'Péssimo',
+            '2': 'Ruim',
+            '3': 'Bom',
+            '4': 'Muito Bom',
+            '5': 'Excelente'
+        };
+        const ratingLabel = document.getElementById('ratingLabel');
+        const stars = document.querySelectorAll('.rating-stars input');
+
+        stars.forEach(star => {
+            // Hover effect
+            star.nextElementSibling.addEventListener('mouseenter', () => {
+                ratingLabel.textContent = labels[star.value];
+            });
+
+            // Click effect (persist label)
+            star.addEventListener('change', () => {
+                ratingLabel.textContent = labels[star.value];
+            });
+        });
+
+        // Reset label when mouse leaves the stars container, unless a star is selected
+        document.querySelector('.rating-stars').addEventListener('mouseleave', () => {
+            const checked = document.querySelector('.rating-stars input:checked');
+            if (checked) {
+                ratingLabel.textContent = labels[checked.value];
+            } else {
+                ratingLabel.textContent = '';
+            }
+        });
+    }
 
     async function loadProductDetails() {
         try {
@@ -165,14 +295,9 @@
 
             if (allVariants.length === 0) {
                 Swal.fire({
-                    icon: 'error',
-                    title: 'Esgotado',
-                    text: 'Este produto está esgotado.',
-                    background: '#1e1e1e',
-                    color: '#fff'
-                }).then(() => {
-                    window.location.href = '/store';
-                });
+                    icon: 'error', title: 'Esgotado', text: 'Este produto está esgotado.',
+                    background: '#1e1e1e', color: '#fff'
+                }).then(() => { window.location.href = '/store'; });
                 return;
             }
 
@@ -190,14 +315,9 @@
         } catch (error) {
             console.error(error);
             Swal.fire({
-                icon: 'error',
-                title: 'Erro',
-                text: 'Não foi possível carregar o produto.',
-                background: '#1e1e1e',
-                color: '#fff'
-            }).then(() => {
-                window.location.href = '/store';
-            });
+                icon: 'error', title: 'Erro', text: 'Não foi possível carregar o produto.',
+                background: '#1e1e1e', color: '#fff'
+            }).then(() => { window.location.href = '/store'; });
         }
     }
 
@@ -214,7 +334,7 @@
         const prevBtn = document.getElementById('carouselPrevBtn');
         const nextBtn = document.getElementById('carouselNextBtn');
 
-        if (!carouselInner) return; // Guard clause if HTML structure is missing
+        if (!carouselInner) return;
 
         // Collect all unique images
         let images = [];
@@ -222,19 +342,15 @@
         if (product.imagens && product.imagens.length > 0) {
             product.imagens.forEach(img => images.push(img.imagem_url));
         }
-        // Remove duplicates
         images = [...new Set(images)];
 
-        // Fallback if no images
         if (images.length === 0) {
             images.push('https://via.placeholder.com/600x800?text=Sem+Imagem');
         }
 
-        // Clear existing content
         carouselInner.innerHTML = '';
         carouselThumbnails.innerHTML = '';
 
-        // Populate Carousel Items
         images.forEach((imgUrl, index) => {
             const isActive = index === 0 ? 'active' : '';
             const src = imgUrl.startsWith('http') ? imgUrl : `/uploads/${imgUrl}`;
@@ -247,7 +363,6 @@
             carouselInner.insertAdjacentHTML('beforeend', itemHtml);
         });
 
-        // Populate Thumbnails and Controls
         if (images.length > 1) {
             images.forEach((imgUrl, index) => {
                 const src = imgUrl.startsWith('http') ? imgUrl : `/uploads/${imgUrl}`;
@@ -267,26 +382,14 @@
                 };
                 carouselThumbnails.appendChild(thumb);
             });
-
-            // Show controls
             prevBtn.style.display = 'block';
             nextBtn.style.display = 'block';
         } else {
-            // Hide controls if single image
             prevBtn.style.display = 'none';
             nextBtn.style.display = 'none';
         }
 
-        // Update thumbnails on slide
         const myCarousel = document.getElementById('productCarousel');
-
-        // Use a named function to avoid duplicates if possible, but for simplicity in this context:
-        // We can just add the listener. The element is static in the DOM (not re-created), so we should be careful.
-        // However, since we are not re-creating the carousel element itself, just its innerHTML, the listener persists.
-        // But we are adding it every time renderProductInfo is called. This IS a problem.
-        // Fix: Check if listener is already attached or attach it only once outside.
-        // Since renderProductInfo is called multiple times, let's attach the listener once in DOMContentLoaded or use a flag.
-
         if (!myCarousel.dataset.listenerAttached) {
             myCarousel.addEventListener('slide.bs.carousel', function (e) {
                 const index = e.to;
@@ -308,17 +411,15 @@
     }
 
     function initializeOptions() {
-        // Get unique colors and sizes
         const colors = [...new Set(allVariants.map(v => v.cor).filter(Boolean))];
-
-        // Render Color Options
         const colorContainer = document.getElementById('colorOptionsContainer');
         if (colors.length > 0) {
             colorContainer.innerHTML = `
                 <label class="form-label text-muted small text-uppercase fw-bold">Cor</label>
                 <div class="d-flex gap-2 flex-wrap">
                     ${colors.map(color => {
-                const hex = colorMap[color.toLowerCase()] || '#CCCCCC'; // Default to gray if unknown
+                const variant = allVariants.find(v => v.cor === color);
+                const hex = variant ? (variant.cor_hex || colorMap[color.toLowerCase()] || '#CCCCCC') : '#CCCCCC';
                 const isWhite = hex.toUpperCase() === '#FFFFFF';
                 return `
                         <div class="position-relative">
@@ -333,46 +434,31 @@
                     `}).join('')}
                 </div>
                 <style>
-                    .btn-check:checked + label {
-                        border-color: #ffc107 !important;
-                        transform: scale(1.1);
-                    }
-                    .btn-check:checked + label .check-icon {
-                        opacity: 1 !important;
-                    }
+                    .btn-check:checked + label { border-color: #ffc107 !important; transform: scale(1.1); }
+                    .btn-check:checked + label .check-icon { opacity: 1 !important; }
                 </style>
             `;
-            // Auto-select first color if available
             if (colors.length > 0) {
                 document.getElementById(`color_${colors[0]}`).checked = true;
                 handleColorChange(colors[0]);
             }
         } else {
-            colorContainer.innerHTML = ''; // No colors to select
+            colorContainer.innerHTML = '';
             selectedColor = null;
-            updateSizeOptions(); // Update sizes directly
+            updateSizeOptions();
         }
     }
 
     function handleColorChange(color) {
         selectedColor = color;
         updateSizeOptions();
-
-        // Find a variant with this color to update image/price preview
         const variant = allVariants.find(v => v.cor === color);
-        if (variant) {
-            renderProductInfo(variant);
-        }
+        if (variant) renderProductInfo(variant);
     }
 
     function updateSizeOptions() {
-        // Filter variants by selected color (if any)
-        const availableVariants = selectedColor
-            ? allVariants.filter(v => v.cor === selectedColor)
-            : allVariants;
-
+        const availableVariants = selectedColor ? allVariants.filter(v => v.cor === selectedColor) : allVariants;
         const sizes = [...new Set(availableVariants.map(v => v.tamanho).filter(Boolean))];
-
         const sizeContainer = document.getElementById('sizeButtons');
 
         if (sizes.length > 0) {
@@ -380,8 +466,6 @@
                 <input type="radio" class="btn-check" name="sizeOption" id="size_${size}" value="${size}" autocomplete="off" onchange="handleSizeChange('${size}')">
                 <label class="btn btn-outline-dark px-3 py-2" for="size_${size}">${size}</label>
             `).join('');
-
-            // Reset selected size
             selectedSize = null;
         } else {
             sizeContainer.innerHTML = '<span class="text-muted small">Tamanho único / Indisponível</span>';
@@ -392,23 +476,17 @@
     function handleSizeChange(size) {
         selectedSize = size;
         const variant = findSelectedVariant();
-        if (variant) {
-            renderProductInfo(variant);
-        }
+        if (variant) renderProductInfo(variant);
     }
 
     function findSelectedVariant() {
-        return allVariants.find(v =>
-            (!selectedColor || v.cor === selectedColor) &&
-            (!selectedSize || v.tamanho === selectedSize)
-        );
+        return allVariants.find(v => (!selectedColor || v.cor === selectedColor) && (!selectedSize || v.tamanho === selectedSize));
     }
 
     function adjustQty(delta) {
         const input = document.getElementById('productQty');
         let val = parseInt(input.value) + delta;
         if (val < 1) val = 1;
-
         const variant = findSelectedVariant();
         if (variant && val > variant.quantidade) {
             val = variant.quantidade;
@@ -419,8 +497,6 @@
 
     function addToCartCurrent() {
         const variant = findSelectedVariant();
-
-        // Validation
         if (allVariants.some(v => v.cor) && !selectedColor) {
             Swal.fire({ icon: 'info', title: 'Selecione uma cor', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
             return;
@@ -429,51 +505,149 @@
             Swal.fire({ icon: 'info', title: 'Selecione um tamanho', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
             return;
         }
-
-        if (!variant && allVariants.length > 1) { // If there are variants, but no specific one is found
+        if (!variant && allVariants.length > 1) {
             Swal.fire({ icon: 'error', title: 'Produto indisponível', text: 'Combinação não encontrada.', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
             return;
         }
 
-        const finalProduct = variant || currentProduct; // Use variant if found, otherwise the base product
+        const finalProduct = variant || currentProduct;
         const qty = parseInt(document.getElementById('productQty').value);
-
         let cart = JSON.parse(localStorage.getItem('fp_fitness_cart')) || [];
-        // Find existing item by product ID, color, and size to ensure unique cart entries for variants
-        const existingItem = cart.find(item =>
-            item.id === finalProduct.id &&
-            item.color === (finalProduct.cor || null) &&
-            item.size === (finalProduct.tamanho || null)
-        );
+        const existingItem = cart.find(item => item.id === finalProduct.id && item.color === (finalProduct.cor || null) && item.size === (finalProduct.tamanho || null));
 
         if (existingItem) {
             existingItem.quantity += qty;
         } else {
             cart.push({
-                id: finalProduct.id,
-                quantity: qty,
-                size: finalProduct.tamanho || null, // Store null if no size
-                color: finalProduct.cor || null,   // Store null if no color
-                nome: finalProduct.nome,
-                price: finalProduct.preco_venda,
-                image: finalProduct.imagem_url
+                id: finalProduct.id, quantity: qty, size: finalProduct.tamanho || null, color: finalProduct.cor || null,
+                nome: finalProduct.nome, price: finalProduct.preco_venda, image: finalProduct.imagem_url
             });
         }
-
         localStorage.setItem('fp_fitness_cart', JSON.stringify(cart));
         updateCartCount();
-
-        Swal.fire({
-            icon: 'success',
-            title: 'Adicionado!',
-            text: `${qty}x ${finalProduct.nome} adicionado ao carrinho.`,
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 2000,
-            background: '#1e1e1e',
-            color: '#fff'
-        });
+        Swal.fire({ icon: 'success', title: 'Adicionado!', text: `${qty}x ${finalProduct.nome} adicionado ao carrinho.`, toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff' });
     }
+
+    // --- REVIEWS LOGIC ---
+
+    async function loadReviews() {
+        try {
+            const res = await fetch(`/api/store/products/${productId}/reviews`);
+            const reviews = await res.json();
+            const container = document.getElementById('reviewsContainer');
+            const ratingSummary = document.getElementById('ratingSummaryContainer');
+            const ratingStars = document.getElementById('ratingStars');
+            const ratingCount = document.getElementById('ratingCount');
+
+            if (reviews.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center py-4 text-muted"><p>Seja o primeiro a avaliar este produto!</p></div>';
+                ratingSummary.style.setProperty('display', 'none', 'important');
+                return;
+            }
+
+            // Calculate Average
+            const totalStars = reviews.reduce((acc, r) => acc + r.nota, 0);
+            const avg = totalStars / reviews.length;
+
+            // Render Stars Summary
+            let starsHtml = '';
+            for (let i = 1; i <= 5; i++) {
+                if (i <= Math.round(avg)) starsHtml += '<i class="fas fa-star"></i>';
+                else starsHtml += '<i class="far fa-star"></i>';
+            }
+            ratingStars.innerHTML = starsHtml;
+            ratingCount.textContent = `(${avg.toFixed(1)} de ${reviews.length} avaliações)`;
+            ratingSummary.style.setProperty('display', 'flex', 'important');
+
+            // Render Reviews
+            container.innerHTML = reviews.map(r => `
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold mb-0">${r.cliente_nome}</h6>
+                                <small class="text-muted">${r.data_criacao}</small>
+                            </div>
+                            <div class="text-warning mb-2">
+                                ${Array(r.nota).fill('<i class="fas fa-star"></i>').join('')}
+                                ${Array(5 - r.nota).fill('<i class="far fa-star"></i>').join('')}
+                            </div>
+                            <p class="card-text text-muted">${r.comentario || ''}</p>
+                            ${r.midias.length > 0 ? `
+                                <div class="d-flex gap-2 mt-2 overflow-auto">
+                                    ${r.midias.map(m => m.tipo === 'foto'
+                ? `<img src="/frontend/uploads/reviews/${m.url}" class="review-media-preview" onclick="window.open(this.src)">`
+                : `<video src="/frontend/uploads/reviews/${m.url}" class="review-media-preview" controls></video>`
+            ).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+        } catch (error) {
+            console.error('Erro ao carregar avaliações:', error);
+        }
+    }
+
+    async function checkReviewEligibility() {
+        if (!token) return;
+        try {
+            const res = await fetch(`/api/store/products/${productId}/can_review`, {
+                headers: { 'x-client-token': token }
+            });
+            const data = await res.json();
+            if (data.can_review) {
+                document.getElementById('writeReviewBtn').style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Erro ao verificar elegibilidade:', error);
+        }
+    }
+
+    function openReviewModal() {
+        new bootstrap.Modal(document.getElementById('reviewModal')).show();
+    }
+
+    document.getElementById('reviewForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData();
+        const nota = document.querySelector('input[name="nota"]:checked')?.value;
+        const comentario = document.getElementById('reviewComment').value;
+        const files = document.getElementById('reviewMedia').files;
+
+        if (!nota) {
+            Swal.fire({ icon: 'warning', title: 'Nota obrigatória', text: 'Por favor, selecione uma nota de 1 a 5.' });
+            return;
+        }
+
+        formData.append('nota', nota);
+        formData.append('comentario', comentario);
+        for (let i = 0; i < files.length; i++) {
+            formData.append('midia', files[i]);
+        }
+
+        try {
+            const res = await fetch(`/api/store/products/${productId}/reviews`, {
+                method: 'POST',
+                headers: { 'x-client-token': token },
+                body: formData
+            });
+            const result = await res.json();
+
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
+                Swal.fire({ icon: 'success', title: 'Sucesso!', text: 'Sua avaliação foi enviada.' });
+                loadReviews();
+                document.getElementById('writeReviewBtn').style.display = 'none'; // Hide button after review
+            } else {
+                Swal.fire({ icon: 'error', title: 'Erro', text: result.erro || 'Erro ao enviar avaliação.' });
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de conexão.' });
+        }
+    });
 </script>
 {% endblock %}

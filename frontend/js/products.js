@@ -3,6 +3,7 @@
 let currentPage = 1;
 let currentSearch = '';
 let currentCategory = '';
+let currentSort = 'mais_vendidos';
 
 function debounce(func, wait) {
     let timeout;
@@ -66,6 +67,16 @@ function filterByCategory() {
     }
 }
 
+function filterBySort() {
+    const sortFilter = document.getElementById('sortFilter');
+    if (sortFilter) {
+        currentSort = sortFilter.value;
+        currentPage = 1;
+        resetContainer();
+        loadProducts();
+    }
+}
+
 function resetContainer() {
     const container = document.getElementById('productsContainer');
     if (container) {
@@ -75,7 +86,7 @@ function resetContainer() {
 
 async function loadProducts() {
     try {
-        let url = `/api/store/products?page=${currentPage}&per_page=12`;
+        let url = `/api/store/products?page=${currentPage}&per_page=12&sort=${currentSort}`;
         if (currentSearch) url += `&q=${encodeURIComponent(currentSearch)}`;
         if (currentCategory) url += `&categoria=${encodeURIComponent(currentCategory)}`;
 
@@ -123,10 +134,16 @@ async function loadProducts() {
                     priceDisplay = `R$ ${p.preco_venda.toFixed(2)} - ${p.max_price.toFixed(2)}`;
                 }
 
+                const bestSellerBadge = p.is_best_seller ?
+                    `<span class="badge badge-best-seller position-absolute bottom-0 start-0 m-3 px-3 py-2 rounded-pill z-2 shadow-sm">
+                        <i class="fas fa-fire me-1"></i> Mais Vendido
+                     </span>` : '';
+
                 return `
                 <div class="col-md-6 col-lg-3">
                     <div class="product-card h-100 position-relative">
                         <div class="product-img-wrapper position-relative" style="height: 300px;">
+                            ${bestSellerBadge}
                             <span class="badge badge-gold position-absolute top-0 end-0 m-3 px-3 py-2 rounded-pill z-2">
                                 ${priceDisplay}
                             </span>

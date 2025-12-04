@@ -1,6 +1,14 @@
 {% extends "store/base.html" %}
 
 {% block content %}
+<!-- Promo Banner -->
+<div id="promoBanner"
+    class="alert alert-warning text-center fw-bold rounded-0 mb-0 d-none animate__animated animate__fadeInDown"
+    role="alert" style="z-index: 1050;">
+    🎉 Ganhe <span id="promoPercent"></span>% de desconto na sua primeira compra com o cupom <span
+        class="badge bg-dark">PRIMEIRACOMPRA</span>! Aproveite! 🛍️
+</div>
+
 <!-- Hero Section -->
 <section class="hero-section position-relative d-flex align-items-center justify-content-center text-center text-white"
     style="height: 80vh; background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('/static/img/background.png') no-repeat center center/cover;">
@@ -79,7 +87,22 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         loadFeaturedProducts();
+        checkPromos();
     });
+
+    async function checkPromos() {
+        try {
+            const response = await fetch('/api/store/config');
+            const config = await response.json();
+            // Handle 'True', 'true', true, etc.
+            const isActive = String(config.promo_primeira_compra_ativo).toLowerCase() === 'true';
+
+            if (isActive) {
+                document.getElementById('promoPercent').textContent = config.promo_primeira_compra_percent;
+                document.getElementById('promoBanner').classList.remove('d-none');
+            }
+        } catch (e) { console.error('Erro ao carregar promos:', e); }
+    }
 
     async function loadFeaturedProducts() {
         try {

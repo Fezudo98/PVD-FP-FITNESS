@@ -1,0 +1,69 @@
+--- Best Sellers Query ---
+Name: Legging Max Lupo, Sales: 57
+Name: Top Esportivo, Sales: 41
+Name: Blusa Slim, Sales: 41
+Name: Macacão Esportivo, Sales: 38
+Name: Short Lsport, Sales: 21
+
+--- Main Query (Simulated) ---
+Name                           | Sales      | Badge?
+--------------------------------------------------
+Legging Max Lupo               | 57         | YES
+Blusa Slim                     | 41         | YES
+Top Esportivo                  | 41         | YES
+Macacão Esportivo              | 38         | YES
+Legging Maxlupo                | 21         | NO
+Short Lsport                   | 21         | YES
+Top Lupo Loba                  | 15         | NO
+Macacão Sport                  | 13         | NO
+Calcinha Lupo Fio              | 11         | NO
+Legging Selene                 | 11         | NO
+Legging Tiedye                 | 10         | NO
+Short Selene                   | 10         | NO
+Meia Lupo                      | 9          | NO
+Top Selene                     | 9          | NO
+Macacão Bicolor                | 8          | NO
+Top Faixa                      | 8          | NO
+Bermuda Lupo Feminina Max      | 7          | NO
+Top Lupo                       | 7          | NO
+Legging Lsport                 | 6          | NO
+Meias Lupo                     | 6          | NO
+Short Lupo Af Fit              | 6          | NO
+Short Selene Push Up           | 6          | NO
+Legging Up Control             | 5          | NO
+Short Lsport Up                | 5          | NO
+Top Esportivo Hera             | 5          | NO
+Conjunto Esportivo             | 4          | NO
+Legging Premium Canelada Sem Empina | 4          | NO
+Meia Alo                       | 4          | NO
+Calcinha Lupo Basic            | 3          | NO
+Legguing Max Lupo              | 3          | NO
+Macaquinho Costa Nua           | 3          | NO
+Short Attack                   | 3          | NO
+Vestido Esportivo              | 3          | NO
+Bermuda Pedal Lupo             | 2          | NO
+Macaquinho Amora               | 2          | NO
+Short Tdfit                    | 2          | NO
+Tiara Esportiva                | 2          | NO
+Blusa Lupo Lsport              | 1          | NO
+Cropped Slim                   | 1          | NO
+Legging Com Zíper              | 1          | NO
+Legging Strong Ii              | 1          | NO
+Legging Ziper                  | 1          | NO
+Macacão Allura                 | 1          | NO
+Macaquinho Canelado De Ziper   | 1          | NO
+Macaquito Shape                | 1          | NO
+Top A Loba                     | 1          | NO
+Top Power Loba                 | 1          | NO
+Cropped Manga Longa            | None       | NO
+Leggign Energy Raschel         | None       | NO
+Legging                        | None       | NO
+Legging Musera                 | None       | NO
+Legging Selene Gestante        | None       | NO
+Short Canelado Selene          | None       | NO
+Short Nikepro                  | None       | NO
+Short Scala                    | None       | NO
+TESTE TESTE                    | None       | NO
+Teste                          | None       | NO
+Top                            | None       | NO
+Top Sutiã Lupo                 | None       | NO

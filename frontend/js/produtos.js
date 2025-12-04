@@ -9,6 +9,7 @@ if (!token) {
 let currentPage = 1;
 let totalPages = 1; // Nova variável global para o total de páginas
 let currentSearch = '';
+let selectedFiles = []; // Array to store selected files
 
 document.addEventListener('DOMContentLoaded', () => {
     // Referências aos elementos do DOM
@@ -40,6 +41,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetCategorySelect = document.getElementById('targetCategorySelect');
 
     let isNewCategory = false;
+
+    const colorMap = {
+        'preto': '#000000', 'branco': '#FFFFFF', 'cinza': '#808080', 'azul': '#0000FF',
+        'vermelho': '#FF0000', 'verde': '#008000', 'amarelo': '#FFFF00', 'rosa': '#FFC0CB',
+        'roxo': '#800080', 'laranja': '#FFA500', 'bege': '#F5F5DC', 'marrom': '#A52A2A',
+        'vinho': '#800000', 'marinho': '#000080', 'ciano': '#00FFFF', 'magenta': '#FF00FF',
+        'lilas': '#C8A2C8', 'coral': '#FF7F50', 'turquesa': '#40E0D0', 'dourado': '#FFD700',
+        'prata': '#C0C0C0', 'goiaba': '#E0555D'
+    };
+
+    const corInput = document.getElementById('cor');
+    const corHexInput = document.getElementById('cor_hex');
+
+    corInput.addEventListener('input', () => {
+        const cor = corInput.value.toLowerCase().trim();
+        if (colorMap[cor]) {
+            corHexInput.value = colorMap[cor];
+        }
+    });
 
     /**
      * Busca os produtos da API, aplicando paginação e filtro de busca.
@@ -318,7 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-
     // --- Fim Gerenciamento de Categorias ---
 
     // Carrega nomes para autocomplete
@@ -367,19 +386,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         document.getElementById('cor').value = produto.cor;
+        document.getElementById('cor_hex').value = produto.cor_hex || '#000000';
         document.getElementById('tamanho').value = produto.tamanho;
         document.getElementById('preco_custo').value = produto.preco_custo;
         document.getElementById('preco_venda').value = produto.preco_venda;
         document.getElementById('quantidade').value = produto.quantidade;
+        document.getElementById('descricao').value = produto.descricao || '';
 
-        // Exibir Imagens Existentes
+        // Limpa e reseta arquivos selecionados
+        selectedFiles = [];
         const previewContainer = document.getElementById('imagePreviewContainer');
         previewContainer.innerHTML = '';
 
         // Função auxiliar para criar elemento de imagem
         const createImageElement = (url, id = null) => {
             const div = document.createElement('div');
-            div.className = 'position-relative d-inline-block';
+            div.className = 'position-relative d-inline-block me-2 mb-2';
             div.style.width = '100px';
             div.style.height = '100px';
 
@@ -436,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (produto.imagem_url) {
             // Fallback para produtos antigos que só têm imagem_url na tabela produto
             const div = document.createElement('div');
-            div.className = 'position-relative d-inline-block';
+            div.className = 'position-relative d-inline-block me-2 mb-2';
             div.style.width = '100px';
             div.style.height = '100px';
 
@@ -463,8 +485,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('modalTitle').textContent = 'Adicionar Produto';
         produtoForm.reset();
         document.getElementById('produtoId').value = '';
+        document.getElementById('cor_hex').value = '#000000';
         document.getElementById('barcodePreviewContainer').style.display = 'none';
         document.getElementById('imagePreviewContainer').innerHTML = ''; // Limpa previews
+        selectedFiles = []; // Clear selected files
         toggleCategoriaInputBtn.textContent = '+';
         toggleCategoriaInputBtn.title = 'Nova Categoria';
         categoriaSelect.style.display = 'block';
@@ -491,15 +515,16 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('categoria', categoriaValue);
 
         formData.append('cor', document.getElementById('cor').value);
+        formData.append('cor_hex', document.getElementById('cor_hex').value);
         formData.append('tamanho', document.getElementById('tamanho').value);
         formData.append('preco_custo', document.getElementById('preco_custo').value);
         formData.append('preco_venda', document.getElementById('preco_venda').value);
         formData.append('quantidade', document.getElementById('quantidade').value);
+        formData.append('descricao', document.getElementById('descricao').value);
 
-        // Envia múltiplos arquivos
-        const files = imagemInput.files;
-        for (let i = 0; i < files.length; i++) {
-            formData.append('imagem', files[i]);
+        // Envia múltiplos arquivos do array acumulado
+        for (let i = 0; i < selectedFiles.length; i++) {
+            formData.append('imagem', selectedFiles[i]);
         }
 
         try {
@@ -520,14 +545,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const files = event.target.files;
         const previewContainer = document.getElementById('imagePreviewContainer');
 
-        // Remove previews de uploads anteriores (elementos sem botão de delete de API ou marcados como local)
-        const localPreviews = previewContainer.querySelectorAll('.local-preview');
-        localPreviews.forEach(el => el.remove());
-
         if (files && files.length > 0) {
             Array.from(files).forEach(file => {
+                // Add to global array
+                selectedFiles.push(file);
+
                 const div = document.createElement('div');
-                div.className = 'position-relative d-inline-block local-preview';
+                div.className = 'position-relative d-inline-block local-preview me-2 mb-2';
                 div.style.width = '100px';
                 div.style.height = '100px';
 
@@ -536,10 +560,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 img.className = 'img-thumbnail w-100 h-100';
                 img.style.objectFit = 'cover';
 
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center';
+                btn.style.width = '20px';
+                btn.style.height = '20px';
+                btn.innerHTML = '&times;';
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    // Remove from array
+                    const index = selectedFiles.indexOf(file);
+                    if (index > -1) {
+                        selectedFiles.splice(index, 1);
+                    }
+                    div.remove();
+                };
+
                 div.appendChild(img);
+                div.appendChild(btn);
                 previewContainer.appendChild(div);
             });
         }
+        // Reset input value to allow selecting the same file again if needed
+        imagemInput.value = '';
     });
 
     produtosTableBody.addEventListener('click', async (event) => {
@@ -560,7 +602,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = document.getElementById('produtoId').value;
         if (!id) return;
         try {
-            const response = await fetch(`${API_URL}/api/produtos/${id}/gerar-barcode`, { method: 'POST', headers: { 'x-access-token': token } });
+            const response = await fetch(`${API_URL}/api/produtos/${id}/gerar-barcode`, {
+                method: 'POST', headers: { 'x-access-token': token }
+            });
             const result = await response.json();
             if (response.ok) {
                 alert(result.mensagem);

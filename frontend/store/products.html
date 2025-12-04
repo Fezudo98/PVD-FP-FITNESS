@@ -15,6 +15,13 @@
                         <option value="">Todas as Categorias</option>
                         <!-- Categories will be loaded here -->
                     </select>
+                    <select class="form-select bg-white text-dark border-secondary ms-2" id="sortFilter"
+                        onchange="filterBySort()" style="max-width: 200px;">
+                        <option value="mais_vendidos">Mais Vendidos</option>
+                        <option value="alfabetica">Ordem Alfabética</option>
+                        <option value="preco_crescente">Menor Preço</option>
+                        <option value="preco_decrescente">Maior Preço</option>
+                    </select>
                     <input type="text" class="form-control bg-white text-dark border-secondary"
                         placeholder="Buscar produtos..." id="searchInput">
                     <button class="btn btn-warning" type="button" onclick="searchProducts()">

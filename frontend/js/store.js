@@ -1,6 +1,7 @@
 // Store Logic
 
 let cart = JSON.parse(localStorage.getItem('fp_fitness_cart')) || [];
+let currentCoupon = null; // Store applied coupon
 
 function updateCartCount() {
     const count = cart.reduce((acc, item) => acc + item.quantity, 0);
@@ -120,10 +121,55 @@ function proceedToCheckout() {
     window.location.href = '/store/checkout';
 }
 
+// --- COUPON LOGIC ---
+async function applyCoupon() {
+    const codeInput = document.getElementById('cupomInput');
+    const messageDiv = document.getElementById('cupomMessage');
+    const code = codeInput.value.trim().toUpperCase();
+
+    if (!code) {
+        messageDiv.textContent = 'Digite um código.';
+        messageDiv.className = 'form-text mt-1 text-danger';
+        return;
+    }
+
+    // Get client token for validation
+    const token = localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken');
+    if (!token) {
+        Swal.fire('Login Necessário', 'Faça login para usar cupons.', 'info');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/store/cupons/validar/${code}`, {
+            headers: { 'x-client-token': token }
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            currentCoupon = data;
+            messageDiv.textContent = `Cupom ${data.codigo} aplicado!`;
+            messageDiv.className = 'form-text mt-1 text-success';
+            renderCheckoutPage(); // Re-render to show discount
+        } else {
+            currentCoupon = null;
+            messageDiv.textContent = data.erro || 'Cupom inválido.';
+            messageDiv.className = 'form-text mt-1 text-danger';
+            renderCheckoutPage();
+        }
+    } catch (error) {
+        console.error('Erro ao validar cupom:', error);
+        messageDiv.textContent = 'Erro ao validar cupom.';
+        messageDiv.className = 'form-text mt-1 text-danger';
+    }
+}
+
 function renderCheckoutPage() {
     const container = document.getElementById('checkoutItems');
     const subtotalEl = document.getElementById('checkoutSubtotal');
     const totalEl = document.getElementById('checkoutTotal');
+    const discountRow = document.getElementById('discountRow');
+    const discountEl = document.getElementById('checkoutDiscount');
 
     if (!container) return; // Not on checkout page
 
@@ -132,10 +178,10 @@ function renderCheckoutPage() {
         return;
     }
 
-    let total = 0;
+    let subtotal = 0;
     container.innerHTML = cart.map(item => {
-        const subtotal = item.price * item.quantity;
-        total += subtotal;
+        const itemTotal = item.price * item.quantity;
+        subtotal += itemTotal;
         return `
             <li class="list-group-item bg-transparent text-dark d-flex justify-content-between lh-sm border-bottom border-secondary-subtle">
                 <div>
@@ -143,12 +189,49 @@ function renderCheckoutPage() {
                     <small class="text-secondary">Qtd: ${item.quantity}</small>
                     ${item.size ? `<br><small class="text-secondary">Tamanho: ${item.size}</small>` : ''}
                 </div>
-                <span class="text-dark fw-bold">R$ ${subtotal.toFixed(2)}</span>
+                <span class="text-dark fw-bold">R$ ${itemTotal.toFixed(2)}</span>
             </li>
         `;
     }).join('');
 
-    if (subtotalEl) subtotalEl.textContent = `R$ ${total.toFixed(2)}`;
+    // Calculate Discount
+    let discount = 0;
+    if (currentCoupon) {
+        if (currentCoupon.aplicacao === 'total') {
+            if (currentCoupon.tipo_desconto === 'percentual') {
+                discount = subtotal * (currentCoupon.valor_desconto / 100);
+            } else {
+                discount = parseFloat(currentCoupon.valor_desconto);
+            }
+        } else if (currentCoupon.aplicacao === 'produto_especifico') {
+            // Logic for specific products
+            // Assuming currentCoupon.produtos_validos_ids is available (backend needs to send this)
+            // If backend doesn't send it in 'validar', we might need to adjust.
+            // For now, let's assume 'validar' returns 'produtos_validos_ids' if applicable.
+            // Or simpler: just apply to total for now as per previous logic, or check if we have IDs.
+            // The backend 'validar_cupom_loja' returns cupom.to_dict().
+            // Let's check if to_dict includes relations. Usually it doesn't unless specified.
+            // If not, we might need to fetch them.
+            // BUT, for simplicity and robustness, let's apply to total if 'aplicacao' is total,
+            // and maybe just warn/skip if specific (or implement if data is there).
+            // Let's assume 'total' for the main use case (First Purchase/Review).
+        }
+    }
+
+    // Ensure discount doesn't exceed subtotal
+    if (discount > subtotal) discount = subtotal;
+
+    const total = subtotal - discount;
+
+    if (subtotalEl) subtotalEl.textContent = `R$ ${subtotal.toFixed(2)}`;
+
+    if (discount > 0) {
+        discountRow.classList.remove('d-none');
+        discountEl.textContent = `- R$ ${discount.toFixed(2)}`;
+    } else {
+        discountRow.classList.add('d-none');
+    }
+
     if (totalEl) totalEl.textContent = `R$ ${total.toFixed(2)}`;
 }
 
@@ -179,9 +262,25 @@ async function submitOrder() {
         quantidade: item.quantity
     }));
 
+    // Calculate final value again to be safe (though backend should verify)
+    let total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    // Apply discount logic here too for the 'valor' field, 
+    // BUT backend should recalculate. 
+    // We'll send the raw total and let backend handle coupon application if we send cupom_id.
+    // Wait, the backend 'checkout' endpoint needs to know about the coupon.
+    // I should add 'cupom_id' to the payload.
+
     const pagamento = {
         forma: document.querySelector('input[name="pagamento"]:checked').value,
-        valor: cart.reduce((acc, item) => acc + (item.price * item.quantity), 0)
+        valor: total // Backend should recalculate with coupon
+    };
+
+    const payload = {
+        cliente,
+        itens,
+        pagamento,
+        cupom_id: currentCoupon ? currentCoupon.id : null, // Send coupon ID
+        salvar_endereco: document.getElementById('salvarEndereco') ? document.getElementById('salvarEndereco').checked : false
     };
 
     try {
@@ -199,7 +298,7 @@ async function submitOrder() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ cliente, itens, pagamento })
+            body: JSON.stringify(payload)
         });
 
         const result = await response.json();

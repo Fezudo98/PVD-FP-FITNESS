@@ -172,12 +172,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Erro ao salvar cupom:', error);
         }
     });
-    
+
     // Lida com cliques nos botões de Ações na tabela
     cuponsTableBody.addEventListener('click', async (e) => {
         const target = e.target;
         if (!target.dataset.id) return;
-        
+
         const id = parseInt(target.dataset.id);
 
         // CORREÇÃO 4: Lógica para EDITAR refeita para ser mais segura
@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.error("Cupom não encontrado para o ID:", id);
                 return;
             }
-            
+
             modalTitle.textContent = `Editar Cupom: ${cupom.codigo}`;
             document.getElementById('cupomId').value = cupom.id;
             document.getElementById('codigo').value = cupom.codigo;
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('aplicacao').value = cupom.aplicacao;
 
             populateProductSelect();
-            
+
             if (cupom.aplicacao === 'produto_especifico') {
                 produtosWrapper.classList.remove('d-none');
                 $('#produtos-select').val(cupom.produtos_validos_ids).trigger('change');
@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 produtosWrapper.classList.add('d-none');
                 $('#produtos-select').val(null).trigger('change');
             }
-            
+
             cupomModal.show();
         }
 
@@ -238,9 +238,74 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '/login.html';
     });
 
+    // --- LÓGICA DE PROMOÇÕES AUTOMÁTICAS ---
+
+    async function fetchConfig() {
+        try {
+            const response = await fetch(`${API_URL}/api/config`, {
+                headers: { 'x-access-token': token }
+            });
+            if (!response.ok) throw new Error('Falha ao carregar configurações.');
+            const config = await response.json();
+
+            // First Purchase
+            if (config.promo_primeira_compra_percent) {
+                document.getElementById('promo_primeira_compra_percent').value = config.promo_primeira_compra_percent;
+            }
+            document.getElementById('promo_primeira_compra_ativo').checked = String(config.promo_primeira_compra_ativo).toLowerCase() === 'true';
+
+            // First Review
+            if (config.promo_primeira_avaliacao_percent) {
+                document.getElementById('promo_primeira_avaliacao_percent').value = config.promo_primeira_avaliacao_percent;
+            }
+            document.getElementById('promo_primeira_avaliacao_ativo').checked = String(config.promo_primeira_avaliacao_ativo).toLowerCase() === 'true';
+
+        } catch (error) {
+            console.error('Erro ao buscar configurações:', error);
+        }
+    }
+
+    async function saveConfig(data) {
+        try {
+            const response = await fetch(`${API_URL}/api/config`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-access-token': token },
+                body: JSON.stringify(data)
+            });
+            if (response.ok) {
+                alert('Configurações salvas com sucesso!');
+            } else {
+                alert('Erro ao salvar configurações.');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar config:', error);
+            alert('Erro de conexão.');
+        }
+    }
+
+    document.getElementById('promoFirstPurchaseForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const data = {
+            promo_primeira_compra_percent: document.getElementById('promo_primeira_compra_percent').value,
+            promo_primeira_compra_ativo: document.getElementById('promo_primeira_compra_ativo').checked
+        };
+        saveConfig(data);
+    });
+
+    document.getElementById('promoFirstReviewForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const data = {
+            promo_primeira_avaliacao_percent: document.getElementById('promo_primeira_avaliacao_percent').value,
+            promo_primeira_avaliacao_ativo: document.getElementById('promo_primeira_avaliacao_ativo').checked
+        };
+        saveConfig(data);
+    });
+
     // --- INICIALIZAÇÃO ---
     // Espera os produtos carregarem primeiro, pois são necessários para o modal
     await fetchAllProducts();
     // Depois carrega os cupons
     fetchCupons();
+    // Carrega configurações
+    fetchConfig();
 });

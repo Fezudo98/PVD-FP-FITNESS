@@ -108,25 +108,63 @@
                         </div>
 
                         <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="cor" class="form-label">Cor</label>
+                                <input type="text" class="form-control" id="cor" name="cor" list="coresList">
+                                <datalist id="coresList">
+                                    <option value="Preto">
+                                    <option value="Branco">
+                                    <option value="Cinza">
+                                    <option value="Azul">
+                                    <option value="Vermelho">
+                                    <option value="Verde">
+                                    <option value="Amarelo">
+                                    <option value="Rosa">
+                                    <option value="Roxo">
+                                    <option value="Laranja">
+                                    <option value="Bege">
+                                    <option value="Marrom">
+                                    <option value="Vinho">
+                                    <option value="Marinho">
+                                </datalist>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="cor_hex" class="form-label">Cor Hex</label>
+                                <input type="color" class="form-control form-control-color w-100" id="cor_hex"
+                                    name="cor_hex" value="#000000" title="Escolha a cor">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="tamanho" class="form-label">Tamanho</label>
+                                <input type="text" class="form-control" id="tamanho" name="tamanho" list="tamanhosList">
+                                <datalist id="tamanhosList">
+                                    <option value="P">
+                                    <option value="M">
+                                    <option value="G">
+                                    <option value="GG">
+                                    <option value="XG">
+                                    <option value="Único">
+                                    <option value="34">
+                                    <option value="36">
+                                    <option value="38">
+                                    <option value="40">
+                                    <option value="42">
+                                    <option value="44">
+                                </datalist>
+                            </div>
+                        </div>
+
+                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="categoria" class="form-label">Categoria</label>
                                 <div class="input-group">
                                     <select class="form-select" id="categoriaSelect">
                                         <option value="">Selecione...</option>
                                     </select>
+                                    <input type="text" class="form-control" id="categoriaInput" style="display: none;"
+                                        placeholder="Nova Categoria">
                                     <button class="btn btn-outline-secondary" type="button" id="toggleCategoriaInput"
                                         title="Nova Categoria">+</button>
                                 </div>
-                                <input type="text" class="form-control mt-2" id="categoriaInput"
-                                    placeholder="Nova Categoria" style="display: none;">
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="cor" class="form-label">Cor</label>
-                                <input type="text" class="form-control" id="cor">
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="tamanho" class="form-label">Tamanho</label>
-                                <input type="text" class="form-control" id="tamanho">
                             </div>
                         </div>
 
@@ -143,6 +181,11 @@
                                 <label for="quantidade" class="form-label">Quantidade</label>
                                 <input type="number" class="form-control" id="quantidade" required>
                             </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
                         </div>
 
                         <div class="modal-footer">

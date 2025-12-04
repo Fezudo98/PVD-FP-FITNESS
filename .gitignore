@@ -45,3 +45,5 @@ my_*.py
 diagnose_*.py
 remove_bg.py
 instance/
+analyze_revenue.py
+sorting_result
