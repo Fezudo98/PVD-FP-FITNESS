@@ -467,7 +467,32 @@ document.addEventListener('DOMContentLoaded', () => {
             img.className = 'img-thumbnail w-100 h-100';
             img.style.objectFit = 'cover';
 
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center';
+            btn.style.width = '20px';
+            btn.style.height = '20px';
+            btn.innerHTML = '&times;';
+            btn.onclick = async (e) => {
+                e.preventDefault();
+                if (confirm('Remover esta imagem antiga?')) {
+                    try {
+                        const res = await fetch(`${API_URL}/api/produtos/${produto.id}/imagem_legacy`, {
+                            method: 'DELETE',
+                            headers: { 'x-access-token': token }
+                        });
+                        if (res.ok) {
+                            div.remove();
+                        } else {
+                            alert('Erro ao remover imagem antiga.');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }
+            };
+
             div.appendChild(img);
+            div.appendChild(btn);
             previewContainer.appendChild(div);
         }
 

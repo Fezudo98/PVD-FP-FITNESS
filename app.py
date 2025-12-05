@@ -768,6 +768,31 @@ def delete_product_image(current_user, imagem_id):
     db.session.commit()
     return jsonify({'mensagem': 'Imagem removida com sucesso!'})
 
+    db.session.delete(imagem)
+    db.session.commit()
+    return jsonify({'mensagem': 'Imagem removida com sucesso!'})
+
+@app.route('/api/produtos/<int:produto_id>/imagem_legacy', methods=['DELETE'])
+@token_required
+def delete_legacy_product_image(current_user, produto_id):
+    if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
+    
+    produto = Produto.query.get_or_404(produto_id)
+    
+    if produto.imagem_url:
+        try:
+            file_path = os.path.join(base_dir, 'uploads', produto.imagem_url)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Erro ao deletar arquivo de imagem legacy: {e}")
+        
+        produto.imagem_url = None
+        db.session.commit()
+        return jsonify({'mensagem': 'Imagem principal removida com sucesso!'})
+    
+    return jsonify({'mensagem': 'Nenhuma imagem principal encontrada.'}), 404
+
 @app.route('/api/produtos/<int:produto_id>/gerar-barcode', methods=['POST'])
 @token_required
 def gerar_barcode_manual(current_user, produto_id):

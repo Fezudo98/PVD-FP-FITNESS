@@ -47,3 +47,5 @@ remove_bg.py
 instance/
 analyze_revenue.py
 sorting_result
+patches/executed/
+test_patch_result.txt
