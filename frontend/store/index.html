@@ -4,7 +4,7 @@
 <!-- Promo Banner -->
 <div id="promoBanner"
     class="alert alert-warning text-center fw-bold rounded-0 mb-0 d-none animate__animated animate__fadeInDown"
-    role="alert" style="z-index: 1050;">
+    role="alert">
     🎉 Ganhe <span id="promoPercent"></span>% de desconto na sua primeira compra com o cupom <span
         class="badge bg-dark">PRIMEIRACOMPRA</span>! Aproveite! 🛍️
 </div>
@@ -92,16 +92,25 @@
 
     async function checkPromos() {
         try {
-            const response = await fetch('/api/store/config');
+            const response = await fetch(`/api/store/config?t=${Date.now()}`);
             const config = await response.json();
+
             // Handle 'True', 'true', true, etc.
             const isActive = String(config.promo_primeira_compra_ativo).toLowerCase() === 'true';
+            const banner = document.getElementById('promoBanner');
 
-            if (isActive) {
+            if (isActive && config.promo_primeira_compra_percent) {
                 document.getElementById('promoPercent').textContent = config.promo_primeira_compra_percent;
-                document.getElementById('promoBanner').classList.remove('d-none');
+                banner.classList.remove('d-none');
+            } else {
+                banner.classList.add('d-none');
             }
-        } catch (e) { console.error('Erro ao carregar promos:', e); }
+        } catch (e) {
+            console.error('Erro ao carregar promos:', e);
+            // Hide on error
+            const banner = document.getElementById('promoBanner');
+            if (banner) banner.classList.add('d-none');
+        }
     }
 
     async function loadFeaturedProducts() {
@@ -111,12 +120,18 @@
             const container = document.getElementById('featuredProductsContainer');
 
             if (data.produtos && data.produtos.length > 0) {
-                container.innerHTML = data.produtos.map(p => `
+                container.innerHTML = data.produtos.map(p => {
+                    let priceDisplay = `R$ ${p.preco_venda.toFixed(2)}`;
+                    if (p.max_price && p.max_price > p.preco_venda) {
+                        priceDisplay = `A partir de R$ ${p.preco_venda.toFixed(2)}`;
+                    }
+
+                    return `
                     <div class="col-md-6 col-lg-3">
                         <div class="product-card h-100 position-relative">
                             <div class="product-img-wrapper position-relative">
                                 <span class="badge badge-gold position-absolute top-0 end-0 m-3 px-3 py-2 rounded-pill z-2">
-                                    R$ ${p.preco_venda.toFixed(2)}
+                                    ${priceDisplay}
                                 </span>
                                 <a href="/store/produto/${p.id}">
                                     <img src="${p.imagem_url ? '/uploads/' + p.imagem_url : 'https://via.placeholder.com/300x400?text=Sem+Imagem'}" alt="${p.nome}" class="img-fluid">
@@ -133,7 +148,7 @@
                             </div>
                         </div>
                     </div>
-                `).join('');
+                `}).join('');
             } else {
                 container.innerHTML = '<div class="col-12 text-center text-muted"><p>Nenhum produto em destaque no momento.</p></div>';
             }

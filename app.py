@@ -12,6 +12,8 @@ from sqlalchemy import func, or_
 from werkzeug.utils import secure_filename
 import barcode
 from barcode.writer import ImageWriter
+import json
+import urllib.request
 from flask_migrate import Migrate
 
 # 1. CONFIGURAÇÃO INICIAL
@@ -30,6 +32,42 @@ migrate = Migrate(app, db, render_as_batch=True)
 @app.route('/frontend/<path:filename>')
 def custom_static(filename):
     return send_from_directory('frontend', filename)
+
+@app.route('/api/public/cupons/validar/<codigo>', methods=['GET'])
+def store_validate_coupon(codigo):
+    cupom = Cupom.query.filter_by(codigo=codigo.upper(), ativo=True).first()
+    if not cupom:
+        return jsonify({'erro': 'Cupom inválido ou expirado.'}), 404
+        
+    # Validation logic specific to FIRST BUY
+    if cupom.codigo == 'PRIMEIRACOMPRA':
+        cpf = request.args.get('cpf', '').replace('.', '').replace('-', '')
+        token = request.headers.get('x-client-token')
+        
+        if token:
+             try:
+                 data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+                 cliente = Cliente.query.get(data['id_cliente'])
+                 if cliente:
+                      has_orders = Venda.query.filter_by(id_cliente=cliente.id).filter(Venda.status != 'Cancelada').count()
+                      if has_orders > 0:
+                           return jsonify({'erro': 'Cupom válido apenas para primeira compra.'}), 400
+             except: pass
+
+        if cpf:
+            cliente = Cliente.query.filter_by(cpf=cpf).first()
+            if cliente:
+                has_orders = Venda.query.filter_by(id_cliente=cliente.id).filter(Venda.status != 'Cancelada').count()
+                if has_orders > 0:
+                    return jsonify({'erro': 'Cupom válido apenas para primeira compra.'}), 400
+
+    return jsonify({
+        'id': cupom.id,
+        'codigo': cupom.codigo,
+        'tipo_desconto': cupom.tipo_desconto,
+        'valor_desconto': cupom.valor_desconto,
+        'aplicacao': cupom.aplicacao
+    })
 
 
 # 2. MODELOS DE DADOS
@@ -250,6 +288,31 @@ class AvaliacaoMidia(db.Model):
 
 # 3. FUNÇÕES AUXILIARES
 # -----------------------------------------------------------
+def validate_cpf(cpf):
+    # Remove chars non-digits
+    cpf = ''.join(filter(str.isdigit, cpf))
+    
+    # Check length
+    if len(cpf) != 11: return False
+    
+    # Check for known invalid sequences
+    if cpf == cpf[0] * 11: return False
+    
+    # Calc 1st digit
+    sum_val = sum(int(cpf[i]) * (10 - i) for i in range(9))
+    rev = 11 - (sum_val % 11)
+    if rev == 10 or rev == 11: rev = 0
+    if rev != int(cpf[9]): return False
+    
+    # Calc 2nd digit
+    sum_val = sum(int(cpf[i]) * (11 - i) for i in range(10))
+    rev = 11 - (sum_val % 11)
+    if rev == 10 or rev == 11: rev = 0
+    if rev != int(cpf[10]): return False
+    
+    return True
+
+
 def registrar_log(usuario, acao, detalhes=""):
     try:
         user_id = usuario.id if usuario else None
@@ -405,6 +468,15 @@ def register_client():
     if not any(c.isalpha() for c in senha) or not any(c.isdigit() for c in senha):
         return jsonify({'erro': 'A senha deve conter letras e números.'}), 400
 
+    # CPF Validation (Strict)
+    cpf = dados.get('cpf', '')
+    if cpf:
+        if not validate_cpf(cpf):
+            return jsonify({'erro': 'CPF inválido.'}), 400
+        # Check uniqueness again just in case (though DB constraint might handle it, better explicit error)
+        if Cliente.query.filter_by(cpf=cpf).first():
+             return jsonify({'erro': 'CPF já cadastrado.'}), 400
+
     senha_hash = bcrypt.generate_password_hash(senha).decode('utf-8')
     novo_cliente = Cliente(
         nome=dados['nome'], 
@@ -441,7 +513,15 @@ def manage_client_me(current_client):
     dados = request.get_json()
     if 'nome' in dados: current_client.nome = dados['nome']
     if 'telefone' in dados: current_client.telefone = dados['telefone']
-    if 'cpf' in dados: current_client.cpf = dados['cpf']
+    if 'cpf' in dados: 
+        cpf = dados['cpf']
+        if cpf and not validate_cpf(cpf):
+            return jsonify({'erro': 'CPF inválido.'}), 400
+        # Check uniqueness if changed
+        if cpf != current_client.cpf and Cliente.query.filter_by(cpf=cpf).first():
+             return jsonify({'erro': 'CPF já cadastrado.'}), 400
+        current_client.cpf = cpf
+        
     if 'endereco_rua' in dados: current_client.endereco_rua = dados['endereco_rua']
     if 'endereco_numero' in dados: current_client.endereco_numero = dados['endereco_numero']
     if 'endereco_bairro' in dados: current_client.endereco_bairro = dados['endereco_bairro']
@@ -709,8 +789,9 @@ def gerenciar_produto_especifico(current_user, produto_id):
                 filename = f"{int(datetime.now().timestamp())}_{i}_{filename}"
                 file.save(os.path.join(uploads_dir, filename))
                 
-                # Se o produto não tem imagem de capa, a primeira nova vira capa
-                if not produto.imagem_url:
+                # Se o produto não tem imagem de capa OU se estamos enviando novas imagens,
+                # a primeira nova imagem assume como capa (substituindo a antiga na visualização principal)
+                if i == 0:
                     produto.imagem_url = filename
                 
                 nova_img = ProdutoImagem(produto_id=produto.id, imagem_url=filename)
@@ -1640,6 +1721,159 @@ def store_checkout():
         db.session.rollback()
         return jsonify({'erro': 'Erro ao processar pedido.', 'detalhes': str(e)}), 500
 
+@app.route('/api/client/check-cpf/<cpf>', methods=['GET'])
+def check_client_cpf(cpf):
+    # Sanitize
+    cpf_clean = ''.join(filter(str.isdigit, cpf))
+    client = Cliente.query.filter_by(cpf=cpf_clean).first()
+    if client:
+        return jsonify({'exists': True, 'msg': 'CPF já cadastrado.'}), 200
+    else:
+        return jsonify({'exists': False, 'msg': 'CPF disponível.'}), 200
+
+@app.route('/api/public/frete/calcular', methods=['POST'])
+def calcular_frete():
+    data = request.get_json()
+    cep_destino = data.get('cep')
+    
+    if not cep_destino:
+        return jsonify({'erro': 'CEP é obrigatório'}), 400
+
+    # Clean CEP
+    cep_clean = ''.join(filter(str.isdigit, str(cep_destino)))
+    
+    opcoes = []
+    
+    # 1. Retirada na Loja (Sempre disponível)
+    opcoes.append({
+        'id': 'retirada',
+        'nome': 'Retirada na Loja (Grátis)',
+        'valor': 0.00,
+        'prazo': 'Pronto em 4h'
+    })
+    
+    # 2. Motoboy (Cálculo por KM via OpenStreetMap/Nominatim)
+    motoboy_added = False
+    try:
+        # Store Coordinates (Pacatuba/CE - Rua 80, 166 Jereissati)
+        lat_store = -3.884346
+        lon_store = -38.605275
+        
+        # Validar CEP basic format (8 digits)
+        if len(cep_clean) == 8:
+            # Call Nominatim API (Free, rate limited 1/sec usually)
+            url = f"https://nominatim.openstreetmap.org/search?postalcode={cep_clean}&country=Brazil&format=json"
+            req = urllib.request.Request(url, headers={'User-Agent': 'FPFitnessStore-Checkout/1.0'})
+            
+            with urllib.request.urlopen(req, timeout=3) as response:
+                geo_data = json.loads(response.read().decode())
+                
+            if geo_data and len(geo_data) > 0:
+                lat_dest = float(geo_data[0]['lat'])
+                lon_dest = float(geo_data[0]['lon'])
+                
+                # Haversine Formula for Distance
+                R = 6371 # Earth radius in km
+                dlat = math.radians(lat_dest - lat_store)
+                dlon = math.radians(lon_dest - lon_store)
+                a = math.sin(dlat/2)**2 + math.cos(math.radians(lat_store)) * math.cos(math.radians(lat_dest)) * math.sin(dlon/2)**2
+                c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+                dist_km = R * c
+                
+                # Pricing: 1 Real per KM (with 1.3 driving factor)
+                dist_estimated = dist_km * 1.3
+                total_frete = dist_estimated * 1.0
+                
+                # Minimum sane price for motoboy locally?
+                if total_frete < 5.0: total_frete = 5.0
+                
+                # Limit delivery radius (e.g. 60km covers Fortaleza Metro)
+                if dist_estimated <= 60:
+                    opcoes.append({
+                        'id': 'motoboy',
+                        'nome': 'Entrega Motoboy',
+                        'valor': round(total_frete, 2),
+                        'prazo': '1 dia útil'
+                    })
+                    motoboy_added = True
+            
+    except Exception as e:
+        print(f"Erro calculando distancia Motoboy: {e}")
+        # Continue to regional fallback
+
+    # Fallback Motoboy - Se API falhar mas CEP for local (Grande Fortaleza / Pacatuba)
+    if not motoboy_added:
+        try:
+            cep_int = int(cep_clean)
+            # Pacatuba e Maracanaú (Região 619xx)
+            if cep_clean.startswith('619'):
+                 opcoes.append({
+                    'id': 'motoboy',
+                    'nome': 'Entrega Motoboy (Local)',
+                    'valor': 10.00,
+                    'prazo': '1 dia útil'
+                })
+            # Grande Fortaleza (60xxx a 61xxx)
+            elif 60000000 <= cep_int <= 61999999:
+                 opcoes.append({
+                    'id': 'motoboy',
+                    'nome': 'Entrega Motoboy (Metropolitana)',
+                    'valor': 20.00,
+                    'prazo': '1 dia útil'
+                })
+        except: pass
+
+    # 3. PAC / SEDEX (Always Available Logic)
+    try:
+        cep_int = int(cep_clean)
+        
+        # Calculate approximate weight
+        itens = data.get('items', [])
+        try:
+            total_items = sum(int(item.get('quantity', 1)) for item in itens)
+        except: total_items = 1
+        
+        peso_total = total_items * 0.3
+        
+        base_pac = 25.00
+        prazo_pac = 10
+        
+        # Logica Regioes
+        if 60000000 <= cep_int <= 63999999: # CE (Ceará)
+            base_pac = 14.00 # Reduced from 18.00 as requested ("caro")
+            prazo_pac = 4
+        elif 0 <= cep_int <= 29999999: # SP/RJ
+            base_pac = 35.00
+            prazo_pac = 10
+        elif 69000000 <= cep_int <= 69999999: # Norte (AM) - Far
+            base_pac = 45.00
+            prazo_pac = 15
+        
+        custo_pac = base_pac + (peso_total * 4.0)
+        custo_sedex = custo_pac * 1.5 # Reduced multiplier slightly
+        prazo_sedex = max(2, prazo_pac // 2)
+
+        opcoes.append({
+            'id': 'pac',
+            'nome': 'PAC',
+            'valor': round(custo_pac, 2),
+            'prazo': f'{prazo_pac} dias úteis'
+        })
+        
+        opcoes.append({
+            'id': 'sedex',
+            'nome': 'SEDEX',
+            'valor': round(custo_sedex, 2),
+            'prazo': f'{prazo_sedex} dias úteis'
+        })
+            
+    except Exception as e:
+        print(f"Erro calculando PAC/Sedex: {e}")
+
+    return jsonify(opcoes)
+
+
+
 @app.route('/api/store/products/<int:produto_id>/reviews', methods=['GET'])
 def get_product_reviews(produto_id):
     reviews = Avaliacao.query.filter_by(id_produto=produto_id).order_by(Avaliacao.data_criacao.desc()).all()
@@ -1746,6 +1980,25 @@ def manage_config(current_user):
                 novo_config = Configuracao(chave=chave, valor=str(valor))
                 db.session.add(novo_config)
         db.session.commit()
+        
+        # --- SYNC SPECIAL COUPONS ---
+        # Update PRIMEIRACOMPRA coupon if related config changes
+        if 'promo_primeira_compra_percent' in dados or 'promo_primeira_compra_ativo' in dados:
+            cupom = Cupom.query.filter_by(codigo='PRIMEIRACOMPRA').first()
+            if not cupom:
+                cupom = Cupom(codigo='PRIMEIRACOMPRA', tipo_desconto='percentual', aplicacao='total', valor_desconto=10.0)
+                db.session.add(cupom)
+            
+            if 'promo_primeira_compra_percent' in dados:
+                try:
+                    cupom.valor_desconto = float(dados['promo_primeira_compra_percent'])
+                except: pass
+            
+            if 'promo_primeira_compra_ativo' in dados:
+                cupom.ativo = str(dados['promo_primeira_compra_ativo']).lower() == 'true'
+            
+            db.session.commit()
+
         return jsonify({'mensagem': 'Configurações atualizadas com sucesso!'})
     
     else: # GET

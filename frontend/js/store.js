@@ -133,17 +133,17 @@ async function applyCoupon() {
         return;
     }
 
-    // Get client token for validation
-    const token = localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken');
-    if (!token) {
-        Swal.fire('Login Necessário', 'Faça login para usar cupons.', 'info');
-        return;
-    }
+    // Capture CPF for validation context
+    const cpfInput = document.getElementById('cpf');
+    const cpf = cpfInput ? cpfInput.value.replace(/\D/g, '') : '';
 
     try {
-        const response = await fetch(`/api/store/cupons/validar/${code}`, {
-            headers: { 'x-client-token': token }
-        });
+        // Use query param for CPF if available
+        // Don't send token to avoid potential 401s if token is invalid/expired during this public check
+        // Changed to /api/public to avoid any path-based middleware issues
+        const url = `/api/public/cupons/validar/${code}?cpf=${cpf}`;
+
+        const response = await fetch(url);
         const data = await response.json();
 
         if (response.ok) {
@@ -235,54 +235,9 @@ function renderCheckoutPage() {
     if (totalEl) totalEl.textContent = `R$ ${total.toFixed(2)}`;
 }
 
-async function submitOrder() {
-    const form = document.getElementById('checkoutForm');
-    if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-    }
 
-    const cliente = {
-        nome: document.getElementById('nome').value,
-        email: document.getElementById('email').value,
-        cpf: document.getElementById('cpf').value,
-        telefone: document.getElementById('telefone').value,
-        endereco: {
-            rua: document.getElementById('rua').value,
-            numero: document.getElementById('numero').value,
-            bairro: document.getElementById('bairro').value,
-            cidade: document.getElementById('cidade').value,
-            estado: document.getElementById('estado').value,
-            cep: document.getElementById('cep').value
-        }
-    };
-
-    const itens = cart.map(item => ({
-        id_produto: item.id,
-        quantidade: item.quantity
-    }));
-
-    // Calculate final value again to be safe (though backend should verify)
-    let total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    // Apply discount logic here too for the 'valor' field, 
-    // BUT backend should recalculate. 
-    // We'll send the raw total and let backend handle coupon application if we send cupom_id.
-    // Wait, the backend 'checkout' endpoint needs to know about the coupon.
-    // I should add 'cupom_id' to the payload.
-
-    const pagamento = {
-        forma: document.querySelector('input[name="pagamento"]:checked').value,
-        valor: total // Backend should recalculate with coupon
-    };
-
-    const payload = {
-        cliente,
-        itens,
-        pagamento,
-        cupom_id: currentCoupon ? currentCoupon.id : null, // Send coupon ID
-        salvar_endereco: document.getElementById('salvarEndereco') ? document.getElementById('salvarEndereco').checked : false
-    };
-
+// Helper to perform the actual checkout API call
+async function performCheckout(payload) {
     try {
         Swal.fire({
             title: 'Processando...',
@@ -293,11 +248,13 @@ async function submitOrder() {
             }
         });
 
+        const token = localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['x-client-token'] = token;
+
         const response = await fetch('/api/store/checkout', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify(payload)
         });
 
@@ -322,6 +279,161 @@ async function submitOrder() {
     } catch (error) {
         console.error('Erro no checkout:', error);
         Swal.fire('Erro', error.message, 'error');
+    }
+}
+
+async function submitOrder() {
+    const form = document.getElementById('checkoutForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const cpfInput = document.getElementById('cpf');
+    if (!validateCPF(cpfInput.value)) {
+        Swal.fire('CPF Inválido', 'Por favor, digite um CPF válido.', 'error');
+        cpfInput.focus();
+        return;
+    }
+
+    const clienteData = {
+        nome: document.getElementById('nome').value,
+        email: document.getElementById('email').value,
+        cpf: document.getElementById('cpf').value,
+        telefone: document.getElementById('telefone').value,
+        endereco: {
+            rua: document.getElementById('rua').value,
+            numero: document.getElementById('numero').value,
+            bairro: document.getElementById('bairro').value,
+            cidade: document.getElementById('cidade').value,
+            estado: document.getElementById('estado').value,
+            cep: document.getElementById('cep').value
+        }
+    };
+
+    const itens = cart.map(item => ({
+        id_produto: item.id,
+        quantidade: item.quantity
+    }));
+
+    let total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const pagamento = {
+        forma: document.querySelector('input[name="pagamento"]:checked').value,
+        valor: total
+    };
+
+    const payload = {
+        cliente: clienteData,
+        itens,
+        pagamento,
+        cupom_id: currentCoupon ? currentCoupon.id : null,
+        salvar_endereco: document.getElementById('salvarEndereco') ? document.getElementById('salvarEndereco').checked : false
+    };
+
+    // --- FORCED REGISTRATION FLOW ---
+    const token = localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken');
+
+    // If logged in, proceed directly
+    if (token) {
+        await performCheckout(payload);
+        return;
+    }
+
+    // If NOT logged in, check CPF
+    try {
+        Swal.fire({ title: 'Verificando cadastro...', didOpen: () => Swal.showLoading() });
+
+        const cpfCheckRes = await fetch(`/api/client/check-cpf/${clienteData.cpf}`);
+        const cpfCheckData = await cpfCheckRes.json();
+
+        Swal.close();
+
+        if (cpfCheckData.exists) {
+            Swal.fire({
+                icon: 'info',
+                title: 'CPF já cadastrado',
+                text: 'Você já possui conta conosco. Faça login para continuar.',
+                showCancelButton: true,
+                confirmButtonText: 'Fazer Login',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Redirect to login or open login modal
+                    // For now, redirect, but maybe we can keep data?
+                    // Better: save data to localstorage to restore?
+                    // checkout.html already has auto-fill from user data, but maybe we want to keep current form?
+                    // It's safer to just redirect to login page for now.
+                    window.location.href = '/store/login';
+                }
+            });
+            return;
+        } else {
+            // NEW CLIENT: Force Password Creation
+            const { value: password } = await Swal.fire({
+                title: 'Finalize seu Cadastro',
+                html: 'Você é novo por aqui! Crie uma senha para acompanhar seu pedido.<br><small class="text-muted"><i class="fa-solid fa-circle-info me-1"></i>Mínimo 6 caracteres (letras e números).</small>',
+                input: 'password',
+                inputLabel: 'Crie uma Senha',
+                inputPlaceholder: 'Mínimo 6 caracteres',
+                inputAttributes: {
+                    minlength: 6,
+                    autocapitalize: 'off',
+                    autocorrect: 'off'
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Criar Conta e Finalizar',
+                cancelButtonText: 'Cancelar',
+                inputValidator: (value) => {
+                    if (!value || value.length < 6) {
+                        return 'A senha deve ter pelo menos 6 caracteres!';
+                    }
+                    if (!/[a-zA-Z]/.test(value) || !/[0-9]/.test(value)) {
+                        return 'A senha deve conter letras e números!';
+                    }
+                }
+            });
+
+            if (password) {
+                // Register User
+                Swal.fire({ title: 'Criando conta...', didOpen: () => Swal.showLoading() });
+
+                const registerPayload = {
+                    nome: clienteData.nome,
+                    email: clienteData.email,
+                    cpf: clienteData.cpf,
+                    telefone: clienteData.telefone,
+                    senha: password
+                };
+
+                const regRes = await fetch('/api/client/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(registerPayload)
+                });
+                const regData = await regRes.json();
+
+                if (regRes.ok) {
+                    // Login successful, save token
+                    localStorage.setItem('clientToken', regData.token);
+                    localStorage.setItem('clientUser', JSON.stringify(regData.cliente));
+
+                    // Update Auth UI logic immediately if needed, but we proceed to checkout
+                    // Now proceed to checkout with the new token context (though we passed data manually)
+                    // We must ensure the checkout endpoint knows this is an authenticated user effectively?
+                    // Authorization header will be added by performCheckout if we rely on localStorage.
+                    // We just set localStorage, so performCheckout will pick it up.
+
+                    await performCheckout(payload);
+
+                } else {
+                    Swal.fire('Erro no Cadastro', regData.erro || 'Não foi possível criar sua conta.', 'error');
+                }
+            }
+        }
+
+    } catch (e) {
+        console.error('Erro na verificação de cadastro:', e);
+        Swal.fire('Erro', 'Não foi possível verificar seu cadastro. Tente novamente.', 'error');
     }
 }
 
@@ -402,3 +514,97 @@ function fillForm(data) {
     if (document.getElementById('estado')) document.getElementById('estado').value = data.endereco_estado || '';
     if (document.getElementById('cep')) document.getElementById('cep').value = data.endereco_cep || '';
 }
+
+// --- CPF Validation ---
+function validateCPF(cpf) {
+    cpf = cpf.replace(/[^\d]+/g, '');
+    if (cpf == '') return false;
+    // Elimina CPFs invalidos conhecidos
+    if (cpf.length != 11 ||
+        cpf == "00000000000" ||
+        cpf == "11111111111" ||
+        cpf == "22222222222" ||
+        cpf == "33333333333" ||
+        cpf == "44444444444" ||
+        cpf == "55555555555" ||
+        cpf == "66666666666" ||
+        cpf == "77777777777" ||
+        cpf == "88888888888" ||
+        cpf == "99999999999")
+        return false;
+    // Valida 1o digito
+    let add = 0;
+    for (let i = 0; i < 9; i++)
+        add += parseInt(cpf.charAt(i)) * (10 - i);
+    let rev = 11 - (add % 11);
+    if (rev == 10 || rev == 11)
+        rev = 0;
+    if (rev != parseInt(cpf.charAt(9)))
+        return false;
+    // Valida 2o digito
+    add = 0;
+    for (let i = 0; i < 10; i++)
+        add += parseInt(cpf.charAt(i)) * (11 - i);
+    rev = 11 - (add % 11);
+    if (rev == 10 || rev == 11)
+        rev = 0;
+    if (rev != parseInt(cpf.charAt(10)))
+        return false;
+    return true;
+}
+
+// --- DATA PERSISTENCE ---
+function saveFormData() {
+    const form = document.getElementById('checkoutForm');
+    if (!form) return;
+
+    const data = {};
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (input.id && input.type !== 'password') {
+            if (input.type === 'checkbox' || input.type === 'radio') {
+                if (input.checked) data[input.name || input.id] = input.value;
+            } else {
+                data[input.id] = input.value;
+            }
+        }
+    });
+    localStorage.setItem('checkout_data', JSON.stringify(data));
+}
+
+function restoreFormData() {
+    const form = document.getElementById('checkoutForm');
+    if (!form) return;
+
+    const saved = localStorage.getItem('checkout_data');
+    if (!saved) return;
+
+    try {
+        const data = JSON.parse(saved);
+        Object.keys(data).forEach(key => {
+            const input = document.getElementById(key);
+            if (input) {
+                input.value = data[key];
+                input.dispatchEvent(new Event('input'));
+            }
+            if (key === 'pagamento' || key === 'payment') {
+                // payment logic usually by name
+                const radios = document.getElementsByName('pagamento');
+                if (radios) {
+                    radios.forEach(r => {
+                        if (r.value === data[key]) r.checked = true;
+                    });
+                }
+            }
+        });
+    } catch (e) { console.error('Error restoring data', e); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('checkoutForm');
+    if (form) {
+        form.addEventListener('input', saveFormData);
+        form.addEventListener('change', saveFormData);
+        setTimeout(restoreFormData, 500); // Small delay to override autofill if needed
+    }
+});

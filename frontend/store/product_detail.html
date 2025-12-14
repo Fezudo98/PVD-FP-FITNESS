@@ -213,6 +213,19 @@
         cursor: pointer;
         border: 2px solid #dee2e6;
     }
+
+    /* Product Zoom Styles - Desktop Only */
+    @media (hover: hover) {
+        .product-zoom-container {
+            overflow: hidden !important;
+            cursor: zoom-in;
+        }
+
+        .product-zoom-container img {
+            transition: transform 0.1s ease-out;
+            will-change: transform;
+        }
+    }
 </style>
 
 {% endblock %}
@@ -279,7 +292,7 @@
 
     async function loadProductDetails() {
         try {
-            const response = await fetch(`/api/store/products/${productId}`);
+            const response = await fetch(`/api/store/products/${productId}?t=${Date.now()}`);
             if (!response.ok) throw new Error('Produto não encontrado');
 
             const data = await response.json();
@@ -355,9 +368,12 @@
             const isActive = index === 0 ? 'active' : '';
             const src = imgUrl.startsWith('http') ? imgUrl : `/uploads/${imgUrl}`;
 
+            // ADDED: zoom-container class, oncontextmenu="return false", and distinct id for logic
             const itemHtml = `
-                <div class="carousel-item ${isActive} h-100">
-                    <img src="${src}" class="d-block w-100 h-100" alt="${product.nome}" style="object-fit: contain;">
+                <div class="carousel-item ${isActive} h-100 product-zoom-container" onmousemove="zoom(event, this)" onmouseleave="unzoom(this)">
+                    <img src="${src}" class="d-block w-100 h-100" alt="${product.nome}" 
+                         style="object-fit: contain; pointer-events: none;" 
+                         oncontextmenu="return false;">
                 </div>
             `;
             carouselInner.insertAdjacentHTML('beforeend', itemHtml);
@@ -408,6 +424,28 @@
             });
             myCarousel.dataset.listenerAttached = 'true';
         }
+    }
+
+    // --- Zoom Functions ---
+    function zoom(e, container) {
+        if (window.matchMedia('(hover: none)').matches) return; // Disable on touch
+        const img = container.querySelector('img');
+        const rect = container.getBoundingClientRect();
+
+        // Calculate position percentage
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+        img.style.transformOrigin = `${x}% ${y}%`;
+        img.style.transform = "scale(2.5)"; // Zoom level
+        img.style.cursor = "zoom-in";
+    }
+
+    function unzoom(container) {
+        const img = container.querySelector('img');
+        img.style.transformOrigin = "center center";
+        img.style.transform = "scale(1)";
+        img.style.cursor = "default";
     }
 
     function initializeOptions() {

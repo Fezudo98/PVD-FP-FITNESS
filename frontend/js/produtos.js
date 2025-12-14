@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchProdutos(page = 1, searchQuery = '') {
         try {
             const category = categoryFilterSelect.value;
-            const url = `${API_URL}/api/produtos?page=${page}&q=${searchQuery}&categoria=${category}`;
+            const url = `${API_URL}/api/produtos?page=${page}&q=${searchQuery}&categoria=${category}&t=${Date.now()}`;
             const response = await fetch(url, {
                 headers: { 'x-access-token': token }
             });
@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function openEditModal(produtoId) {
         await loadCategories(); // Garante que as categorias estejam carregadas
-        const response = await fetch(`${API_URL}/api/produtos/${produtoId}`, { headers: { 'x-access-token': token } });
+        const response = await fetch(`${API_URL}/api/produtos/${produtoId}?t=${Date.now()}`, { headers: { 'x-access-token': token } });
         const produto = await response.json();
         document.getElementById('produtoId').value = produto.id;
         document.getElementById('sku').value = produto.sku;

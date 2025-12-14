@@ -78,7 +78,9 @@
                                             <label for="regCpf"
                                                 class="form-label text-muted small fw-bold text-uppercase">CPF</label>
                                             <input type="text" class="form-control bg-light border-light-subtle"
-                                                id="regCpf" placeholder="000.000.000-00">
+                                                id="regCpf" placeholder="000.000.000-00" maxlength="14">
+                                            <div id="regCpfFeedback" class="form-text mt-1" style="min-height: 1.5em;">
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="mb-4">
@@ -86,6 +88,9 @@
                                             class="form-label text-muted small fw-bold text-uppercase">Senha</label>
                                         <input type="password" class="form-control bg-light border-light-subtle"
                                             id="regPassword" required>
+                                        <small class="form-text text-muted mt-1 d-block"><i
+                                                class="fa-solid fa-circle-info me-1"></i>Mínimo 6 caracteres (letras e
+                                            números).</small>
                                     </div>
                                     <button type="submit"
                                         class="btn btn-dark w-100 btn-lg rounded-pill fw-bold shadow-sm">Criar
@@ -134,7 +139,38 @@
 
         if (cpfInput) {
             cpfInput.addEventListener('input', (e) => {
-                e.target.value = formatCPF(e.target.value);
+                let val = e.target.value;
+                e.target.value = formatCPF(val);
+
+                // Real-time validation feedback
+                const feedback = document.getElementById('regCpfFeedback');
+                if (feedback && typeof validateCPF === 'function') {
+                    // Always take first 11 digits for validation
+                    const cleanVal = val.replace(/\D/g, '').substring(0, 11);
+
+                    if (cleanVal.length === 11) {
+                        if (validateCPF(cleanVal)) {
+                            feedback.textContent = 'CPF Válido';
+                            feedback.className = 'form-text mt-1 text-success fw-bold';
+                            cpfInput.classList.remove('is-invalid');
+                            cpfInput.classList.add('is-valid');
+                        } else {
+                            feedback.textContent = 'CPF Inválido';
+                            feedback.className = 'form-text mt-1 text-danger fw-bold';
+                            cpfInput.classList.remove('is-valid');
+                            cpfInput.classList.add('is-invalid');
+                        }
+                    } else {
+                        // Only clear if empty or very short
+                        if (cleanVal.length === 0) {
+                            feedback.textContent = '';
+                            cpfInput.classList.remove('is-valid', 'is-invalid');
+                        } else {
+                            feedback.textContent = '';
+                            cpfInput.classList.remove('is-valid', 'is-invalid');
+                        }
+                    }
+                }
             });
         }
         if (phoneInput) {

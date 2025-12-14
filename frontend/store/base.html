@@ -59,10 +59,16 @@
             overflow: hidden;
         }
 
-        .product-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-            border-color: var(--primary-gold);
+        @media (hover: hover) {
+            .product-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+                border-color: var(--primary-gold);
+            }
+
+            .product-card:hover .product-img-wrapper img {
+                transform: scale(1.05);
+            }
         }
 
         .product-img-wrapper {
@@ -76,10 +82,6 @@
             height: 100%;
             object-fit: cover;
             transition: transform 0.5s ease;
-        }
-
-        .product-card:hover .product-img-wrapper img {
-            transform: scale(1.05);
         }
 
         .badge-gold {
@@ -118,6 +120,43 @@
 
         #productCarousel .carousel-item {
             position: relative;
+        }
+
+        /* Mobile Optimizations */
+        @media (max-width: 768px) {
+            .display-4 {
+                font-size: 2.5rem;
+                /* Smaller headers */
+            }
+
+            .store-footer {
+                padding: 2rem 0;
+                /* Compact footer */
+            }
+
+            .product-img-wrapper {
+                height: 250px;
+                /* Smaller cards on mobile */
+            }
+
+            main {
+                margin-top: 80px !important;
+                /* Adjust for smaller navbar */
+            }
+
+            .container {
+                padding-left: 1.25rem;
+                padding-right: 1.25rem;
+            }
+
+            /* Whatsapp Button Size */
+            .whatsapp-float {
+                width: 50px;
+                height: 50px;
+                bottom: 20px;
+                right: 20px;
+                font-size: 24px;
+            }
         }
     </style>
 </head>

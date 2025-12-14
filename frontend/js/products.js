@@ -131,7 +131,7 @@ async function loadProducts() {
             const html = data.produtos.map(p => {
                 let priceDisplay = `R$ ${p.preco_venda.toFixed(2)}`;
                 if (p.max_price && p.max_price > p.preco_venda) {
-                    priceDisplay = `R$ ${p.preco_venda.toFixed(2)} - ${p.max_price.toFixed(2)}`;
+                    priceDisplay = `A partir de R$ ${p.preco_venda.toFixed(2)}`;
                 }
 
                 const bestSellerBadge = p.is_best_seller ?
