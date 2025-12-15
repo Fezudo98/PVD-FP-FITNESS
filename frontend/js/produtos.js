@@ -414,9 +414,13 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center';
             btn.style.width = '20px';
             btn.style.height = '20px';
+            btn.style.zIndex = '100';
+            btn.type = 'button';
             btn.innerHTML = '&times;';
             btn.onclick = async (e) => {
                 e.preventDefault();
+                e.stopPropagation();
+                // Remove from array
                 if (confirm('Remover esta imagem?')) {
                     if (id) {
                         // Deletar via API se tiver ID (imagem extra)
@@ -471,9 +475,12 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center';
             btn.style.width = '20px';
             btn.style.height = '20px';
+            btn.style.zIndex = '100';
+            btn.type = 'button';
             btn.innerHTML = '&times;';
             btn.onclick = async (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 if (confirm('Remover esta imagem antiga?')) {
                     try {
                         const res = await fetch(`${API_URL}/api/produtos/${produto.id}/imagem_legacy`, {
@@ -589,9 +596,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center';
                 btn.style.width = '20px';
                 btn.style.height = '20px';
+                btn.style.zIndex = '100';
+                btn.type = 'button';
                 btn.innerHTML = '&times;';
                 btn.onclick = (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     // Remove from array
                     const index = selectedFiles.indexOf(file);
                     if (index > -1) {
