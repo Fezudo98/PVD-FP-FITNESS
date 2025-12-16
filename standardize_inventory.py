@@ -28,26 +28,47 @@ def standardize_products():
             # 1. Padronizar Nome (Title Case, Trim)
             new_nome = " ".join(p.nome.split()).title()
             
-            # 2. Padronizar Atributos (Safe Access)
-            cor = p.cor if p.cor else "UNICA"
-            tamanho = p.tamanho if p.tamanho else "U"
-            
+            # 2. Padronizar Atributos
+            # Cor: Title Case (Ex: "Azul Marinho")
+            original_cor = p.cor
+            if p.cor:
+                new_cor = " ".join(p.cor.split()).title()
+            else:
+                new_cor = None # Mantém None se for None, ou define padrão se desejado? Melhor manter limpar.
+
+            # Tamanho: Upper Case (Ex: "GG")
+            original_tamanho = p.tamanho
+            if p.tamanho:
+                new_tamanho = p.tamanho.upper().strip()
+            else:
+                new_tamanho = None
+
             # 3. Gerar Novo SKU
             # Padrão: nome-slug-cor-tamanho
             # Ex: legging-max-lupo-verde-g
             nome_slug = slugify(new_nome)
-            cor_slug = slugify(cor)
-            tamanho_slug = tamanho.upper().replace(" ", "")
+            cor_slug = slugify(new_cor if new_cor else "unica")
+            tamanho_slug = (new_tamanho if new_tamanho else "U").replace(" ", "")
             
             new_sku = f"{nome_slug}-{cor_slug}-{tamanho_slug}"
             
-            # Verificar mudanças
+            # Verificar mudanças e aplicar
             changed = False
             msg = f"Produto ID {p.id}:"
             
             if original_nome != new_nome:
                 p.nome = new_nome
                 msg += f"\n  - Nome: '{original_nome}' -> '{new_nome}'"
+                changed = True
+
+            if original_cor != new_cor:
+                p.cor = new_cor
+                msg += f"\n  - Cor: '{original_cor}' -> '{new_cor}'"
+                changed = True
+                
+            if original_tamanho != new_tamanho:
+                p.tamanho = new_tamanho
+                msg += f"\n  - Tamanho: '{original_tamanho}' -> '{new_tamanho}'"
                 changed = True
                 
             if original_sku != new_sku:
