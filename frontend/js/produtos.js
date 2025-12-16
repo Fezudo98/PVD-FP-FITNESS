@@ -759,10 +759,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    imagemInput.addEventListener('change', (event) => {
+    imagemInput.addEventListener('change', async (event) => {
         const files = event.target.files;
         if (files && files.length > 0) {
-            Array.from(files).forEach(file => selectedFiles.push(file));
+            for (const file of Array.from(files)) {
+                if (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
+                    try {
+                        const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.8 });
+                        const finalBlob = Array.isArray(blob) ? blob[0] : blob;
+                        const newFile = new File([finalBlob], file.name.replace(/\.(heic|heif)$/i, ".jpg"), {
+                            type: "image/jpeg"
+                        });
+                        selectedFiles.push(newFile);
+                    } catch (err) {
+                        console.error('Erro na conversão HEIC:', err);
+                        alert(`Erro ao converter ${file.name}. Tente usar JPG/PNG.`);
+                    }
+                } else {
+                    selectedFiles.push(file);
+                }
+            }
             renderSelectedPreviews();
         }
         imagemInput.value = '';

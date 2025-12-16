@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/css/christmas.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 </head>
 
 <body>
@@ -108,7 +109,8 @@
 
                         <div class="mb-3">
                             <label for="imagem" class="form-label">Imagens do Produto</label>
-                            <input type="file" class="form-control" id="imagem" name="imagem" accept="image/*" multiple>
+                            <input type="file" class="form-control" id="imagem" name="imagem"
+                                accept="image/*, .heic, .heif" multiple>
                             <div id="imagePreviewContainer" class="d-flex flex-wrap gap-2 mt-2"></div>
                         </div>
 

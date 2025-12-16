@@ -103,7 +103,7 @@ class Produto(db.Model):
             'imagem_url': self.imagem_url, 'limite_estoque_baixo': self.limite_estoque_baixo, 
             'codigo_barras_url': self.codigo_barras_url,
             'online_ativo': self.online_ativo, 'descricao': self.descricao, 'destaque': self.destaque,
-            'imagens': [img.to_dict() for img in sorted(self.imagens, key=lambda x: x.ordem)]
+            'imagens': [img.to_dict() for img in sorted(self.imagens, key=lambda x: x.ordem or 0)]
         }
 
 class ProdutoImagem(db.Model):
