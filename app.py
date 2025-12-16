@@ -15,6 +15,8 @@ from barcode.writer import ImageWriter
 import json
 import urllib.request
 from flask_migrate import Migrate
+import re
+from unicodedata import normalize
 
 # 1. CONFIGURAÇÃO INICIAL
 # ------------------------------------
@@ -28,6 +30,22 @@ app.config['SECRET_KEY'] = 'my-super-secret-key-12345'
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 migrate = Migrate(app, db, render_as_batch=True)
+
+def generate_standard_sku(nome, cor, tamanho):
+    """Gera um SKU padronizado: nome-slug-cor-tamanho"""
+    def slugify(text):
+        if not text: return ""
+        text = normalize('NFKD', text).encode('ASCII', 'ignore').decode('ASCII')
+        text = text.lower().strip()
+        text = re.sub(r'[^\w\s-]', '', text)
+        text = re.sub(r'[-\s]+', '-', text)
+        return text
+
+    nome_slug = slugify(nome)
+    cor_slug = slugify(cor if cor else "unica")
+    tamanho_slug = (tamanho if tamanho else "U").upper().replace(" ", "")
+    
+    return f"{nome_slug}-{cor_slug}-{tamanho_slug}"
 
 @app.route('/frontend/<path:filename>')
 def custom_static(filename):
@@ -670,11 +688,14 @@ def gerenciar_produtos(current_user):
     if request.method == 'POST':
         if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
         dados = request.form
-        if Produto.query.filter_by(sku=dados['sku']).first():
-            return jsonify({'erro': 'SKU já cadastrado.'}), 400
+        # SKU Standardization Enforcement
+        standard_sku = generate_standard_sku(dados['nome'], dados.get('cor'), dados.get('tamanho'))
+        
+        if Produto.query.filter_by(sku=standard_sku).first():
+            return jsonify({'erro': f'Produto já existe (SKU: {standard_sku})'}), 400
         
         novo_produto = Produto(
-            sku=dados['sku'],
+            sku=standard_sku,
             nome=dados['nome'],
             categoria=dados.get('categoria'),
             cor=dados.get('cor'),
@@ -746,11 +767,16 @@ def gerenciar_produto_especifico(current_user, produto_id):
     if request.method == 'PUT':
         dados = request.form
         
-        # Atualização do SKU
-        novo_sku = dados.get('sku', produto.sku).strip()
+        # Atualização do SKU com Padronização Forçada
+        nome_efetivo = dados.get('nome', produto.nome)
+        cor_efetiva = dados.get('cor', produto.cor)
+        tamanho_efetivo = dados.get('tamanho', produto.tamanho)
+        
+        novo_sku = generate_standard_sku(nome_efetivo, cor_efetiva, tamanho_efetivo)
+        
         if novo_sku != produto.sku:
             if Produto.query.filter_by(sku=novo_sku).first():
-                return jsonify({'erro': f'SKU {novo_sku} já existe.'}), 400
+                return jsonify({'erro': f'Conflito: SKU Padronizado {novo_sku} já existe em outro produto.'}), 400
             
             # Remove barcode antigo se existir
             if produto.codigo_barras_url:

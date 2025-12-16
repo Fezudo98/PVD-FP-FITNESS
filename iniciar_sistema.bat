@@ -56,5 +56,8 @@ ECHO.
 ECHO --- Iniciando o servidor... ---
 ECHO.
 call venv\Scripts\activate.bat
+ECHO --- Executando padronizacao de SKUs... ---
+python standardize_inventory.py --auto
+ECHO.
 python run.py
 pause
