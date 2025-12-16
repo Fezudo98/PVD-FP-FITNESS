@@ -449,9 +449,112 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
+            const starBtn = document.createElement('button');
+            const isCover = (url === produto.imagem_url);
+            starBtn.className = 'btn bg-white btn-sm position-absolute top-0 start-0 p-0 d-flex align-items-center justify-content-center rounded-circle shadow-sm m-1';
+            starBtn.style.width = '30px';
+            starBtn.style.height = '30px';
+            starBtn.style.zIndex = '100';
+            starBtn.type = 'button';
+            starBtn.innerHTML = isCover ? '<i class="fas fa-star text-warning" style="font-size: 16px;"></i>' : '<i class="fas fa-star text-secondary" style="font-size: 16px;"></i>';
+            starBtn.style.opacity = isCover ? '1' : '0.8';
+            starBtn.title = isCover ? 'Imagem de Capa' : 'Definir como Capa';
+
+            starBtn.onmouseover = () => { starBtn.style.opacity = '1'; };
+            starBtn.onmouseout = () => { starBtn.style.opacity = isCover ? '1' : '0.8'; };
+
+            starBtn.onclick = async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (confirm('Definir esta imagem como capa e mover para primeira posição?')) {
+                    try {
+                        // 1. Mover visualmente para o topo
+                        div.parentElement.prepend(div);
+
+                        // 2. Chamar API de Capa
+                        await fetch(`${API_URL}/api/produtos/${produto.id}/imagem_capa`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'x-access-token': token
+                            },
+                            body: JSON.stringify({ imagem_url: url })
+                        });
+
+                        // 3. Salvar ordem
+                        await saveImageOrder(produto.id);
+
+                        if (true) { // Sempre recarrega para garantir
+                            openEditModal(produto.id);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('Erro ao atualizar imagem de capa.');
+                    }
+                }
+            };
+
             div.appendChild(img);
             div.appendChild(btn);
+            div.appendChild(starBtn);
+            div.dataset.id = id;
+            div.dataset.filename = url; // Store filename for cover update
             previewContainer.appendChild(div);
+        };
+
+        // Init Sortable
+        if (!previewContainer.classList.contains('sortable-initialized')) {
+            new Sortable(previewContainer, {
+                animation: 150,
+                ghostClass: 'bg-light',
+                onEnd: async function (evt) {
+                    // 1. Salvar nova ordem primeiro
+                    await saveImageOrder(produto.id);
+
+                    // 2. Se o item foi movido para a primeira posição (index 0), torna-se Capa
+                    if (evt.newIndex === 0) {
+                        const firstDiv = previewContainer.children[0];
+                        const filename = firstDiv.dataset.filename;
+
+                        if (filename) {
+                            try {
+                                await fetch(`${API_URL}/api/produtos/${produto.id}/imagem_capa`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'x-access-token': token
+                                    },
+                                    body: JSON.stringify({ imagem_url: filename })
+                                });
+                                // Recarrega para atualizar estrelas
+                                openEditModal(produto.id);
+                            } catch (err) {
+                                console.error('Erro ao definir capa após reordenar:', err);
+                            }
+                        }
+                    }
+                }
+            });
+            previewContainer.classList.add('sortable-initialized');
+        }
+
+        const saveImageOrder = async (produtoId) => {
+            const container = document.getElementById('imagePreviewContainer');
+            const divs = container.querySelectorAll('div[data-id]');
+            const ids = Array.from(divs).map(div => parseInt(div.dataset.id)).filter(id => !isNaN(id));
+
+            if (ids.length > 0) {
+                try {
+                    await fetch(`${API_URL}/api/produtos/${produtoId}/reordenar_imagens`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'x-access-token': token },
+                        body: JSON.stringify({ ids: ids })
+                    });
+                } catch (err) {
+                    console.error('Erro ao salvar ordem:', err);
+                }
+            }
         };
 
         // Renderiza imagens da lista 'imagens' retornada pela API
@@ -498,8 +601,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
+            const starBtn = document.createElement('button');
+            const isCover = true;
+            starBtn.className = 'btn bg-white btn-sm position-absolute top-0 start-0 p-0 d-flex align-items-center justify-content-center rounded-circle shadow-sm m-1';
+            starBtn.style.width = '30px';
+            starBtn.style.height = '30px';
+            starBtn.style.zIndex = '100';
+            starBtn.type = 'button';
+            starBtn.innerHTML = '<i class="fas fa-star text-warning" style="font-size: 16px;"></i>';
+            starBtn.title = 'Imagem de Capa';
+
             div.appendChild(img);
             div.appendChild(btn);
+            div.appendChild(starBtn);
             previewContainer.appendChild(div);
         }
 
@@ -573,49 +687,84 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    imagemInput.addEventListener('change', (event) => {
-        const files = event.target.files;
+    // Novo Renderizador de Previews Locais
+    const renderSelectedPreviews = () => {
+        // Remover previews locais existentes
+        const existingPreviews = document.querySelectorAll('.local-preview');
+        existingPreviews.forEach(el => el.remove());
+
         const previewContainer = document.getElementById('imagePreviewContainer');
 
+        selectedFiles.forEach((file, index) => {
+            const div = document.createElement('div');
+            div.className = 'position-relative d-inline-block local-preview me-2 mb-2';
+            div.style.width = '100px';
+            div.style.height = '100px';
+
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.className = 'img-thumbnail w-100 h-100';
+            img.style.objectFit = 'cover';
+
+            // Botão Remover
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center';
+            btn.style.width = '20px';
+            btn.style.height = '20px';
+            btn.style.zIndex = '100';
+            btn.type = 'button';
+            btn.innerHTML = '&times;';
+            btn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Remove from array and redraw
+                selectedFiles.splice(index, 1);
+                renderSelectedPreviews();
+            };
+
+            // Botão Star (Capa) - Para uploads pendentes, mostrar apenas estrela vazia indicando que será adicionado.
+            // O backend define a primeira imagem como capa SE não houver capa.
+            // Para evitar confusão visual (duas estrelas douradas), vamos mostrar sempre vazia ou um ícone diferente.
+            // Se o usuário clicar, movemos para o topo (index 0), garantindo que SE for a primeira imagem do produto, será capa.
+
+            const starBtn = document.createElement('button');
+            const isCover = false; // Pending uploads never show as "Current Cover" visually to avoid conflict with existing cover.
+
+            starBtn.className = 'btn bg-white btn-sm position-absolute top-0 start-0 p-0 d-flex align-items-center justify-content-center rounded-circle shadow-sm m-1 opacity-75';
+            starBtn.style.width = '30px';
+            starBtn.style.height = '30px';
+            starBtn.style.zIndex = '100';
+            starBtn.type = 'button';
+            starBtn.innerHTML = '<i class="fas fa-star text-secondary" style="font-size: 16px;"></i>';
+
+            starBtn.onmouseover = () => { starBtn.style.opacity = '1'; };
+            starBtn.onmouseout = () => { starBtn.style.opacity = '0.75'; };
+            starBtn.title = 'Mover para primeira posição (Será capa se não houver outra)';
+
+            starBtn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (index === 0) return;
+
+                // Mover para o início do array
+                const item = selectedFiles.splice(index, 1)[0];
+                selectedFiles.unshift(item);
+                renderSelectedPreviews();
+            };
+
+            div.appendChild(img);
+            div.appendChild(btn);
+            div.appendChild(starBtn);
+            previewContainer.appendChild(div);
+        });
+    };
+
+    imagemInput.addEventListener('change', (event) => {
+        const files = event.target.files;
         if (files && files.length > 0) {
-            Array.from(files).forEach(file => {
-                // Add to global array
-                selectedFiles.push(file);
-
-                const div = document.createElement('div');
-                div.className = 'position-relative d-inline-block local-preview me-2 mb-2';
-                div.style.width = '100px';
-                div.style.height = '100px';
-
-                const img = document.createElement('img');
-                img.src = URL.createObjectURL(file);
-                img.className = 'img-thumbnail w-100 h-100';
-                img.style.objectFit = 'cover';
-
-                const btn = document.createElement('button');
-                btn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center';
-                btn.style.width = '20px';
-                btn.style.height = '20px';
-                btn.style.zIndex = '100';
-                btn.type = 'button';
-                btn.innerHTML = '&times;';
-                btn.onclick = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Remove from array
-                    const index = selectedFiles.indexOf(file);
-                    if (index > -1) {
-                        selectedFiles.splice(index, 1);
-                    }
-                    div.remove();
-                };
-
-                div.appendChild(img);
-                div.appendChild(btn);
-                previewContainer.appendChild(div);
-            });
+            Array.from(files).forEach(file => selectedFiles.push(file));
+            renderSelectedPreviews();
         }
-        // Reset input value to allow selecting the same file again if needed
         imagemInput.value = '';
     });
 
