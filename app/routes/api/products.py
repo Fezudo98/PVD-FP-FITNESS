@@ -20,6 +20,17 @@ def get_product_names(current_user):
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 
+@api_bp.route('/api/categorias', methods=['GET'])
+@token_required
+def get_categorias(current_user):
+    try:
+        categorias = db.session.query(Produto.categoria).distinct().filter(Produto.categoria != None, Produto.categoria != "").all()
+        lista_categorias = [c[0] for c in categorias]
+        lista_categorias.sort(key=lambda s: s.lower())
+        return jsonify(lista_categorias)
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
 @api_bp.route('/api/categorias/manage', methods=['POST'])
 @token_required
 def manage_categorias(current_user):

@@ -85,7 +85,7 @@ def get_movimentacoes_caixa(current_user):
         'tipo': m.tipo.replace('_', ' ').title(),
         'valor': m.valor,
         'observacao': m.observacao,
-        'usuario_nome': m.usuario.nome,
+        'usuario_nome': m.usuario.nome if m.usuario else 'Sistema',
         'id_venda': m.id_venda_associada
     } for m in movimentacoes])
 
