@@ -2,7 +2,12 @@ import sys
 import os
 import re
 from unicodedata import normalize
-from app import app, db, Produto
+from app import create_app
+from app.extensions import db
+from app.models import Produto
+from config import Config
+
+app = create_app(Config)
 
 def slugify(text):
     """Gera um slug limpo a partir do texto."""

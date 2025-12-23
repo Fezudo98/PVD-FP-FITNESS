@@ -228,16 +228,176 @@
     }
 </style>
 
+<!-- Modal Public Profile -->
+<div class="modal fade" id="modalPublicProfile" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-body p-0">
+                <div class="bg-dark text-white p-4 text-center position-relative"
+                    style="background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%);">
+                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3"
+                        data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="position-relative d-inline-block mb-3">
+                        <img id="ppPhoto" src="/static/img/default_avatar.png"
+                            class="rounded-circle border border-4 border-warning shadow" width="100" height="100"
+                            style="object-fit: cover;">
+                        <span
+                            class="position-absolute bottom-0 end-0 bg-success border border-2 border-dark rounded-circle p-2"
+                            title="Verificado"></span>
+                    </div>
+                    <h4 id="ppName" class="fw-bold mb-1">Nome do Cliente</h4>
+                    <p id="ppMemberSince" class="text-white-50 small mb-0"><i class="far fa-calendar-alt me-1"></i>
+                        Membro desde Janeiro 2024</p>
+                </div>
+                <div class="p-4 bg-white">
+                    <div class="d-flex justify-content-between text-center mb-4">
+                        <div class="w-100">
+                            <h3 id="ppTotalReviews" class="fw-bold text-warning mb-0">0</h3>
+                            <small class="text-muted text-uppercase fw-bold"
+                                style="font-size: 0.7rem;">Avaliações</small>
+                        </div>
+                        <div class="vr"></div>
+                        <div class="w-100">
+                            <h3 class="fw-bold text-dark mb-0">5.0</h3> <!-- Placeholder for avg rating if available -->
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Média</small>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-uppercase text-muted small mb-3">Últimas Avaliações</h6>
+                    <div id="ppReviewsList" class="vstack gap-3">
+                        <!-- Reviews loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lightbox Modal -->
+<div id="imageLightboxModal" class="lightbox-modal">
+    <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+    <div class="lightbox-content-wrapper">
+        <span class="lightbox-prev" onclick="changeImage(-1)">&#10094;</span>
+        <div class="lightbox-media-container">
+            <!-- Media will be injected here -->
+            <img id="lightboxImage" src="" alt="Zoomed Image">
+            <video id="lightboxVideo" controls style="display:none;"></video>
+        </div>
+        <span class="lightbox-next" onclick="changeImage(1)">&#10095;</span>
+    </div>
+</div>
+
+<style>
+    .lightbox-modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: rgba(0, 0, 0, 0.95);
+        backdrop-filter: blur(5px);
+        justify-content: center;
+        align-items: center;
+    }
+
+    .lightbox-content-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+    }
+
+    .lightbox-media-container {
+        max-width: 90%;
+        max-height: 90%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .lightbox-media-container img,
+    .lightbox-media-container video {
+        max-width: 100%;
+        max-height: 90vh;
+        object-fit: contain;
+        border-radius: 4px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .lightbox-close {
+        position: absolute;
+        top: 20px;
+        right: 30px;
+        color: #f1f1f1;
+        font-size: 40px;
+        font-weight: bold;
+        transition: 0.3s;
+        cursor: pointer;
+        z-index: 10000;
+    }
+
+    .lightbox-close:hover,
+    .lightbox-close:focus {
+        color: #bbb;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .lightbox-prev,
+    .lightbox-next {
+        cursor: pointer;
+        position: absolute;
+        top: 50%;
+        width: auto;
+        padding: 16px;
+        margin-top: -50px;
+        color: white;
+        font-weight: bold;
+        font-size: 30px;
+        transition: 0.6s ease;
+        border-radius: 0 3px 3px 0;
+        user-select: none;
+        background-color: rgba(0, 0, 0, 0.3);
+    }
+
+    .lightbox-next {
+        right: 0;
+        border-radius: 3px 0 0 3px;
+    }
+
+    .lightbox-prev {
+        left: 0;
+        border-radius: 3px 0 0 3px;
+    }
+
+    .lightbox-prev:hover,
+    .lightbox-next:hover {
+        background-color: rgba(0, 0, 0, 0.8);
+    }
+
+    /* Hide arrows if single image */
+    .lightbox-arrow-hidden {
+        display: none !important;
+    }
+</style>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
+    // Global variables
     const productId = window.location.pathname.split('/').pop();
     let currentProduct = null;
     let allVariants = [];
     let selectedColor = null;
     let selectedSize = null;
-    const token = localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken');
+    // Renamed to avoid collision with main.js or other scripts
+    const clientPageToken = localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken');
 
     // Color Mapping (Portuguese -> Hex)
     const colorMap = {
@@ -255,6 +415,7 @@
         checkReviewEligibility();
         setupRatingInteractions();
     });
+
 
     function setupRatingInteractions() {
         const labels = {
@@ -453,7 +614,7 @@
         const colorContainer = document.getElementById('colorOptionsContainer');
         if (colors.length > 0) {
             colorContainer.innerHTML = `
-                <label class="form-label text-muted small text-uppercase fw-bold">Cor</label>
+                <label class="form-label text-muted small text-uppercase fw-bold" id="colorLabel">Cor</label>
                 <div class="d-flex gap-2 flex-wrap">
                     ${colors.map(color => {
                 const variant = allVariants.find(v => v.cor === color);
@@ -489,6 +650,8 @@
 
     function handleColorChange(color) {
         selectedColor = color;
+        const label = document.getElementById('colorLabel');
+        if (label) label.innerText = `Cor: ${color}`;
         updateSizeOptions();
         const variant = allVariants.find(v => v.cor === color);
         if (variant) renderProductInfo(variant);
@@ -568,9 +731,92 @@
 
     // --- REVIEWS LOGIC ---
 
+    // --- LIGHTBOX LOGIC ---
+    let currentLightboxMedia = [];
+    let currentLightboxIndex = 0;
+
+    function openLightbox(index, mediaJsonEncoded) {
+        // Decode hidden JSON
+        const media = JSON.parse(decodeURIComponent(mediaJsonEncoded));
+        currentLightboxMedia = media;
+        currentLightboxIndex = index;
+
+        const modal = document.getElementById('imageLightboxModal');
+        modal.style.display = 'flex'; // Flex to center
+        updateLightboxContent();
+
+        // Keyboard navigation
+        document.addEventListener('keydown', handleLightboxKeys);
+    }
+
+    function closeLightbox() {
+        const modal = document.getElementById('imageLightboxModal');
+        modal.style.display = 'none';
+
+        // Stop video if playing
+        const video = document.getElementById('lightboxVideo');
+        video.pause();
+        video.src = "";
+
+        document.removeEventListener('keydown', handleLightboxKeys);
+    }
+
+    function changeImage(direction) {
+        currentLightboxIndex += direction;
+        // Loop
+        if (currentLightboxIndex >= currentLightboxMedia.length) currentLightboxIndex = 0;
+        if (currentLightboxIndex < 0) currentLightboxIndex = currentLightboxMedia.length - 1;
+
+        updateLightboxContent();
+    }
+
+    function updateLightboxContent() {
+        const img = document.getElementById('lightboxImage');
+        const video = document.getElementById('lightboxVideo');
+        const prevBtn = document.querySelector('.lightbox-prev');
+        const nextBtn = document.querySelector('.lightbox-next');
+
+        const item = currentLightboxMedia[currentLightboxIndex];
+        const src = `/static/uploads/reviews/${item.url}`;
+
+        if (item.tipo === 'video') {
+            img.style.display = 'none';
+            video.style.display = 'block';
+            video.src = src;
+        } else {
+            video.style.display = 'none';
+            video.pause();
+            img.style.display = 'block';
+            img.src = src;
+        }
+
+        // Hide arrows if only 1 item
+        if (currentLightboxMedia.length <= 1) {
+            prevBtn.classList.add('lightbox-arrow-hidden');
+            nextBtn.classList.add('lightbox-arrow-hidden');
+        } else {
+            prevBtn.classList.remove('lightbox-arrow-hidden');
+            nextBtn.classList.remove('lightbox-arrow-hidden');
+        }
+    }
+
+    function handleLightboxKeys(e) {
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowRight') changeImage(1);
+        if (e.key === 'ArrowLeft') changeImage(-1);
+    }
+
+    // Close on background click
+    document.getElementById('imageLightboxModal').addEventListener('click', (e) => {
+        if (e.target.id === 'imageLightboxModal' || e.target.classList.contains('lightbox-content-wrapper')) {
+            closeLightbox();
+        }
+    });
+
     async function loadReviews() {
         try {
-            const res = await fetch(`/api/store/products/${productId}/reviews`);
+            const headers = clientPageToken ? { 'x-client-token': clientPageToken } : {};
+            const res = await fetch(`/api/store/products/${productId}/reviews`, { headers });
             const reviews = await res.json();
             const container = document.getElementById('reviewsContainer');
             const ratingSummary = document.getElementById('ratingSummaryContainer');
@@ -598,42 +844,203 @@
             ratingSummary.style.setProperty('display', 'flex', 'important');
 
             // Render Reviews
-            container.innerHTML = reviews.map(r => `
+            container.innerHTML = reviews.map(r => {
+                // Prepare media JSON for lightbox
+                const mediaJson = encodeURIComponent(JSON.stringify(r.midias));
+
+                return `
                 <div class="col-md-6">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="fw-bold mb-0">${r.cliente_nome}</h6>
-                                <small class="text-muted">${r.data_criacao}</small>
+                            <div class="d-flex justify-content-between">
+                                <div class="d-flex align-items-center mb-3">
+                                    <img src="${r.cliente_foto || '/static/img/default_avatar.png'}" 
+                                         class="rounded-circle me-3 border border-2 border-warning" 
+                                         width="50" height="50" style="object-fit: cover; cursor: pointer;"
+                                         onclick="openPublicProfile(${r.id_cliente})">
+                                    <div>
+                                        <h6 class="fw-bold mb-0 text-dark" style="cursor: pointer;" onclick="openPublicProfile(${r.id_cliente})">${r.cliente_nome}</h6>
+                                        <small class="text-muted">${r.data_criacao}</small>
+                                    </div>
+                                </div>
+                                ${r.is_own ? `
+                                    <div class="dropdown">
+                                        <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="#" onclick="editReview(${r.id}, '${r.comentario || ''}', ${r.nota})"><i class="fas fa-edit me-2"></i>Editar</a></li>
+                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteReview(${r.id})"><i class="fas fa-trash-alt me-2"></i>Excluir</a></li>
+                                        </ul>
+                                    </div>
+                                ` : ''}
                             </div>
-                            <div class="text-warning mb-2">
+                            <div class="text-warning mb-2 h5">
                                 ${Array(r.nota).fill('<i class="fas fa-star"></i>').join('')}
                                 ${Array(5 - r.nota).fill('<i class="far fa-star"></i>').join('')}
                             </div>
                             <p class="card-text text-muted">${r.comentario || ''}</p>
                             ${r.midias.length > 0 ? `
                                 <div class="d-flex gap-2 mt-2 overflow-auto">
-                                    ${r.midias.map(m => m.tipo === 'foto'
-                ? `<img src="/frontend/uploads/reviews/${m.url}" class="review-media-preview" onclick="window.open(this.src)">`
-                : `<video src="/frontend/uploads/reviews/${m.url}" class="review-media-preview" controls></video>`
-            ).join('')}
+                                    ${r.midias.map((m, idx) => m.tipo === 'foto'
+                    ? `<img src="/static/uploads/reviews/${m.url}" class="review-media-preview" onclick="openLightbox(${idx}, '${mediaJson}')">`
+                    : `<video src="/static/uploads/reviews/${m.url}" class="review-media-preview" onclick="openLightbox(${idx}, '${mediaJson}')"></video>` // Video thumbnail click logic
+                ).join('')}
                                 </div>
                             ` : ''}
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
 
         } catch (error) {
             console.error('Erro ao carregar avaliações:', error);
         }
     }
 
+    // Edit/Delete Logic
+    window.deleteReview = async (id) => {
+        const result = await Swal.fire({
+            title: 'Tem certeza?',
+            text: "Deseja excluir sua avaliação? Você poderá avaliar novamente.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sim, excluir',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`/api/store/reviews/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'x-client-token': clientPageToken }
+                });
+                if (res.ok) {
+                    Swal.fire('Excluído!', 'Sua avaliação foi removida.', 'success');
+                    loadReviews();
+                    // Optional: reload page to refresh eligibility status visually if needed
+                } else {
+                    Swal.fire('Erro', 'Não foi possível excluir.', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                Swal.fire('Erro', 'Erro de conexão.', 'error');
+            }
+        }
+    };
+
+    window.editReview = async (id, currentComment, currentRating) => {
+        const { value: formValues } = await Swal.fire({
+            title: 'Editar Avaliação',
+            html: `
+                    <div class="mb-3">
+                    <label class="form-label">Nota</label>
+                    <div class="rating-input d-flex justify-content-center gap-2 fs-3 text-warning">
+                        ${[1, 2, 3, 4, 5].map(i => `<i class="far fa-star star-edit" data-value="${i}" style="cursor: pointer;"></i>`).join('')}
+                    </div>
+                    <input type="hidden" id="swal-rating" value="${currentRating}">
+                </div>
+                <textarea id="swal-comment" class="form-control" placeholder="Seu comentário...">${currentComment}</textarea>
+            `,
+            didOpen: () => {
+                const stars = document.querySelectorAll('.star-edit');
+                const input = document.getElementById('swal-rating');
+
+                function updateStars(val) {
+                    stars.forEach(s => {
+                        const v = parseInt(s.dataset.value);
+                        s.classList.toggle('fas', v <= val);
+                        s.classList.toggle('far', v > val);
+                    });
+                }
+                updateStars(currentRating); // Init
+
+                stars.forEach(s => {
+                    s.addEventListener('click', () => {
+                        const val = parseInt(s.dataset.value);
+                        input.value = val;
+                        updateStars(val);
+                    });
+                });
+            },
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Salvar',
+            preConfirm: () => {
+                return {
+                    nota: document.getElementById('swal-rating').value,
+                    comentario: document.getElementById('swal-comment').value
+                }
+            }
+        });
+
+        if (formValues) {
+            try {
+                const res = await fetch(`/api/store/reviews/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-client-token': clientPageToken
+                    },
+                    body: JSON.stringify(formValues)
+                });
+
+                if (res.ok) {
+                    Swal.fire('Sucesso', 'Avaliação atualizada!', 'success');
+                    loadReviews();
+                } else {
+                    Swal.fire('Erro', 'Erro ao atualizar.', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    };
+
+    async function openPublicProfile(clienteId) {
+        try {
+            const modal = new bootstrap.Modal(document.getElementById('modalPublicProfile'));
+            modal.show(); // Show loading state
+
+            const res = await fetch(`/api/public/perfil/${clienteId}`);
+            if (!res.ok) throw new Error("Perfil não encontrado");
+
+            const data = await res.json();
+
+            document.getElementById('ppName').textContent = data.nome;
+            document.getElementById('ppPhoto').src = data.foto_perfil;
+            document.getElementById('ppMemberSince').innerHTML = `<i class="far fa-calendar-alt me-1"></i> Membro desde ${data.membro_desde}`;
+            document.getElementById('ppTotalReviews').textContent = data.total_avaliacoes;
+
+            const reviewsList = document.getElementById('ppReviewsList');
+            if (data.ultimas_avaliacoes.length === 0) {
+                reviewsList.innerHTML = '<p class="text-center text-muted small">Nenhuma avaliação recente.</p>';
+            } else {
+                reviewsList.innerHTML = data.ultimas_avaliacoes.map(r => `
+                <div class="d-flex gap-3 align-items-center border-bottom pb-2">
+                <img src="${r.produto_img || '/placeholder.jpg'}" class="rounded" width="50" height="50" style="object-fit: cover;">
+                    <div>
+                        <div class="small fw-bold text-dark">${r.produto_nome}</div>
+                        <div class="text-warning small">${'★'.repeat(r.nota)}${'☆'.repeat(5 - r.nota)}</div>
+                        <div class="text-muted small text-truncate" style="font-style: italic;">"${r.comentario || ''}"</div>
+                    </div>
+                    <small class="ms-auto text-muted" style="font-size: 0.7rem;">${r.data}</small>
+                </div>
+                `).join('');
+            }
+        } catch (e) {
+            console.error(e);
+            // Fail silently or toast
+        }
+    }
+
     async function checkReviewEligibility() {
-        if (!token) return;
+        if (!clientPageToken) return;
         try {
             const res = await fetch(`/api/store/products/${productId}/can_review`, {
-                headers: { 'x-client-token': token }
+                headers: { 'x-client-token': clientPageToken }
             });
             const data = await res.json();
             if (data.can_review) {
@@ -669,7 +1076,7 @@
         try {
             const res = await fetch(`/api/store/products/${productId}/reviews`, {
                 method: 'POST',
-                headers: { 'x-client-token': token },
+                headers: { 'x-client-token': clientPageToken },
                 body: formData
             });
             const result = await res.json();

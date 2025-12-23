@@ -322,12 +322,28 @@ async function submitOrder() {
         valor: total
     };
 
+    // Capture Delivery Type and Cost
+    const selectedShipping = document.querySelector('input[name="shippingOption"]:checked');
+    let tipoEntrega = 'Motoboy'; // Default fallback
+    let taxaEntrega = 0;
+
+    if (selectedShipping) {
+        const name = selectedShipping.dataset.name || '';
+        if (name.toLowerCase().includes('retirada')) tipoEntrega = 'Retirada';
+        else if (name.toLowerCase().includes('sedex') || name.toLowerCase().includes('pac')) tipoEntrega = 'Correios';
+        else tipoEntrega = 'Motoboy';
+
+        taxaEntrega = parseFloat(selectedShipping.value) || 0;
+    }
+
     const payload = {
         cliente: clienteData,
         itens,
         pagamento,
         cupom_id: currentCoupon ? currentCoupon.id : null,
-        salvar_endereco: document.getElementById('salvarEndereco') ? document.getElementById('salvarEndereco').checked : false
+        salvar_endereco: document.getElementById('salvarEndereco') ? document.getElementById('salvarEndereco').checked : false,
+        tipo_entrega: tipoEntrega,
+        taxa_entrega: taxaEntrega
     };
 
     // --- FORCED REGISTRATION FLOW ---

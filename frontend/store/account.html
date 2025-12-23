@@ -33,6 +33,21 @@
                             <!-- Profile Tab -->
                             <div class="tab-pane fade show active" id="profile" role="tabpanel">
                                 <form id="accountForm">
+                                    <div class="d-flex justify-content-center mb-4">
+                                        <div class="position-relative">
+                                            <img src="/static/img/default_avatar.png" id="profileImagePreview"
+                                                class="rounded-circle border border-3 border-white shadow-sm"
+                                                width="120" height="120"
+                                                style="object-fit: cover; background-color: #f0f0f0;">
+                                            <button type="button"
+                                                class="btn btn-primary btn-sm rounded-circle position-absolute bottom-0 end-0 mb-1 me-1 shadow-sm"
+                                                onclick="document.getElementById('profilePhotoInput').click()">
+                                                <i class="fas fa-camera"></i>
+                                            </button>
+                                            <input type="file" id="profilePhotoInput" hidden accept="image/*"
+                                                onchange="uploadProfilePhoto(this)">
+                                        </div>
+                                    </div>
                                     <div class="row g-3">
                                         <div class="col-md-6">
                                             <label class="form-label text-muted small fw-bold text-uppercase">Nome
@@ -131,6 +146,24 @@
             </div>
         </div>
     </div>
+    <!-- Modal Order Details -->
+    <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold">Detalhes do Pedido</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4" id="orderDetailsBody">
+                    <!-- Dynamic Content -->
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4"
+                        data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 {% endblock %}
 
@@ -202,6 +235,7 @@
                 if (!res.ok) throw new Error('Falha ao carregar perfil');
                 const data = await res.json();
 
+                document.getElementById('profileImagePreview').src = data.foto_perfil || '/static/img/default_avatar.png';
                 document.getElementById('accName').value = data.nome || '';
                 document.getElementById('accEmail').value = data.email || '';
                 document.getElementById('accPhone').value = data.telefone || '';
@@ -236,8 +270,10 @@
                     return;
                 }
 
-                container.innerHTML = orders.map(order => `
-                        <div class="card border-0 shadow-sm">
+                window.allOrders = orders; // Store for modal access
+
+                container.innerHTML = orders.map((order, index) => `
+                        <div class="card border-0 shadow-sm mb-4">
                             <div class="card-header bg-white border-bottom-0 py-3 d-flex justify-content-between align-items-center">
                                 <div>
                                     <span class="fw-bold">Pedido #${order.id}</span>
@@ -249,33 +285,51 @@
                                 <ul class="list-group list-group-flush mb-3">
                                     ${order.itens.map(item => `
                                         <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                                            <div>
-                                                <span class="fw-bold">${item.quantidade}x</span> ${item.produto}
+                                            <div class="d-flex align-items-center">
+                                                <img src="${item.imagem_url.startsWith('/') ? item.imagem_url : '/uploads/' + item.imagem_url}" 
+                                                     alt="${item.produto}" 
+                                                     class="rounded me-3 border" 
+                                                     width="60" height="60" 
+                                                     style="object-fit: cover;">
+                                                <div>
+                                                    <span class="fw-bold text-dark">${item.quantidade}x</span> ${item.produto}
+                                                </div>
                                             </div>
-                                            <span>R$ ${item.total.toFixed(2)}</span>
+                                            <span class="fw-bold">R$ ${item.total.toFixed(2)}</span>
                                         </li>
                                     `).join('')}
                                 </ul>
                                 <div class="d-flex justify-content-between align-items-center border-top pt-3">
-                                    <span class="fw-bold">Total</span>
-                                    <span class="fw-bold fs-5 text-warning">R$ ${order.total.toFixed(2)}</span>
+                                    <h5 class="fw-bold mb-0">Total</h5>
+                                    <h5 class="fw-bold text-warning mb-0">R$ ${order.total.toFixed(2)}</h5>
+                                </div>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                                    <button class="btn btn-outline-primary btn-sm rounded-pill px-4" onclick="openDetailsModal(${index})">
+                                        <i class="fas fa-info-circle me-1"></i> Detalhes
+                                    </button>
+                                    <a href="https://wa.me/558597293349?text=Ol%C3%A1%2C%20gostaria%20de%20cancelar%20o%20pedido%20%23${order.id}" 
+                                       target="_blank" 
+                                       class="btn btn-outline-danger btn-sm rounded-pill px-4">
+                                        <i class="fab fa-whatsapp me-1"></i> Cancelar Pedido
+                                    </a>
                                 </div>
                             </div>
-                        </div>
-                    `).join('');
-
+                        </div>`).join('');
             } catch (error) {
                 console.error('Erro ao carregar pedidos:', error);
             }
         };
 
         const getStatusBadge = (status) => {
-            switch (status) {
-                case 'Concluída': return 'bg-success';
-                case 'Pendente': return 'bg-warning text-dark';
-                case 'Cancelada': return 'bg-danger';
-                default: return 'bg-secondary';
-            }
+            const badges = {
+                'Pendente': 'bg-warning text-dark',
+                'Pago': 'bg-info text-white',
+                'Em separação': 'bg-primary',
+                'Enviado': 'bg-primary',
+                'Entregue': 'bg-success',
+                'Cancelado': 'bg-danger'
+            };
+            return badges[status] || 'bg-secondary';
         };
 
         window.copiarCupom = (codigo) => {
@@ -345,7 +399,81 @@
             sessionStorage.removeItem('clientUser');
             window.location.href = '/store';
         });
-    });
+
+        // Expose function globally for the onclick handler
+        window.openDetailsModal = (index) => {
+            const order = window.allOrders[index];
+            if (!order) return;
+
+            const modalBody = document.getElementById('orderDetailsBody');
+
+            // Format Address
+            let addressHtml = '<p class="text-muted">Não informado</p>';
+            if (order.tipo_entrega === 'Entrega' && order.endereco_entrega) {
+                addressHtml = `<p class="mb-0 text-dark">${order.endereco_entrega}</p>`;
+            } else if (order.tipo_entrega === 'Retirada') {
+                addressHtml = `<p class="mb-0 text-dark">Retirada na Loja</p>`;
+            } else if (order.tipo_entrega === 'Motoboy') {
+                addressHtml = `<p class="mb-0 text-dark">Entrega via Motoboy</p>
+                                <p class="small text-muted mb-0">${order.endereco_entrega || ''}</p>`;
+            }
+
+            modalBody.innerHTML = `
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block uppercase fw-bold" style="font-size: 0.75rem;">Status</small>
+                        <span class="badge ${getStatusBadge(order.status)}">${order.status}</span>
+                    </div>
+                    <div class="col-6 text-end">
+                        <small class="text-muted d-block uppercase fw-bold" style="font-size: 0.75rem;">Data</small>
+                        <span class="fw-bold text-dark">${order.data}</span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <small class="text-muted d-block uppercase fw-bold mb-2" style="font-size: 0.75rem;">Itens do Pedido</small>
+                    <ul class="list-group list-group-flush border rounded">
+                        ${order.itens.map(item => `
+                            <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
+                                <div class="d-flex align-items-center">
+                                     <span class="badge bg-secondary me-2 rounded-pill">${item.quantidade}x</span>
+                                     <span class="text-dark small">${item.produto}</span>
+                                </div>
+                                <span class="fw-bold small">R$ ${item.total.toFixed(2)}</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12 mb-3">
+                        <small class="text-muted d-block uppercase fw-bold mb-1" style="font-size: 0.75rem;">Endereço de Entrega</small>
+                         <div class="bg-light p-3 rounded border-start border-4 border-primary">
+                            ${addressHtml}
+                        </div>
+                    </div>
+                     <div class="col-6">
+                        <small class="text-muted d-block uppercase fw-bold mb-1" style="font-size: 0.75rem;">Pagamento</small>
+                        <span class="fw-bold text-dark"><i class="far fa-credit-card me-1"></i> ${order.forma_pagamento || 'Padrão'}</span>
+                    </div>
+                    <div class="col-6">
+                         <small class="text-muted d-block uppercase fw-bold mb-1" style="font-size: 0.75rem;">Frete</small>
+                        <span class="fw-bold text-dark">R$ ${(order.taxa_entrega || 0).toFixed(2)}</span>
+                    </div>
+                </div>
+
+                 <div class="d-flex justify-content-between align-items-center border-top pt-3">
+                    <h5 class="fw-bold mb-0">Total Geral</h5>
+                    <h4 class="fw-bold text-success mb-0">R$ ${order.total.toFixed(2)}</h4>
+                </div>
+            `;
+
+            const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+            modal.show();
+        };
+
+    }); // End DOMContentLoaded
+
 
     async function buscarCep() {
         let cep = document.getElementById('accCep').value.replace(/\D/g, '');
@@ -360,6 +488,40 @@
                 }
             } catch (e) {
                 console.error('Erro ao buscar CEP:', e);
+            }
+        }
+    }
+
+    async function uploadProfilePhoto(input) {
+        if (input.files && input.files[0]) {
+            const formData = new FormData();
+            formData.append('foto', input.files[0]);
+            const token = localStorage.getItem('clientToken');
+
+            try {
+                // Preview imediato
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('profileImagePreview').src = e.target.result;
+                }
+                reader.readAsDataURL(input.files[0]);
+
+                const response = await fetch('/api/cliente/perfil/foto', {
+                    method: 'POST',
+                    headers: { 'x-client-token': token },
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    Swal.fire('Sucesso', 'Foto de perfil atualizada!', 'success');
+                    // Update local storage if needed or just reload
+                } else {
+                    Swal.fire('Erro', data.erro || 'Falha ao enviar foto', 'error');
+                }
+            } catch (error) {
+                console.error("Upload Error:", error);
+                Swal.fire('Erro', 'Erro na comunicação com o servidor. Verifique o console.', 'error');
             }
         }
     }

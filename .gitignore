@@ -47,8 +47,17 @@ reset_admin_password.py
 read_output.py
 enable_*.py
 remove_bg.py
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+
+# Flask instance folder (database usually lives here or root)
 instance/
-analyze_revenue.py
-sorting_result
-patches/executed/
-test_patch_result.txt
+
+# Migrations cache
+migrations/__pycache__/
