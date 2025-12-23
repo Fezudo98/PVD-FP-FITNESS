@@ -1,6 +1,8 @@
 import os
+from dotenv import load_dotenv
 
 basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
 
 class Config:
     SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'estoque.db')
@@ -13,5 +15,5 @@ class Config:
     ENTREGA_RAIO_MAX_KM = 30
     ENTREGA_PRECO_POR_KM = 2.00
     ENTREGA_TAXA_MINIMA = 5.00
-    GOOGLE_MAPS_API_KEY = 'AIzaSyAIYWvErBdzVjD3Qoc2Rs9yePXmFRFNBbo'
+    GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024 # 16MB Limit

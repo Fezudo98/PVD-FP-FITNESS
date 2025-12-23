@@ -61,3 +61,6 @@ instance/
 
 # Migrations cache
 migrations/__pycache__/
+
+# Secrets
+.env
