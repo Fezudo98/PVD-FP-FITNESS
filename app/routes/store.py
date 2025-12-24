@@ -53,6 +53,12 @@ def store_account_page():
     return render_template('store/account.html')
 
 # --- Store API (Public) ---
+@store_bp.route('/api/public/theme', methods=['GET'])
+def get_public_theme():
+    config = Configuracao.query.filter_by(chave='SYSTEM_THEME').first()
+    theme = config.valor if config else 'original'
+    return jsonify({'theme': theme})
+
 @store_bp.route('/api/store/products', methods=['GET'])
 def store_get_products():
     page = request.args.get('page', 1, type=int)
