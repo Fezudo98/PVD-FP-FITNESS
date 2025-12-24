@@ -323,17 +323,35 @@ async function submitOrder() {
     };
 
     // Capture Delivery Type and Cost
+    // Capture Delivery Type and Cost
     const selectedShipping = document.querySelector('input[name="shippingOption"]:checked');
     let tipoEntrega = 'Motoboy'; // Default fallback
+    let transportadora = null;
     let taxaEntrega = 0;
 
     if (selectedShipping) {
         const name = selectedShipping.dataset.name || '';
-        if (name.toLowerCase().includes('retirada')) tipoEntrega = 'Retirada';
-        else if (name.toLowerCase().includes('sedex') || name.toLowerCase().includes('pac')) tipoEntrega = 'Correios';
-        else tipoEntrega = 'Motoboy';
+        const nameLower = name.toLowerCase();
 
-        taxaEntrega = parseFloat(selectedShipping.value) || 0;
+        if (nameLower.includes('retirada')) {
+            tipoEntrega = 'Retirada';
+            transportadora = 'Retirada na Loja';
+        } else if (nameLower.includes('sedex')) {
+            tipoEntrega = 'Correios';
+            transportadora = 'SEDEX';
+        } else if (nameLower.includes('pac')) {
+            tipoEntrega = 'Correios';
+            transportadora = 'PAC';
+        } else if (nameLower.includes('motoboy') || nameLower.includes('entrega local')) {
+            tipoEntrega = 'Motoboy';
+            transportadora = 'Motoboy Próprio';
+        } else {
+            // Fallback for external carriers like Jadlog, Azul, etc.
+            tipoEntrega = 'Transportadora';
+            transportadora = name; // Use the exact name from the option
+        }
+
+        taxaEntrega = parseFloat(selectedShipping.value) || window.shippingCost || 0;
     }
 
     const payload = {
@@ -343,6 +361,7 @@ async function submitOrder() {
         cupom_id: currentCoupon ? currentCoupon.id : null,
         salvar_endereco: document.getElementById('salvarEndereco') ? document.getElementById('salvarEndereco').checked : false,
         tipo_entrega: tipoEntrega,
+        transportadora: transportadora,
         taxa_entrega: taxaEntrega
     };
 
@@ -506,6 +525,8 @@ async function autoFillCheckout() {
         const res = await fetch('/api/client/me', { headers: { 'x-client-token': token } });
         if (res.ok) {
             const data = await res.json();
+            // Critical Fix: Clear stale draft data if we have fresh profile data
+            localStorage.removeItem('checkout_data');
             fillForm(data);
         } else {
             // Fallback to stored user data
@@ -528,7 +549,15 @@ function fillForm(data) {
     if (document.getElementById('bairro')) document.getElementById('bairro').value = data.endereco_bairro || '';
     if (document.getElementById('cidade')) document.getElementById('cidade').value = data.endereco_cidade || '';
     if (document.getElementById('estado')) document.getElementById('estado').value = data.endereco_estado || '';
-    if (document.getElementById('cep')) document.getElementById('cep').value = data.endereco_cep || '';
+    if (document.getElementById('cep')) {
+        const cepVal = data.endereco_cep || '';
+        document.getElementById('cep').value = cepVal;
+
+        // Trigger shipping calculation if on checkout page
+        if (cepVal && typeof window.calculateShipping === 'function') {
+            window.calculateShipping(cepVal);
+        }
+    }
 }
 
 // --- CPF Validation ---

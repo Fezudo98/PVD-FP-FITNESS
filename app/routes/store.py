@@ -11,6 +11,7 @@ import uuid
 from ..extensions import db
 from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao
 from ..utils import token_required, client_token_required, validate_cpf
+from ..services.frete_service import calcular_melhor_envio
 
 store_bp = Blueprint('store', __name__)
 
@@ -463,28 +464,14 @@ def calcular_frete():
         except: pass
 
     # 3. PAC/SEDEX
+    # 3. Melhor Envio (Correios/Transportadoras)
     try:
-        cep_int = int(cep_clean)
-        itens = data.get('items', [])
-        total_items = sum(int(item.get('quantity', 1)) for item in itens) or 1
-        peso_total = total_items * 0.3
-        
-        base_pac = 25.00
-        prazo_pac = 10
-        if 60000000 <= cep_int <= 63999999: 
-            base_pac = 14.00; prazo_pac = 4
-        elif 0 <= cep_int <= 29999999: 
-            base_pac = 35.00; prazo_pac = 10
-        elif 69000000 <= cep_int <= 69999999: 
-            base_pac = 45.00; prazo_pac = 15
-        
-        custo_pac = base_pac + (peso_total * 4.0)
-        custo_sedex = custo_pac * 1.5
-        prazo_sedex = max(2, prazo_pac // 2)
-
-        opcoes.append({'id': 'pac', 'nome': 'PAC', 'valor': round(custo_pac, 2), 'prazo': f'{prazo_pac} dias úteis'})
-        opcoes.append({'id': 'sedex', 'nome': 'SEDEX', 'valor': round(custo_sedex, 2), 'prazo': f'{prazo_sedex} dias úteis'})
-    except: pass
+        itens_carrinho = data.get('items', [])
+        opcoes_externas = calcular_melhor_envio(cep_clean, itens_carrinho)
+        if opcoes_externas:
+             opcoes.extend(opcoes_externas)
+    except Exception as e:
+        print(f"Erro ao integrar Melhor Envio: {e}")
 
     return jsonify(opcoes)
 
@@ -520,6 +507,7 @@ def store_checkout():
         db.session.add(cliente)
     else:
         if not cliente.email: cliente.email = cliente_data['email']
+        if cliente_data.get('telefone'): cliente.telefone = cliente_data.get('telefone')
     
     salvar_endereco = dados.get('salvar_endereco', False)
     end_data = cliente_data.get('endereco', {})
@@ -606,14 +594,13 @@ def store_checkout():
         entrega_cidade=end_data.get('cidade') or cliente.endereco_cidade,
         entrega_estado=end_data.get('estado') or cliente.endereco_estado,
         entrega_cep=end_data.get('cep') or cliente.endereco_cep,
+
         entrega_complemento=end_data.get('complemento') or cliente.endereco_complemento,
-        taxa_entrega=dados.get('taxa_entrega', 0.0), # Will be passed or calculated?
-        # Actually store.js doesn't explicitly send 'taxa_entrega' in payload construction yet, but we will fix that in JS.
-        # But wait, looking at python code, 'taxa_entrega' is not in the constructor call I see in the file view (line 591+).
-        # Ah, 'total_venda=total_final' is there.
-        # Let's add tipo_entrega.
-        tipo_entrega=dados.get('tipo_entrega', 'Motoboy')
+        taxa_entrega=dados.get('taxa_entrega', 0.0),
+        tipo_entrega=dados.get('tipo_entrega', 'Motoboy'),
+        transportadora=dados.get('transportadora')
     )
+
     
     if cupom_aplicado:
         nova_venda.cupons.append(cupom_aplicado)
@@ -722,7 +709,9 @@ def get_client_orders(current_client):
             'taxa_entrega': venda.taxa_entrega,
             'forma_pagamento': forma_pgto,
             'endereco_entrega': endereco_full,
-            'tipo_entrega': venda.tipo_entrega
+            'tipo_entrega': venda.tipo_entrega,
+            'codigo_rastreio': venda.codigo_rastreio,
+            'transportadora': venda.transportadora
         })
     return jsonify(orders_data)
 

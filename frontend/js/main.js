@@ -397,22 +397,120 @@ async function viewOrderDetails(id) {
         });
         const venda = await response.json();
 
-        document.getElementById('modalOrderId').textContent = venda.id;
-        document.getElementById('modalClientName').textContent = venda.cliente_nome;
-        document.getElementById('modalOrderDate').textContent = venda.data_hora;
-        document.getElementById('modalOrderTotal').textContent = `R$ ${venda.total_venda.toFixed(2)} `;
+        // Store current order for actions
+        window.currentOrderDetails = venda;
 
-        const deliveryType = venda.tipo_entrega || 'Motoboy';
-        document.getElementById('modalOrderDeliveryType').textContent = deliveryType;
+        // Populate ID (Header and Body)
+        document.getElementById('modalOrderId').textContent = venda.id;
+        document.getElementById('modalOrderIdBody').textContent = venda.id;
+
+        // Client Name & Whatsapp
+        // NEW STRUCTURE
+        const clientInfoDiv = document.getElementById('modalClientInfo');
+
+        // WhatsApp Message Construction
+        let waBtn = '';
+        if (venda.cliente_telefone) {
+            const cleanPhone = venda.cliente_telefone.replace(/\D/g, '');
+            const firstName = venda.cliente_nome.split(' ')[0];
+
+            // Items List
+            let itemsMsg = '';
+            venda.itens.forEach(item => {
+                itemsMsg += `- ${item.quantidade}x ${item.produto_nome} (${item.tamanho || 'U'}/${item.cor || '-'}) \n`;
+            });
+
+            // Address
+            const addressMsg = venda.entrega_rua
+                ? `${venda.entrega_rua}, ${venda.entrega_numero} - ${venda.entrega_bairro}, ${venda.entrega_cidade}/${venda.entrega_estado}`
+                : 'Retirada na Loja / Não informado';
+
+            // Financials
+            let subTotalForMsg = 0;
+            venda.itens.forEach(i => subTotalForMsg += (i.quantidade * i.preco_unitario));
+
+            const totalMsg = parseFloat(venda.total_venda).toFixed(2);
+            const freteMsg = parseFloat(venda.taxa_entrega).toFixed(2);
+            const descMsg = parseFloat(venda.desconto_total).toFixed(2);
+
+            // 0x1F680 is the Rocket Emoji 🚀. Derived at runtime to avoid file encoding issues.
+            const rocketEmoji = String.fromCodePoint(0x1F680);
+
+            // 0x1F680 is the Rocket Emoji 🚀. Derived at runtime to avoid file encoding issues.
+            // User requested to remove rocket. keeping variable commented or empty just in case.
+            // const rocketEmoji = String.fromCodePoint(0x1F680); 
+
+            let maskedCpf = 'Não informado';
+            if (venda.cliente_cpf) {
+                // Keep first 3 chars, mask the rest. Assumes formatted CPF or raw.
+                // If formatted 123.456.789-00 -> 123.XXX.XXX-XX
+                maskedCpf = venda.cliente_cpf.replace(/(\d{3})\.(\d{3})\.(\d{3})-(\d{2})/, '$1.XXX.XXX-$4');
+                // Fallback for unformatted or other variations if needed, but regex covers standard format
+                if (maskedCpf === venda.cliente_cpf && venda.cliente_cpf.length > 5) {
+                    maskedCpf = venda.cliente_cpf.substring(0, 3) + '.XXX.XXX-XX';
+                }
+            }
+
+            const rawMessage = `Olá ${firstName}, agradecemos pela preferência!\n` +
+                `Seu pedido já está separado e pronto para ser entregue.\n\n` +
+                `*Detalhes do Pedido #${venda.id}*\n` +
+                `--------------------------------\n` +
+                `*Dados do Cliente:*\n` +
+                `Nome: ${venda.cliente_nome}\n` +
+                `CPF: ${maskedCpf}\n` +
+                `--------------------------------\n` +
+                `*Itens:*\n${itemsMsg}\n` +
+                `*Endereço de Entrega:*\n${addressMsg}\n\n` +
+                `*Resumo:*\n` +
+                `Subtotal: R$ ${subTotalForMsg.toFixed(2)}\n` +
+                `Descontos: - R$ ${descMsg}\n` +
+                `Frete: R$ ${freteMsg}\n` +
+                `Prazo de entrega (após postagem): Consultar Rastreio\n` +
+                `*Total: R$ ${totalMsg}*\n` +
+                `--------------------------------\n` +
+                `_Essa é uma mensagem automática, não precisa responder._`;
+
+            waBtn = `<a href="https://wa.me/55${cleanPhone}?text=${encodeURIComponent(rawMessage)}" target="_blank" class="ms-2 text-success text-decoration-none" title="Enviar Detalhes no WhatsApp"><i class="fab fa-whatsapp fs-5"></i></a>`;
+        }
+
+        clientInfoDiv.innerHTML = `
+            <div class="col-md-6">
+                <small class="text-white-50 d-block">Nome</small>
+                <span class="fw-bold text-white">${venda.cliente_nome}</span>
+            </div>
+             <div class="col-md-6">
+                <small class="text-white-50 d-block">Telefone</small>
+                <span class="text-white">${venda.cliente_telefone || 'Não informado'}</span> ${waBtn}
+            </div>
+             <div class="col-md-6">
+                <small class="text-white-50 d-block">Email</small>
+                <span class="text-white">${venda.cliente_email || 'Não informado'}</span>
+            </div>
+             <div class="col-md-6">
+                <small class="text-white-50 d-block">CPF</small>
+                <span class="text-white">${venda.cliente_cpf || 'Não informado'}</span>
+            </div>
+        `;
+
+        document.getElementById('modalOrderDate').textContent = venda.data_hora;
+        // NOTE: modalOrderTotal element was removed from header section in HTML update, 
+        // using modalOrderTotal in footer section now.
+
+        // Remove old references
+        // const deliveryType = venda.tipo_entrega || 'Motoboy';
+        // document.getElementById('modalOrderDeliveryType').textContent = deliveryType;
 
         const statusEl = document.getElementById('modalOrderStatus');
         statusEl.textContent = venda.status || 'Desconhecido';
-        statusEl.className = `badge ${getStatusClass(venda.status || '')} `;
+        statusEl.className = `badge fs-6 ${getStatusClass(venda.status || '')} `;
 
         // Render Itens
         const itemsList = document.getElementById('modalOrderItems');
         itemsList.innerHTML = '';
+        let subtotalCalculado = 0;
+
         venda.itens.forEach(item => {
+            subtotalCalculado += (item.quantidade * item.preco_unitario);
             itemsList.innerHTML += `
                 <li class="list-group-item bg-transparent text-white d-flex justify-content-between align-items-center border-secondary">
                     <div>
@@ -423,14 +521,54 @@ async function viewOrderDetails(id) {
                             Qtd: ${item.quantidade} x R$ ${item.preco_unitario.toFixed(2)}
                         </small>
                     </div>
-                    <span>R$ ${item.subtotal.toFixed(2)}</span>
+                    <span>R$ ${(item.quantidade * item.preco_unitario).toFixed(2)}</span>
                 </li>
             `;
         });
 
+        // Financial Summary Logic
+        const desc = parseFloat(venda.desconto_total) || 0;
+        const frete = parseFloat(venda.taxa_entrega) || 0;
+        const freteNome = venda.tipo_entrega || 'Frete';
+
+        document.getElementById('modalSummarySubtotal').textContent = `R$ ${subtotalCalculado.toFixed(2)}`;
+        document.getElementById('modalSummaryDiscount').textContent = `- R$ ${desc.toFixed(2)}`;
+
+        const transp = venda.transportadora ? ` (${venda.transportadora})` : '';
+        document.getElementById('modalSummaryFreight').textContent = `R$ ${frete.toFixed(2)}`;
+        document.getElementById('modalSummaryFreightType').textContent = `${freteNome}${transp}`;
+
+        document.getElementById('modalOrderTotal').textContent = `R$ ${venda.total_venda.toFixed(2)}`;
+
         // Render Address
-        const address = `${venda.entrega_rua}, ${venda.entrega_numero} - ${venda.entrega_bairro}, ${venda.entrega_cidade}/${venda.entrega_estado} - CEP: ${venda.entrega_cep}`;
+        let address = '';
+        if (venda.entrega_rua) {
+            address = `Destinatário: ${venda.cliente_nome}
+Rua: ${venda.entrega_rua}, ${venda.entrega_numero} ${venda.entrega_complemento ? `- ${venda.entrega_complemento}` : ''}
+Bairro: ${venda.entrega_bairro}
+Cidade: ${venda.entrega_cidade} / ${venda.entrega_estado}
+CEP: ${venda.entrega_cep}`;
+        } else {
+            address = 'Endereço não informado ou Retirada na Loja.';
+        }
         document.getElementById('modalOrderAddress').textContent = address;
+        document.getElementById('modalOrderAddress').style.whiteSpace = 'pre-line'; // Preserve line breaks
+
+        // Populate Tracking Inputs
+        document.getElementById('trackingCodeInput').value = venda.codigo_rastreio || '';
+
+        const carrierSelect = document.getElementById('trackingCarrierInput');
+        if (venda.transportadora && venda.transportadora !== 'None') {
+            carrierSelect.value = venda.transportadora;
+        }
+
+        // If no value set or invalid value (not in list), force default
+        if (carrierSelect.selectedIndex === -1 || !carrierSelect.value) {
+            carrierSelect.selectedIndex = 0;
+        }
+
+        // Store ID for save button context
+        document.getElementById('trackingCodeInput').dataset.vendaId = venda.id;
 
         // Render Actions (Also Contextual here!)
         const actionsDiv = document.getElementById('statusActions');
@@ -445,7 +583,7 @@ async function viewOrderDetails(id) {
             }
             actionsDiv.innerHTML += `<button class="btn btn-danger" onclick="updateOrderStatus(${venda.id}, 'Cancelada')">Cancelar Pedido</button>`;
         } else {
-            actionsDiv.innerHTML = '<span class="text-muted small">Nenhuma ação disponível para este status.</span>';
+            actionsDiv.innerHTML = '<span class="text-white-50 small">Nenhuma ação disponível para este status.</span>';
         }
 
         const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
@@ -454,6 +592,67 @@ async function viewOrderDetails(id) {
     } catch (error) {
         console.error(error);
         Swal.fire('Erro', 'Não foi possível carregar os detalhes.', 'error');
+    }
+}
+
+function copiarEndereco() {
+    const venda = window.currentOrderDetails;
+    if (!venda || !venda.entrega_rua) {
+        Swal.fire('Aviso', 'Não há endereço para copiar.', 'warning');
+        return;
+    }
+
+    const textToCopy = `Destinatário: ${venda.cliente_nome}
+Rua: ${venda.entrega_rua}, ${venda.entrega_numero} ${venda.entrega_complemento ? `- ${venda.entrega_complemento}` : ''}
+Bairro: ${venda.entrega_bairro}
+Cidade: ${venda.entrega_cidade} / ${venda.entrega_estado}
+CEP: ${venda.entrega_cep}
+Obs: Pedido #${venda.id}`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        Swal.fire({
+            icon: 'success',
+            title: 'Copiado!',
+            text: 'Endereço copiado para a área de transferência.',
+            timer: 1500,
+            showConfirmButton: false
+        });
+    });
+}
+
+async function salvarRastreio() {
+    const input = document.getElementById('trackingCodeInput');
+    const select = document.getElementById('trackingCarrierInput');
+    const vendaId = input.dataset.vendaId;
+    const token = localStorage.getItem('authToken');
+
+    if (!vendaId) return;
+
+    try {
+        const response = await fetch(`${API_URL}/api/vendas/${vendaId}/rastreio`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-access-token': token
+            },
+            body: JSON.stringify({
+                codigo_rastreio: input.value,
+                transportadora: select.value
+            })
+        });
+
+        if (!response.ok) throw new Error('Falha ao salvar rastreio');
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Salvo!',
+            text: 'Informações de rastreio atualizadas.',
+            timer: 1500,
+            showConfirmButton: false
+        });
+
+    } catch (error) {
+        Swal.fire('Erro', error.message, 'error');
     }
 }
 

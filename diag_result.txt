@@ -1,0 +1,18 @@
+--- Users ---
+User: Michele Paes de Oliveira Fernandes, Role: admin, Email: paesmichele219@gmail.com
+User: Bruna Silva, Role: admin, Email: bss939893@gmail.com
+User: Jennifer Irons Paes, Role: admin, Email: jenniferirons352@gmail.com
+User: Fernando Sérgio, Role: admin, Email: fernadokairo2025@gmail.com
+
+--- Configurations ---
+Key: promo_primeira_compra_ativo, Value: True
+Key: promo_primeira_compra_percent, Value: 20
+Key: promo_primeira_avaliacao_percent, Value: 5
+Key: promo_primeira_avaliacao_ativo, Value: True
+Key: SYSTEM_THEME, Value: natal
+
+--- Test Update ---
+Attempting to set SYSTEM_THEME to 'natal'...
+Updated existing config.
+Commit successful.
+Verified Value inside DB: natal

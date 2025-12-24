@@ -307,6 +307,9 @@
                                     <button class="btn btn-outline-primary btn-sm rounded-pill px-4" onclick="openDetailsModal(${index})">
                                         <i class="fas fa-info-circle me-1"></i> Detalhes
                                     </button>
+                                    
+                                    ${getTrackingContent(order)}
+                                    
                                     <a href="https://wa.me/558597293349?text=Ol%C3%A1%2C%20gostaria%20de%20cancelar%20o%20pedido%20%23${order.id}" 
                                        target="_blank" 
                                        class="btn btn-outline-danger btn-sm rounded-pill px-4">
@@ -330,6 +333,38 @@
                 'Cancelado': 'bg-danger'
             };
             return badges[status] || 'bg-secondary';
+        };
+
+        const getTrackingContent = (order) => {
+            if (!order.transportadora) {
+                return `<span class="badge bg-light text-muted border">Não processado</span>`;
+            }
+
+            const carrierLow = order.transportadora.toLowerCase();
+
+            // 1. Motoboy / Entrega Local
+            if (carrierLow.includes('motoboy') || carrierLow.includes('local') || carrierLow.includes('retirada')) {
+                return `<span class="badge bg-info text-dark"><i class="fas fa-motorcycle me-1"></i> Entrega/Retirada Local</span>`;
+            }
+
+            // 2. Correios / External with Code
+            if (order.codigo_rastreio) {
+                let link = '#';
+                if (carrierLow.includes('correios') || carrierLow.includes('sedex') || carrierLow.includes('pac')) {
+                    link = `https://rastreamento.correios.com.br/app/index.php?objeto=${order.codigo_rastreio}`;
+                } else if (carrierLow.includes('jadlog')) {
+                    link = `https://www.jadlog.com.br/tracking`;
+                }
+
+                return `
+                    <a href="${link}" target="_blank" class="btn btn-outline-warning btn-sm rounded-pill px-3">
+                        <i class="fas fa-box-open me-1"></i> Rastrear (${order.transportadora})
+                    </a>
+                `;
+            }
+
+            // 3. Waiting for Code
+            return `<span class="badge bg-secondary">Aguardando rastreio...</span>`;
         };
 
         window.copiarCupom = (codigo) => {
@@ -409,13 +444,14 @@
 
             // Format Address
             let addressHtml = '<p class="text-muted">Não informado</p>';
-            if (order.tipo_entrega === 'Entrega' && order.endereco_entrega) {
-                addressHtml = `<p class="mb-0 text-dark">${order.endereco_entrega}</p>`;
-            } else if (order.tipo_entrega === 'Retirada') {
-                addressHtml = `<p class="mb-0 text-dark">Retirada na Loja</p>`;
-            } else if (order.tipo_entrega === 'Motoboy') {
-                addressHtml = `<p class="mb-0 text-dark">Entrega via Motoboy</p>
-                                <p class="small text-muted mb-0">${order.endereco_entrega || ''}</p>`;
+
+            if (order.tipo_entrega === 'Retirada') {
+                addressHtml = `<p class="mb-0 text-dark"><strong>Retirada na Loja</strong></p>`;
+            } else if (['Correios', 'Transportadora', 'Motoboy', 'Entrega'].includes(order.tipo_entrega) || order.endereco_entrega) {
+                // If specific delivery type OR simply has an address, show it/
+                let label = order.tipo_entrega === 'Motoboy' ? 'Entrega via Motoboy' : 'Endereço de Entrega';
+                addressHtml = `<p class="mb-0 text-dark fw-bold">${label}</p>
+                                <p class="small text-muted mb-0">${order.endereco_entrega || 'Endereço não registrado'}</p>`;
             }
 
             modalBody.innerHTML = `
@@ -459,6 +495,7 @@
                     <div class="col-6">
                          <small class="text-muted d-block uppercase fw-bold mb-1" style="font-size: 0.75rem;">Frete</small>
                         <span class="fw-bold text-dark">R$ ${(order.taxa_entrega || 0).toFixed(2)}</span>
+                        ${order.transportadora ? `<br><small class='text-muted'>(${order.transportadora})</small>` : ''}
                     </div>
                 </div>
 

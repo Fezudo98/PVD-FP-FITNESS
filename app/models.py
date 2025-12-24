@@ -23,6 +23,12 @@ class Produto(db.Model):
     descricao = db.Column(db.Text, nullable=True)
     destaque = db.Column(db.Boolean, default=False)
     
+    # Campos para Frete (Correios/Transportadora)
+    peso = db.Column(db.Float, default=0.3, nullable=True) # em kg
+    altura = db.Column(db.Integer, default=5, nullable=True) # em cm
+    largura = db.Column(db.Integer, default=20, nullable=True) # em cm
+    comprimento = db.Column(db.Integer, default=20, nullable=True) # em cm
+    
     # Relacionamento com imagens adicionais
     imagens = db.relationship('ProdutoImagem', backref='produto', lazy=True, cascade="all, delete-orphan")
     
@@ -34,6 +40,7 @@ class Produto(db.Model):
             'imagem_url': self.imagem_url, 'limite_estoque_baixo': self.limite_estoque_baixo, 
             'codigo_barras_url': self.codigo_barras_url,
             'online_ativo': self.online_ativo, 'descricao': self.descricao, 'destaque': self.destaque,
+            'peso': self.peso, 'altura': self.altura, 'largura': self.largura, 'comprimento': self.comprimento,
             'imagens': [img.to_dict() for img in sorted(self.imagens, key=lambda x: x.ordem or 0)]
         }
 
@@ -141,6 +148,8 @@ class Venda(db.Model):
     entrega_cep = db.Column(db.String(10), nullable=True)
     entrega_complemento = db.Column(db.String(100), nullable=True)
     tipo_entrega = db.Column(db.String(50), nullable=True, default='Motoboy') # Motoboy, Retirada, Correios
+    codigo_rastreio = db.Column(db.String(50), nullable=True)
+    transportadora = db.Column(db.String(50), nullable=True)
     id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     id_vendedor = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True) # Nullable para vendas online
     cliente = db.relationship('Cliente')

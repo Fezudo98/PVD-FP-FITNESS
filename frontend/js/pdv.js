@@ -79,8 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchAllProducts() {
         try {
-            // DEBUG: Mostrar status no searchResults
-            searchResults.innerHTML = '<div class="list-group-item text-warning">DEBUG: Iniciando busca de produtos...</div>';
+
 
             const currentSearchQuery = searchInput.value;
             const response = await fetch(`${API_URL}/api/produtos?per_page=1000`, { headers: { 'x-access-token': token } });
@@ -99,9 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             allProducts = data.produtos;
 
-            // DEBUG: Mostrar sucesso
-            searchResults.innerHTML = `<div class="list-group-item text-success">DEBUG: Sucesso! ${allProducts.length} produtos carregados.</div>`;
-            setTimeout(() => { if (!searchInput.value) searchResults.innerHTML = ''; }, 3000);
+
 
             if (currentSearchQuery) renderSearchResults(currentSearchQuery);
         } catch (error) {

@@ -1,0 +1,357 @@
+/* Happy New Year Theme Variables */
+:root {
+    --cor-principal: #FFD700;
+    /* Gold */
+    --cor-fundo: #000000;
+    /* Deep Black for contrast with fireworks */
+    --cor-card: rgba(20, 20, 30, 0.85);
+    /* Transparent dark blue-ish */
+    --cor-texto: #ffffff;
+    --cor-destaque: #C0C0C0;
+    /* Silver */
+}
+
+/* Background Override */
+.background-container {
+    background-image: linear-gradient(to bottom, #000000, #1a1a2e);
+    filter: none !important;
+    /* Clear blur for sharp fireworks */
+    z-index: -2;
+}
+
+/* Decorations Visibility */
+.theme-newyear-only {
+    display: block !important;
+}
+
+/* Typography Enhancements */
+h1,
+h2,
+h3,
+h4,
+.navbar-brand {
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    /* Glowing text */
+}
+
+.newyear-greeting-container {
+    position: relative;
+    z-index: 5;
+    margin-bottom: 2rem;
+}
+
+.newyear-greeting {
+    font-family: 'Outfit', sans-serif;
+    font-size: 3.5rem;
+    background: linear-gradient(to right, #FFD700, #FFF, #FFD700);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shine-text 3s linear infinite;
+    font-weight: 800;
+}
+
+/* Icons and Animations */
+.newyear-icons {
+    margin-top: 1rem;
+}
+
+.floating-icon {
+    animation: float 3s ease-in-out infinite;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+}
+
+.twinkling-star {
+    animation: twinkle 1.5s ease-in-out infinite alternate;
+}
+
+.newyear-balloon {
+    position: fixed;
+    bottom: -100px;
+    width: 60px;
+    height: 70px;
+    background-color: currentColor;
+    border-radius: 50%;
+    opacity: 0.8;
+    animation: rise 10s linear infinite;
+    z-index: 1055;
+    /* Above navbar to be seen? Or 1000? Let's try 1055 and see if it blocks clicks. It shouldn't if I keep pointer-events: none */
+    pointer-events: none;
+    box-shadow: inset -10px -10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.newyear-balloon::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 28px;
+    width: 4px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.left-balloon {
+    left: 10%;
+    animation-delay: 0s;
+    color: #FFD700 !important;
+}
+
+.right-balloon {
+    right: 10%;
+    animation-delay: 5s;
+    color: #C0C0C0 !important;
+}
+
+/* Buttons */
+.btn-custom {
+    background: linear-gradient(45deg, #FFD700, #FDB931, #FFD700);
+    border: none;
+    background-size: 200% auto;
+    animation: shine 3s linear infinite;
+    color: #000;
+    font-weight: bold;
+}
+
+/* Ensure content sits above fireworks but Navbar sits above content */
+.main-content,
+.card {
+    z-index: 1;
+    position: relative;
+}
+
+.navbar {
+    z-index: 1050 !important;
+    /* Ensure on top of transparency layers */
+    position: relative;
+}
+
+.modal {
+    z-index: 1060 !important;
+}
+
+/* Fireworks Canvas Container */
+#fireworks-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none !important;
+    z-index: -1;
+    /* Behind content but in front of background-container */
+}
+
+/* Animations Keyframes */
+@keyframes shine {
+    to {
+        background-position: 200% center;
+    }
+}
+
+@keyframes shine-text {
+    0% {
+        filter: brightness(1);
+    }
+
+    50% {
+        filter: brightness(1.3);
+    }
+
+    100% {
+        filter: brightness(1);
+    }
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes twinkle {
+    0% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+}
+
+@keyframes rise {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: translateY(-110vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* Interactive Champagne Bottle */
+.interactive-bottle {
+    position: fixed;
+    bottom: 0px;
+    left: 10px;
+    z-index: 2000;
+    /* Ensure it is definitely on top of everything */
+    cursor: pointer;
+    transition: transform 0.3s;
+    /* Add a subtle bounce/pulse to invite clicks */
+    animation: bottle-idle 3s ease-in-out infinite;
+}
+
+.interactive-bottle:hover {
+    transform: scale(1.1) rotate(-5deg);
+}
+
+.bottle-icon {
+    font-size: 150px;
+    transform: rotate(30deg);
+    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
+    color: #FFD700 !important;
+}
+
+/* The metallic lip/ring at the bottle opening */
+.bottle-lip {
+    position: absolute;
+    top: 47px;
+    /* Moved down to match cork */
+    right: -17px;
+    /* Moved right (negative) to match cork */
+    width: 35px;
+    height: 12px;
+    background: linear-gradient(to bottom, #FFD700, #FFF, #FFD700);
+    border-radius: 5px;
+    transform: rotate(70deg);
+    /* Matches bottle angle */
+    z-index: 2000;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.bottle-cork {
+    position: absolute;
+    top: 35px;
+    /* User's value */
+    right: -25px;
+    /* User's value */
+    width: 25px;
+    height: 25px;
+    /* Cork texture */
+    background: radial-gradient(circle at 30% 30%, #D2691E, #8B4513);
+    border: 1px solid #5D4037;
+    border-radius: 3px 3px 5px 5px;
+    transform: rotate(70deg);
+    /* User's value */
+    z-index: 2001;
+    box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Wire cage detail (pseudo-element on cork) */
+.bottle-cork::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    border-top: 1px solid rgba(0, 0, 0, 0.3);
+    border-bottom: 2px solid #C0C0C0;
+    /* Silver wire */
+}
+
+/* Bottle Active States */
+.bottle-shaking {
+    animation: bottle-shake 0.5s ease-in-out infinite;
+}
+
+.cork-flying {
+    animation: cork-pop 1s forwards ease-out;
+}
+
+@keyframes bottle-idle {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes bottle-shake {
+    0% {
+        transform: rotate(30deg) translate(0, 0);
+    }
+
+    25% {
+        transform: rotate(30deg) translate(-3px, 3px);
+    }
+
+    50% {
+        transform: rotate(30deg) translate(3px, -3px);
+    }
+
+    75% {
+        transform: rotate(30deg) translate(-3px, 3px);
+    }
+
+    100% {
+        transform: rotate(30deg) translate(0, 0);
+    }
+}
+
+/* Lip Shake - Base rotation 70deg */
+.lip-shaking {
+    animation: lip-shake 0.5s ease-in-out infinite;
+}
+
+@keyframes lip-shake {
+    0% {
+        transform: rotate(70deg) translate(0, 0);
+    }
+
+    25% {
+        transform: rotate(70deg) translate(-3px, 3px);
+    }
+
+    50% {
+        transform: rotate(70deg) translate(3px, -3px);
+    }
+
+    75% {
+        transform: rotate(70deg) translate(-3px, 3px);
+    }
+
+    100% {
+        transform: rotate(70deg) translate(0, 0);
+    }
+}
+
+@keyframes cork-pop {
+    0% {
+        transform: rotate(30deg) translate(0, 0);
+        opacity: 1;
+    }
+
+    100% {
+        transform: rotate(60deg) translate(300px, -300px);
+        opacity: 0;
+    }
+}

@@ -3,23 +3,34 @@
  * Handles dynamic loading of theme resources (CSS/JS)
  */
 
-const ThemeManager = {
+window.ThemeManager = {
     themes: {
         'original': {
             name: 'Original (Preto)',
             css: [],
             js: [],
-            cleanup: () => {
-                // Remove specific stylesheets
-                document.querySelectorAll('link[href*="christmas.css"]').forEach(el => el.remove());
-                // Optional: Stop snow interval if exposed, but for now CSS toggle is enough for visual cleanup
-            }
+            cleanup: () => { }
         },
         'natal': {
             name: 'Natal',
             css: ['/css/christmas.css'],
             js: ['/js/christmas.js'],
-            cleanup: () => { } // Natal adds elements, standard cleanup is mostly handled by page refresh or removing deps
+            cleanup: () => {
+                document.querySelectorAll('link[href*="christmas.css"]').forEach(el => el.remove());
+                document.querySelectorAll('script[src*="christmas.js"]').forEach(el => el.remove());
+            }
+        },
+        'ano_novo': {
+            name: 'Feliz Ano Novo',
+            css: ['/css/new_year.css'],
+            js: ['/js/new_year.js'],
+            cleanup: () => {
+                document.querySelectorAll('link[href*="new_year.css"]').forEach(el => el.remove());
+                document.querySelectorAll('script[src*="new_year.js"]').forEach(el => el.remove());
+                if (typeof window.stopFireworks === 'function') {
+                    window.stopFireworks();
+                }
+            }
         }
     },
 
@@ -91,7 +102,7 @@ const ThemeManager = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'x-access-token': localStorage.getItem('authToken')
                 },
                 body: JSON.stringify(formData)
             });
@@ -100,7 +111,9 @@ const ThemeManager = {
                 // Reload to ensure clean state for scripts like snow.js which might set intervals
                 window.location.reload();
             } else {
-                alert('Erro ao salvar tema.');
+                const errText = await response.text();
+                console.error('Theme save error:', response.status, errText);
+                alert(`Erro ao salvar tema (${response.status}): ${errText}`);
             }
         } catch (error) {
             console.error('Erro ao salvar tema:', error);
@@ -126,6 +139,10 @@ const ThemeManager = {
                 a.textContent = this.themes[key].name;
                 a.onclick = (e) => {
                     e.preventDefault();
+                    console.log(`Theme clicked: ${key}`);
+                    if (!localStorage.getItem('authToken')) {
+                        console.warn('No auth token found. Switcher might fail if checking perms.');
+                    }
                     this.setTheme(key);
                 };
                 li.appendChild(a);
@@ -136,5 +153,10 @@ const ThemeManager = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    ThemeManager.init();
+    // Ensure ThemeManager is global or verify init
+    if (window.ThemeManager) {
+        ThemeManager.init();
+    } else {
+        console.error('ThemeManager not defined');
+    }
 });

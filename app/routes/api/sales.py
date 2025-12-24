@@ -99,6 +99,8 @@ def registrar_venda(current_user):
             entrega_cidade=dados.get('entrega_cidade'), 
             entrega_cep=dados.get('entrega_cep'), 
             entrega_complemento=dados.get('entrega_complemento'),
+            tipo_entrega=dados.get('tipo_entrega', 'Motoboy'),
+            transportadora=dados.get('transportadora'),
             troco=round(troco, 2)
         )
 
@@ -178,6 +180,9 @@ def get_venda_details(current_user, venda_id):
         'troco': venda.troco,
         'taxa_entrega': venda.taxa_entrega, 
         'cliente_nome': venda.cliente.nome if venda.cliente else 'Consumidor Final', 
+        'cliente_telefone': venda.cliente.telefone if venda.cliente else None,
+        'cliente_email': venda.cliente.email if venda.cliente else None,
+        'cliente_cpf': venda.cliente.cpf if venda.cliente else None,
         'vendedor_nome': venda.vendedor.nome if venda.vendedor else 'Online', 
         'itens': itens_list, 
         'cupons_utilizados': [c.codigo for c in venda.cupons], 
@@ -189,8 +194,28 @@ def get_venda_details(current_user, venda_id):
         'entrega_bairro': venda.entrega_bairro,
         'entrega_cidade': venda.entrega_cidade,
         'entrega_estado': venda.entrega_estado,
-        'entrega_cep': venda.entrega_cep
+        'entrega_cep': venda.entrega_cep,
+        'entrega_complemento': venda.entrega_complemento,
+        'tipo_entrega': venda.tipo_entrega,
+        'codigo_rastreio': venda.codigo_rastreio,
+        'transportadora': venda.transportadora
     })
+
+@api_bp.route('/api/vendas/<int:venda_id>/rastreio', methods=['PUT'])
+@token_required
+def update_venda_rastreio(current_user, venda_id):
+    if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
+    
+    venda = Venda.query.get_or_404(venda_id)
+    dados = request.get_json()
+    
+    venda.codigo_rastreio = dados.get('codigo_rastreio')
+    venda.transportadora = dados.get('transportadora')
+    
+    registrar_log(current_user, "Rastreio Atualizado", f"ID: {venda.id} - {venda.transportadora}: {venda.codigo_rastreio}")
+    db.session.commit()
+    
+    return jsonify({'mensagem': 'Informações de rastreio atualizadas com sucesso!'})
 
 @api_bp.route('/api/vendas/<int:venda_id>/reembolsar', methods=['POST'])
 @token_required
