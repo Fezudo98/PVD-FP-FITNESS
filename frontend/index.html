@@ -48,30 +48,32 @@
         </div>
     </nav>
 
-    <!-- Conteúdo Principal -->
-    <main class="container main-content mt-4">
-
+    <!-- Christmas Decorations Layer -->
+    <div class="theme-natal-only">
         <!-- Christmas Greeting -->
-        <!-- Christmas Greeting -->
-        <div class="text-center mb-4 christmas-greeting-container theme-natal-only">
+        <div class="container text-center mt-4 christmas-greeting-container">
             <h1 class="christmas-greeting">🎄 Feliz Natal! 🎄</h1>
         </div>
 
-        <h2 class="mb-4">Bem-vindo(a), <span id="userName"></span>!</h2>
-
-        <!-- Santa Animation Container -->
-        <div id="santa-container" class="theme-natal-only">
+        <!-- Santa Animation -->
+        <div id="santa-container">
             <img src="/santa_sleigh.png" alt="Santa Sleigh" id="santa-sleigh">
         </div>
 
-        <!-- Couple Avatar (Hidden by default) -->
-        <div id="couple-container" class="d-none theme-natal-only">
+        <!-- Couple Avatar -->
+        <div id="couple-container" class="d-none">
             <img src="/couple.png" alt="Couple Avatar" id="couple-avatar">
         </div>
 
-        <!-- Hidden Gnomes -->
-        <img src="/gnome.png" class="christmas-gnome gnome-1 theme-natal-only" alt="Gnome">
-        <img src="/gnome.png" class="christmas-gnome gnome-2 theme-natal-only" alt="Gnome">
+        <!-- Gnomes -->
+        <img src="/gnome.png" class="christmas-gnome gnome-1" alt="Gnome">
+        <img src="/gnome.png" class="christmas-gnome gnome-2" alt="Gnome">
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <main class="container main-content mt-4">
+
+        <h2 class="mb-4">Bem-vindo(a), <span id="userName"></span>!</h2>
 
         <div class="row g-3">
             <div class="col-md-4">
