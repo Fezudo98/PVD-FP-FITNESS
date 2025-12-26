@@ -2,74 +2,206 @@
 
 {% block content %}
 <section class="py-5 bg-light">
-    <div class="container py-5">
+    <div class="container py-4">
         <div class="row justify-content-center">
             <div class="col-lg-10">
-                <div class="card shadow-sm border-0 rounded-3">
-                    <div class="card-body p-5">
-                        <h1 class="display-6 fw-bold text-center mb-5 text-dark">Políticas de Trocas e Devoluções</h1>
+                <div class="card shadow rounded-3 border-0 overflow-hidden">
+                    <div class="card-header bg-gradient-gold text-white p-4 text-center"
+                        style="background: linear-gradient(135deg, #d4af37 0%, #a0801a 100%);">
+                        <h2 class="fw-bold mb-0 text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">Políticas
+                            e Termos de Uso</h2>
+                        <p class="mb-0 small text-white-50">Transparência e segurança para você</p>
+                    </div>
+                    <div class="card-body p-4 p-md-5">
 
+                        <!-- 1. Trocas e Devoluções -->
                         <div class="mb-5">
-                            <h3 class="fw-bold text-warning mb-3"><i class="fas fa-sync-alt me-2"></i>Trocas</h3>
-                            <p class="text-muted">
-                                Queremos que você ame sua compra! Se precisar trocar, estamos aqui para ajudar.
-                            </p>
-                            <ul class="list-group list-group-flush">
-                                <li class="list-group-item bg-transparent"><i
-                                        class="fas fa-check text-success me-2"></i><strong>Prazo:</strong> Você tem até
-                                    <strong>30 dias corridos</strong> após o recebimento para solicitar a troca.</li>
-                                <li class="list-group-item bg-transparent"><i
-                                        class="fas fa-check text-success me-2"></i><strong>Condições:</strong> O produto
-                                    deve estar com a etiqueta intacta, sem sinais de uso, lavagem ou odores, e na
-                                    embalagem original.</li>
-                                <li class="list-group-item bg-transparent"><i
-                                        class="fas fa-check text-success me-2"></i><strong>Como solicitar:</strong>
-                                    Entre em contato conosco pelo WhatsApp ou Instagram informando o número do pedido e
-                                    o motivo da troca.</li>
+                            <h3 class="fw-bold text-dark border-bottom pb-2 mb-4">
+                                <i class="fas fa-sync-alt me-2 text-warning"></i>1. Trocas e Devoluções
+                            </h3>
+                            <p class="text-muted">A FP Fitness segue rigorosamente o Código de Defesa do Consumidor
+                                (CDC), garantindo seus direitos e a segurança de sua compra.</p>
+
+                            <div class="accordion" id="accordionTrocas">
+                                <div class="accordion-item border-0 mb-3 bg-light rounded-3">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed fw-bold bg-transparent shadow-none"
+                                            type="button" data-bs-toggle="collapse"
+                                            data-bs-target="#collapseArrependimento">
+                                            1.1. Direito de Arrependimento (7 Dias)
+                                        </button>
+                                    </h2>
+                                    <div id="collapseArrependimento" class="accordion-collapse collapse show"
+                                        data-bs-parent="#accordionTrocas">
+                                        <div class="accordion-body text-secondary">
+                                            Conforme o Art. 49 do CDC, você tem até <strong>7 (sete) dias
+                                                corridos</strong> após o recebimento do produto para solicitar a
+                                            devolução por arrependimento.
+                                            <ul class="mt-2 mb-0 ps-3 small">
+                                                <li>O produto deve estar intacto, sem indícios de uso e com todas as
+                                                    etiquetas fixadas.</li>
+                                                <li>O reembolso será integral (valor do produto + frete pago).</li>
+                                                <li>O frete de devolução é por nossa conta (logística reversa).</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="accordion-item border-0 mb-3 bg-light rounded-3">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed fw-bold bg-transparent shadow-none"
+                                            type="button" data-bs-toggle="collapse" data-bs-target="#collapseTroca">
+                                            1.2. Trocas por Tamanho/Gosto (30 Dias)
+                                        </button>
+                                    </h2>
+                                    <div id="collapseTroca" class="accordion-collapse collapse"
+                                        data-bs-parent="#accordionTrocas">
+                                        <div class="accordion-body text-secondary">
+                                            Oferecemos um prazo estendido de <strong>30 dias corridos</strong> para
+                                            trocas por tamanho ou modelo, como cortesia.
+                                            <ul class="mt-2 mb-0 ps-3 small">
+                                                <li>Neste caso (que não seja defeito ou arrependimento legal),
+                                                    <strong>os custos de frete (envio e reenvio) são de responsabilidade
+                                                        do cliente</strong>.</li>
+                                                <li>O produto não pode ter sinais de uso.</li>
+                                                <li>Sujeito à disponibilidade de estoque.</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="accordion-item border-0 mb-3 bg-light rounded-3">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed fw-bold bg-transparent shadow-none"
+                                            type="button" data-bs-toggle="collapse" data-bs-target="#collapseDefeito">
+                                            1.3. Produtos com Defeito (Garantia)
+                                        </button>
+                                    </h2>
+                                    <div id="collapseDefeito" class="accordion-collapse collapse"
+                                        data-bs-parent="#accordionTrocas">
+                                        <div class="accordion-body text-secondary">
+                                            Garantia de <strong>90 dias</strong> para defeitos de fabricação aparentes
+                                            ou de fácil constatação.
+                                            <ul class="mt-2 mb-0 ps-3 small">
+                                                <li>Após análise e constatação do defeito, faremos a troca, reparo ou
+                                                    reembolso integral.</li>
+                                                <li>Produtos com sinais de mau uso (lavagem incorreta, rasgos
+                                                    acidentais) não serão cobertos.</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Prazos e Entregas -->
+                        <div class="mb-5">
+                            <h3 class="fw-bold text-dark border-bottom pb-2 mb-4">
+                                <i class="fas fa-shipping-fast me-2 text-primary"></i>2. Prazos, Entregas e Frete
+                            </h3>
+                            <ul class="list-unstyled text-secondary">
+                                <li class="mb-3 d-flex">
+                                    <i class="fas fa-exclamation-circle text-warning mt-1 me-3"></i>
+                                    <div>
+                                        <strong>Prazos Estimados:</strong> Os prazos informados no checkout são
+                                        estimativas fornecidas pelos transportadores (Correios/Jadlog/Motoboy). A FP
+                                        Fitness não se responsabiliza por atrasos causados por greves, intempéries ou
+                                        situações de força maior, embora prestemos todo suporte necessário.
+                                    </div>
+                                </li>
+                                <li class="mb-3 d-flex">
+                                    <i class="fas fa-map-marker-alt text-danger mt-1 me-3"></i>
+                                    <div>
+                                        <strong>Endereço Incorreto:</strong> É de inteira responsabilidade do cliente o
+                                        preenchimento correto do endereço. Caso o pedido retorne por "Endereço
+                                        Incorreto" ou "Destinatário Desconhecido", <strong>o custo do novo frete será
+                                            cobrado do cliente</strong>.
+                                    </div>
+                                </li>
+                                <li class="mb-3 d-flex">
+                                    <i class="fas fa-door-closed text-secondary mt-1 me-3"></i>
+                                    <div>
+                                        <strong>Tentativas de Entrega:</strong> Correios e transportadoras realizam até
+                                        3 tentativas. Caso não haja ninguém para receber, o produto retornará ao nosso
+                                        centro de distribuição e será necessário pagamento de novo frete.
+                                    </div>
+                                </li>
                             </ul>
                         </div>
 
+                        <!-- 3. Pagamentos e Segurança -->
                         <div class="mb-5">
-                            <h3 class="fw-bold text-danger mb-3"><i class="fas fa-undo me-2"></i>Devoluções e
-                                Cancelamentos</h3>
-                            <p class="text-muted">
-                                Se arrependeu da compra? Sem problemas. Seguimos o Código de Defesa do Consumidor.
+                            <h3 class="fw-bold text-dark border-bottom pb-2 mb-4">
+                                <i class="fas fa-shield-alt me-2 text-success"></i>3. Segurança e Pagamentos
+                            </h3>
+                            <p class="text-secondary">
+                                Utilizamos gateways de pagamento seguros e criptografia SSL. Nenhuma informação de
+                                cartão de crédito fica salva em nossos servidores.
                             </p>
-                            <ul class="list-group list-group-flush">
-                                <li class="list-group-item bg-transparent"><i
-                                        class="fas fa-check text-success me-2"></i><strong>Direito de
-                                        Arrependimento:</strong> Você pode desistir da compra em até <strong>7 dias
-                                        corridos</strong> após o recebimento, com reembolso total.</li>
-                                <li class="list-group-item bg-transparent"><i
-                                        class="fas fa-check text-success me-2"></i><strong>Defeito de
-                                        Fabricação:</strong> Caso o produto apresente defeito, o prazo para solicitação
-                                    é de até <strong>90 dias</strong>.</li>
-                                <li class="list-group-item bg-transparent"><i
-                                        class="fas fa-check text-success me-2"></i><strong>Reembolso:</strong> O estorno
-                                    será feito pela mesma forma de pagamento utilizada na compra, após o recebimento e
-                                    análise do produto devolvido.</li>
+                            <div class="alert alert-light border rounded-3 text-muted small">
+                                <i class="fas fa-search me-2"></i><strong>Análise Antifraude:</strong> Reservamo-nos o
+                                direito de cancelar compras suspeitas ou com dados divergentes (ex: nome do cartão
+                                diferente do titular do pedido) após análise manual, estornando o valor integralmente
+                                para segurança do titular do cartão.
+                            </div>
+                        </div>
+
+                        <!-- 4. Privacidade (Resumo LGPD) -->
+                        <div class="mb-5">
+                            <h3 class="fw-bold text-dark border-bottom pb-2 mb-4">
+                                <i class="fas fa-user-lock me-2 text-info"></i>4. Privacidade de Dados (LGPD)
+                            </h3>
+                            <p class="text-secondary small">
+                                Seus dados pessoais (Nome, CPF, Endereço, Contato) são utilizados estritamente para:
+                            </p>
+                            <ul class="list-group list-group-flush small text-secondary">
+                                <li class="list-group-item bg-transparent py-1 border-0"><i
+                                        class="fas fa-check-circle text-success me-2"></i>Processamento e envio do seu
+                                    pedido.</li>
+                                <li class="list-group-item bg-transparent py-1 border-0"><i
+                                        class="fas fa-check-circle text-success me-2"></i>Emissão de Nota Fiscal.</li>
+                                <li class="list-group-item bg-transparent py-1 border-0"><i
+                                        class="fas fa-check-circle text-success me-2"></i>Contato sobre o status da
+                                    entrega.</li>
                             </ul>
-                        </div>
-
-                        <div class="alert alert-warning border-0 rounded-3" role="alert">
-                            <h5 class="alert-heading fw-bold"><i class="fas fa-info-circle me-2"></i>Importante</h5>
-                            <p class="mb-0">
-                                Produtos em promoção ou outlet podem ter políticas específicas de troca. Consulte a
-                                descrição do produto ou entre em contato conosco em caso de dúvida.
+                            <p class="text-secondary small mt-3">
+                                Não vendemos nem compartilhamos seus dados com terceiros para fins publicitários sem seu
+                                consentimento.
                             </p>
                         </div>
 
-                        <div class="text-center mt-5">
-                            <p class="text-muted mb-3">Ainda tem dúvidas?</p>
+                        <div class="text-center mt-5 pt-4 border-top">
+                            <h5 class="fw-bold mb-3">Ainda precisa de ajuda?</h5>
                             <a href="https://wa.me/558597293349" target="_blank"
-                                class="btn btn-success rounded-pill px-4">
-                                <i class="fab fa-whatsapp me-2"></i>Fale Conosco
+                                class="btn btn-success rounded-pill px-5 py-2 fw-bold shadow-sm hover-scale">
+                                <i class="fab fa-whatsapp me-2"></i>Falar com Atendente
                             </a>
+                            <p class="text-muted small mt-3">Horário de Atendimento: Seg à Sex, 09h às 18h.</p>
                         </div>
+
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+<style>
+    .hover-scale {
+        transition: transform 0.2s;
+    }
+
+    .hover-scale:hover {
+        transform: scale(1.05);
+    }
+
+    .accordion-button:not(.collapsed) {
+        background-color: rgba(212, 175, 55, 0.1);
+        color: #d4af37;
+    }
+
+    .accordion-button:focus {
+        box-shadow: 0 0 0 0.25rem rgba(212, 175, 55, 0.25);
+    }
+</style>
 {% endblock %}
