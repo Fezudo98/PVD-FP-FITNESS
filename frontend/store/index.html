@@ -81,6 +81,75 @@
         </div>
     </div>
 </section>
+<!-- Welcome Modal -->
+<div class="modal fade" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true"
+    data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-2 border-warning"
+            style="background: linear-gradient(135deg, #1f1c2c, #928DAB); color: white;">
+            <div class="modal-header border-0 text-center justify-content-center">
+                <div class="display-1 text-warning mb-2 animate__animated animate__tada">🎁</div>
+            </div>
+            <div class="modal-body text-center pt-0 px-4">
+                <h2 class="fw-bold text-white mb-3" style="font-family: 'Outfit', sans-serif;">Boas-vindas à FP Fitness!
+                </h2>
+                <p class="lead mb-4">Que bom ter você aqui! Para começar com o pé direito, preparamos um presente
+                    especial:</p>
+
+                <div
+                    class="bg-white text-dark rounded-3 p-3 mb-3 shadow-sm border border-warning position-relative overflow-hidden">
+                    <h5 class="fw-bold text-muted text-uppercase small mb-1">Seu Cupom Exclusivo</h5>
+                    <div class="d-flex align-items-center justify-content-center gap-2 cursor-pointer"
+                        onclick="copyCoupon('PRIMEIRACOMPRA')" title="Clique para copiar">
+                        <h1 class="display-5 fw-bold text-warning mb-0" style="letter-spacing: 2px;">PRIMEIRACOMPRA</h1>
+                        <i class="fa-regular fa-copy text-muted"></i>
+                    </div>
+                </div>
+                <p class="text-warning fw-bold fs-5 mb-1">🎉 20% DE DESCONTO 🎉</p>
+                <p class="small text-white-50">na sua primeira compra online!</p>
+
+                <hr class="border-secondary my-4">
+
+                <div
+                    class="d-flex align-items-center justify-content-center gap-3 text-start bg-dark bg-opacity-25 p-3 rounded-3">
+                    <i class="fa-solid fa-star text-warning fs-3"></i>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-white">Quer mais vantagens?</h6>
+                        <small class="text-light">Avalie seus produtos após receber e ganhe <span
+                                class="text-warning fw-bold">+5% OFF</span> na próxima compra!</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 justify-content-center pb-4">
+                <button type="button" class="btn btn-warning btn-lg rounded-pill px-5 fw-bold shadow pulse-btn"
+                    data-bs-dismiss="modal" onclick="closeWelcomeModal()">
+                    Resgatar meu Desconto! 🛍️
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pulse-btn {
+        animation: pulse-gold 2s infinite;
+    }
+
+    @keyframes pulse-gold {
+        0% {
+            box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+        }
+
+        70% {
+            box-shadow: 0 0 0 10px rgba(255, 215, 0, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+        }
+    }
+</style>
+
 {% endblock %}
 
 {% block scripts %}
@@ -88,7 +157,37 @@
     document.addEventListener('DOMContentLoaded', function () {
         loadFeaturedProducts();
         checkPromos();
+        checkWelcomeModal();
     });
+
+    function checkWelcomeModal() {
+        const hasSeenWelcome = localStorage.getItem('welcome_shown_v1');
+        if (!hasSeenWelcome) {
+            // Delay slightly for effect
+            setTimeout(() => {
+                const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
+                welcomeModal.show();
+            }, 1000);
+        }
+    }
+
+    function closeWelcomeModal() {
+        localStorage.setItem('welcome_shown_v1', 'true');
+    }
+
+    function copyCoupon(code) {
+        navigator.clipboard.writeText(code).then(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'Copiado!',
+                text: 'Cupom ' + code + ' copiado para a área de transferência.',
+                timer: 1500,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+        });
+    }
 
     async function checkPromos() {
         try {

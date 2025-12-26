@@ -85,6 +85,10 @@ body {
     position: relative;
 }
 
+.navbar.fixed-top {
+    position: fixed;
+}
+
 .dropdown-menu {
     z-index: 1055;
 }

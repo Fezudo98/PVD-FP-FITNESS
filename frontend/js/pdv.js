@@ -501,7 +501,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 receiptDiscountRow.classList.add('d-none');
             }
-            document.getElementById('receiptTaxaEntrega').textContent = `R$ ${data.taxa_entrega.toFixed(2)}`;
+            if (data.entrega_gratuita) {
+                document.getElementById('receiptTaxaEntrega').innerHTML = '<span class="text-success">Grátis</span> <small class="text-muted text-decoration-line-through">R$ ' + data.taxa_entrega.toFixed(2) + '</small>';
+            } else {
+                document.getElementById('receiptTaxaEntrega').textContent = `R$ ${data.taxa_entrega.toFixed(2)}`;
+            }
             document.getElementById('receiptTotalGeral').textContent = `R$ ${data.total_venda.toFixed(2)}`;
 
             const paymentsDiv = document.getElementById('receiptPayments');
@@ -571,8 +575,18 @@ document.addEventListener('DOMContentLoaded', () => {
     cartItemsDiv.addEventListener('click', (e) => { const target = e.target; const id = parseInt(target.dataset.id); if (!id) return; if (target.classList.contains('adjust-qty-btn')) { const item = cart.find(i => i.id === id); const stockProduct = allProducts.find(p => p.id === id); if (target.dataset.action === 'increase' && item.quantidade < stockProduct.quantidade) item.quantidade++; else if (target.dataset.action === 'decrease' && item.quantidade > 0) item.quantidade--; if (item.quantidade === 0) cart = cart.filter(i => i.id !== id); renderCart(); } else if (target.classList.contains('remove-item-btn')) { cart = cart.filter(i => i.id !== id); renderCart(); } });
     applyCupomBtn.addEventListener('click', applyCoupon);
     appliedCouponsList.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON' && e.target.dataset.code) { removeCoupon(e.target.dataset.code); } });
-    taxaEntregaInput.addEventListener('input', () => { (parseFloat(taxaEntregaInput.value) || 0) > 0 ? deliveryAddressWrapper.classList.remove('d-none') : deliveryAddressWrapper.classList.add('d-none'); updateTotals(); });
-    freeDeliveryCheckbox.addEventListener('change', updateTotals);
+    taxaEntregaInput.addEventListener('input', () => {
+        const hasFee = (parseFloat(taxaEntregaInput.value) || 0) > 0;
+        const isFree = freeDeliveryCheckbox.checked;
+        (hasFee || isFree) ? deliveryAddressWrapper.classList.remove('d-none') : deliveryAddressWrapper.classList.add('d-none');
+        updateTotals();
+    });
+    freeDeliveryCheckbox.addEventListener('change', () => {
+        const hasFee = (parseFloat(taxaEntregaInput.value) || 0) > 0;
+        const isFree = freeDeliveryCheckbox.checked;
+        (hasFee || isFree) ? deliveryAddressWrapper.classList.remove('d-none') : deliveryAddressWrapper.classList.add('d-none');
+        updateTotals();
+    });
     openPaymentModalBtn.addEventListener('click', preparePaymentModal);
     addPaymentForm.addEventListener('submit', addPayment);
     confirmSaleBtn.addEventListener('click', finalizeSale);

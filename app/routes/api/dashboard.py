@@ -17,7 +17,9 @@ def get_dashboard_data(current_user):
     except (ValueError, TypeError): return jsonify({'erro': 'Formato de data inválido.'}), 400
     
     vendas_query = Venda.query.filter(Venda.data_hora >= data_inicio, Venda.data_hora < data_fim)
-    vendas_concluidas = vendas_query.filter(Venda.status == 'Concluída').all()
+    # FIX: Include 'Entregue' and 'Pronto para retirada' as valid/completed sales for reports
+    valid_statuses = ['Concluída', 'Entregue', 'Pronto para retirada']
+    vendas_concluidas = vendas_query.filter(Venda.status.in_(valid_statuses)).all()
     
     receita_total = sum(v.total_venda for v in vendas_concluidas)
     total_taxas = sum((v.taxa_entrega or 0.0) for v in vendas_concluidas)
@@ -41,7 +43,62 @@ def get_dashboard_data(current_user):
     vendas_periodo_total = vendas_query.order_by(Venda.data_hora.desc()).all()
     lista_vendas = [{'id': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Final', 'vendedor': v.vendedor.nome if v.vendedor else 'Online', 'total': v.total_venda, 'pagamento': ", ".join([p.forma for p in v.pagamentos]), 'status': v.status} for v in vendas_periodo_total]
 
-    return jsonify({'kpis': kpis, 'grafico_vendas_tempo': grafico_vendas_tempo, 'grafico_forma_pagamento': grafico_forma_pagamento, 'ranking_produtos': ranking_produtos_list, 'ranking_vendedores': ranking_vendedores_list, 'lista_vendas': lista_vendas})
+    # Breakdown by Channel (Online vs Physical)
+    # Online = id_vendedor IS NULL, Physical = id_vendedor IS NOT NULL
+    vendas_online = sum(1 for v in vendas_concluidas if v.id_vendedor is None)
+    vendas_fisicas = len(vendas_concluidas) - vendas_online
+    
+    # Revenue excluding freight for precise product sales analysis
+    receita_online = sum((v.total_venda - (v.taxa_entrega or 0)) for v in vendas_concluidas if v.id_vendedor is None)
+    receita_fisica = sum((v.total_venda - (v.taxa_entrega or 0)) for v in vendas_concluidas if v.id_vendedor is not None)
+
+    grafico_canais = [
+        {'canal': 'Loja Física', 'total': vendas_fisicas, 'receita': round(receita_fisica, 2)},
+        {'canal': 'Loja Online', 'total': vendas_online, 'receita': round(receita_online, 2)}
+    ]
+
+    return jsonify({'kpis': kpis, 'grafico_vendas_tempo': grafico_vendas_tempo, 'grafico_forma_pagamento': grafico_forma_pagamento, 'ranking_produtos': ranking_produtos_list, 'ranking_vendedores': ranking_vendedores_list, 'lista_vendas': lista_vendas, 'grafico_canais': grafico_canais})
+
+@api_bp.route('/api/relatorios/online-dashboard', methods=['GET'])
+@token_required
+def get_online_dashboard_data(current_user):
+    if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
+    
+    agora = datetime.utcnow() # UTC, need to be careful with timezone if system is local. Assuming UTC for now or matching system.
+    inicio_dia = datetime(agora.year, agora.month, agora.day)
+    inicio_mes = datetime(agora.year, agora.month, 1)
+
+    # Base query for online sales (no salesperson)
+    online_query = Venda.query.filter(Venda.id_vendedor == None)
+
+    # Today's stats
+    vendas_hoje = online_query.filter(Venda.data_hora >= inicio_dia, Venda.status != 'Cancelada').all()
+    # Subtracting freight to show net product sales
+    total_hoje = sum((v.total_venda - (v.taxa_entrega or 0)) for v in vendas_hoje)
+    qtd_hoje = len(vendas_hoje)
+
+    # Month's stats
+    vendas_mes = online_query.filter(Venda.data_hora >= inicio_mes, Venda.status != 'Cancelada').all()
+    # Subtracting freight
+    total_mes = sum((v.total_venda - (v.taxa_entrega or 0)) for v in vendas_mes)
+    qtd_mes = len(vendas_mes)
+
+    # Order Status Counts
+    # Treating 'Pendente' as needing attention
+    pendentes = online_query.filter(Venda.status == 'Pendente').count()
+    separacao = online_query.filter(Venda.status == 'Em separação').count()
+    # Included 'Entregue' in 'enviados' so they don't disappear from the dashboard metrics
+    enviados = online_query.filter(Venda.status.in_(['Saiu para entrega', 'Produto Postado', 'Entregue', 'Pronto para retirada'])).count()
+
+    return jsonify({
+        'hoje': {'total': round(total_hoje, 2), 'quantidade': qtd_hoje},
+        'mes': {'total': round(total_mes, 2), 'quantidade': qtd_mes},
+        'status': {
+            'pendentes': pendentes,
+            'separacao': separacao,
+            'enviados': enviados
+        }
+    })
 
 @api_bp.route('/api/relatorios/entregas', methods=['GET'])
 @token_required

@@ -107,20 +107,44 @@
         </div>
 
         <!-- Seção de Gráficos -->
-        <div class="row g-4 mb-4">
-            <div class="col-lg-8">
-                <div class="pdv-panel"><canvas id="vendasTempoChart"></canvas></div>
-            </div>
-            <div class="col-lg-4">
-                <div class="pdv-panel"><canvas id="formaPagamentoChart"></canvas></div>
+        <!-- Row 1: Time Chart -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="pdv-panel"><canvas id="vendasTempoChart" style="max-height: 400px;"></canvas></div>
             </div>
         </div>
+
+        <!-- Row 2: Pie/Doughnut Charts -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="pdv-panel text-center">
+                    <h5 class="text-white mb-3">Canais de Venda</h5>
+                    <div style="max-height: 300px; position: relative; margin: auto;">
+                        <canvas id="canaisVendaChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="pdv-panel text-center">
+                    <h5 class="text-white mb-3">Formas de Pagamento</h5>
+                    <div style="max-height: 300px; position: relative; margin: auto;">
+                        <canvas id="formaPagamentoChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3: Bar Charts (Rankings) -->
         <div class="row g-4 mb-4">
             <div class="col-lg-6">
-                <div class="pdv-panel"><canvas id="rankingProdutosChart"></canvas></div>
+                <div class="pdv-panel">
+                    <canvas id="rankingProdutosChart"></canvas>
+                </div>
             </div>
             <div class="col-lg-6">
-                <div class="pdv-panel"><canvas id="rankingVendedoresChart"></canvas></div>
+                <div class="pdv-panel">
+                    <canvas id="rankingVendedoresChart"></canvas>
+                </div>
             </div>
         </div>
 

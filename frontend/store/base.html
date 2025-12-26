@@ -170,6 +170,17 @@
                     <img src="/static/img/logo.jpg" alt="FP Fitness" style="max-height: 80px;"
                         onerror="this.onerror=null; this.src='/frontend/logo.jpg';">
                 </a>
+
+                <!-- Mobile Cart (Visible < lg) -->
+                <a href="/store/carrinho" class="btn btn-link text-dark position-relative d-lg-none me-2"
+                    id="cartBtnMobile">
+                    <i class="fa-solid fa-cart-shopping fa-lg"></i>
+                    <span
+                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-count-badge">
+                        0
+                    </span>
+                </a>
+
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#storeNavbar">
                     <span class="navbar-toggler-icon"></span>
                 </button>
@@ -181,10 +192,12 @@
                     </ul>
 
                     <div class="d-flex align-items-center gap-3">
-                        <a href="/store/carrinho" class="btn btn-link text-dark position-relative" id="cartBtn">
+                        <!-- Desktop Cart (Hidden < lg) -->
+                        <a href="/store/carrinho" class="btn btn-link text-dark position-relative d-none d-lg-block"
+                            id="cartBtn">
                             <i class="fa-solid fa-cart-shopping fa-lg"></i>
                             <span
-                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-count-badge"
                                 id="cartCount">
                                 0
                             </span>
@@ -227,10 +240,10 @@
                     </div>
                     <div class="col-md-4 mb-3 mb-md-0">
                         <h5 class="text-dark mb-3">Endereço</h5>
-                        <a href="https://maps.apple.com/place?map=explore&utm_source=ig&utm_medium=social&utm_content=link_in_bio&address=Rua+80%2C+166%2C+Jereissati+St+E%2C+Pacatuba+-+CE%2C+61900-970%2C+Brasil&coordinate=-3.884346%2C-38.605275&name=Rua+80%2C+166"
-                            target="_blank" class="text-decoration-none text-muted">
-                            <i class="fa-solid fa-location-dot me-2 text-primary"></i>Rua 80, 166, Jereissati St
-                            E<br>Pacatuba - CE, 61900-970
+                        <a href="https://maps.app.goo.gl/XZ2qDYytKWB4MrWw8" target="_blank"
+                            class="text-decoration-none text-muted">
+                            <i class="fa-solid fa-location-dot me-2 text-primary"></i>R. Oitenta, 166, Sen. Carlos
+                            Jereissati<br>Pacatuba - CE, 61814-240
                         </a>
                     </div>
                     <div class="col-md-4">

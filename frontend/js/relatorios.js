@@ -8,6 +8,7 @@ if (!token) {
 // Variáveis globais para os gráficos e o modal
 let vendasTempoChart = null;
 let formaPagamentoChart = null;
+let canaisVendaChart = null;
 let rankingProdutosChart = null;
 let rankingVendedoresChart = null;
 let receiptModal = null;
@@ -35,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderKPIs(data.kpis);
             renderVendasTempoChart(data.grafico_vendas_tempo);
             renderFormaPagamentoChart(data.grafico_forma_pagamento);
+            renderCanaisVendaChart(data.grafico_canais);
             renderRankingProdutosChart(data.ranking_produtos);
             renderRankingVendedoresChart(data.ranking_vendedores);
             renderVendasTable(data.lista_vendas);
@@ -57,6 +59,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = document.getElementById('vendasTempoChart').getContext('2d');
         if (vendasTempoChart) vendasTempoChart.destroy();
         vendasTempoChart = new Chart(ctx, { type: 'line', data: { labels: data.map(d => d.data), datasets: [{ label: 'Receita por Dia', data: data.map(d => d.total), borderColor: '#e0b431', backgroundColor: 'rgba(224, 180, 49, 0.2)', tension: 0.1, fill: true }] }, options: { responsive: true, plugins: { title: { display: true, text: 'Vendas ao Longo do Tempo', color: '#f8f9fa' }, legend: { labels: { color: '#f8f9fa' } } }, scales: { x: { ticks: { color: '#f8f9fa' } }, y: { ticks: { color: '#f8f9fa' } } } } });
+    }
+
+    function renderCanaisVendaChart(data) {
+        if (!data) return; // Handle older backend versions safely
+        const ctx = document.getElementById('canaisVendaChart').getContext('2d');
+        if (canaisVendaChart) canaisVendaChart.destroy();
+        const colors = ['#e0b431', '#0dcaf0']; // Gold (Store) & Cyan (Online)
+
+        canaisVendaChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: data.map(d => `${d.canal} (R$ ${d.receita.toFixed(2)})`),
+                datasets: [{
+                    data: data.map(d => d.total), // Using count, maybe should be value? usually charts show % of volume or value. Using Count for pie is safer for size representation.
+                    backgroundColor: colors,
+                    borderColor: '#212529',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: { display: true, text: 'Distribuição por Canal (Qtd)', color: '#f8f9fa' },
+                    legend: { labels: { color: '#f8f9fa' }, position: 'bottom' }
+                }
+            }
+        });
     }
     function renderFormaPagamentoChart(data) {
         const ctx = document.getElementById('formaPagamentoChart').getContext('2d');

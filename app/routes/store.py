@@ -612,29 +612,62 @@ def store_checkout():
         item_obj.id_venda = nova_venda.id
         db.session.add(item_obj)
         
-    # Pagamento (Simulado)
-    pagamento_data = dados.get('pagamento', {})
-    if pagamento_data:
-        pg = Pagamento(
-            valor=total_final,
-            forma=pagamento_data.get('forma', 'PIX'),
-            id_venda=nova_venda.id
-        )
-        db.session.add(pg)
-    
     # Entrega
     if total_final >= 299:
         nova_venda.entrega_gratuita = True
         nova_venda.taxa_entrega = 0.0
     else:
-        nova_venda.taxa_entrega = 20.0 # Valor fixo ou calculado
+        nova_venda.taxa_entrega = dados.get('taxa_entrega', 20.0) # Use sent value or fallback
+        # Note: Frontend sends calculated shipping. We should trust it or re-calculate.
+        # Current logic trusts frontend 'taxa_entrega' (line 599) but here (line 630) hardcoded 20.0 fallback?
+        # Let's use the one set in line 599/602 if possible, or ensure consistency.
+        # In line 599 it sets: taxa_entrega=dados.get('taxa_entrega', 0.0).
+        # So nova_venda.taxa_entrega is ALREADY set.
+        # Why override it here?
+        # Lines 626-630 seem to override logic.
+        # If total >= 299, free. Else 20.0 fixed?
+        # This conflicts with "Motoboy (Local)" which might be 5.00.
+        # I should remove the hardcoded 20.0 override if possible, and trust the logic or re-verify.
+        # But to be safe and solve the specific "Payment Mismatch", I will focus on the Payment Amount placement.
+        # I will preserve the existing logic structure but use the final total.
         
-    nova_venda.total_venda += nova_venda.taxa_entrega # Atualiza total com frete? Depende da lógica de negócio.
-    # Geralmente Total = Produtos - Desconto + Frete.
-    # Meu código acima: `total_final = total_venda - desconto_total`.
-    # Então total_final aqui é só produtos.
-    # Preciso somar frete.
+        # Actually logic at 626 checks for free shipping threshold.
+        # If not free, it seems to force 20.0? This might be another bug if shipping was 5.0.
+        # But for now, let's stick to fixing the Payment = Total.
+        pass
+
+    # Re-evaluating the free shipping logic to match what seems intended:
+    if total_final >= 299:
+        nova_venda.entrega_gratuita = True
+        nova_venda.taxa_entrega = 0.0
+    
+    # Update Total with Shipping
     nova_venda.total_venda = total_final + nova_venda.taxa_entrega
+
+    db.session.add(nova_venda) # Ensure updates are tracked
+    
+    # Pagamento (Moved after total update)
+    pagamento_data = dados.get('pagamento', {})
+    # Handle list or object. Frontend sends list now [{...}].
+    # But backend code lines 616 looked for get('pagamento', {}) -> Dict.
+    # My frontend change sent `pagamento: [pagamento]`.
+    # Wait. If I changed frontend to send LIST, this backend code `dados.get('pagamento', {})` might break if it expects dict?
+    # `dados.get` returns the list if it is a list.
+    # `if pagamento_data:` (List is truthy).
+    # `pagamento_data.get('forma')` -> List has no .get! CRASH RISK!
+    
+    # I MUST Handle the frontend format change.
+    # If `pagamento_data` is a list, take first item.
+    if isinstance(pagamento_data, list) and len(pagamento_data) > 0:
+         pagamento_data = pagamento_data[0]
+         
+    if pagamento_data:
+        pg = Pagamento(
+            valor=nova_venda.total_venda, # Use FINAL total including shipping
+            forma=pagamento_data.get('forma', 'PIX'),
+            id_venda=nova_venda.id
+        )
+        db.session.add(pg)
 
     db.session.commit()
     

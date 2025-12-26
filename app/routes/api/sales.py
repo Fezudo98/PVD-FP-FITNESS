@@ -64,7 +64,12 @@ def registrar_venda(current_user):
         
         desconto_total_calculado = min(desconto_total_calculado, subtotal_produtos)
 
-        taxa_entrega = float(dados.get('taxa_entrega', 0.0))
+        if dados.get('entrega_gratuita', False):
+            # Mantém a taxa de entrega para controle de custo (pagamento motoboy), 
+            # mas o total_venda_final não somará esse valor.
+            taxa_entrega = float(dados.get('taxa_entrega', 0.0))
+        else:
+            taxa_entrega = float(dados.get('taxa_entrega', 0.0))
         total_venda_final = subtotal_produtos - desconto_total_calculado
         if not dados.get('entrega_gratuita', False):
             total_venda_final += taxa_entrega
@@ -179,6 +184,7 @@ def get_venda_details(current_user, venda_id):
         'pagamentos': pagamentos_list, 
         'troco': venda.troco,
         'taxa_entrega': venda.taxa_entrega, 
+        'entrega_gratuita': venda.entrega_gratuita, 
         'cliente_nome': venda.cliente.nome if venda.cliente else 'Consumidor Final', 
         'cliente_telefone': venda.cliente.telefone if venda.cliente else None,
         'cliente_email': venda.cliente.email if venda.cliente else None,
@@ -274,6 +280,10 @@ def get_online_orders(current_user):
         # SQLite: cast(Venda.id as TEXT).like(f'%{search}%')
         from sqlalchemy import cast, String
         query = query.filter(cast(Venda.id, String).like(f'%{search_query}%'))
+    
+    status_filter = request.args.get('status', '', type=str)
+    if status_filter:
+        query = query.filter(Venda.status == status_filter)
     
     pagination = query.order_by(Venda.data_hora.desc()).paginate(page=page, per_page=per_page, error_out=False)
     

@@ -37,10 +37,71 @@
     </nav>
 
     <main class="container main-content mt-4">
+        <!-- Mini Dashboard Online -->
+        <div class="row g-3 mb-4">
+            <div class="col-md">
+                <div class="card bg-dark border-secondary text-white h-100">
+                    <div class="card-body">
+                        <h6 class="text-white-50"><i class="fas fa-calendar-day me-2 text-info"></i>Vendas Hoje</h6>
+                        <h3 class="mb-0" id="dashHojeTotal">R$ 0,00</h3>
+                        <small class="text-white-50"><span id="dashHojeQtd">0</span> pedidos</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md">
+                <div class="card bg-dark border-secondary text-white h-100">
+                    <div class="card-body">
+                        <h6 class="text-white-50"><i class="fas fa-calendar-alt me-2 text-primary"></i>Vendas Mês</h6>
+                        <h3 class="mb-0" id="dashMesTotal">R$ 0,00</h3>
+                        <small class="text-white-50"><span id="dashMesQtd">0</span> pedidos</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md">
+                <div class="card bg-dark border-secondary text-white h-100 border-start border-4 border-warning">
+                    <div class="card-body">
+                        <h6 class="text-white-50"><i class="fas fa-exclamation-circle me-2 text-warning"></i>Pendentes
+                        </h6>
+                        <h3 class="mb-0 text-warning" id="dashPendentes">0</h3>
+                        <small class="text-white-50">Aguardando ação</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md">
+                <div class="card bg-dark border-secondary text-white h-100 border-start border-4 border-info">
+                    <div class="card-body">
+                        <h6 class="text-white-50"><i class="fas fa-box-open me-2 text-info"></i>Em Separação</h6>
+                        <h3 class="mb-0 text-info" id="dashSeparacao">0</h3>
+                        <small class="text-white-50">Sendo preparados</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md">
+                <div class="card bg-dark border-secondary text-white h-100 border-start border-4 border-success">
+                    <div class="card-body">
+                        <h6 class="text-white-50"><i class="fas fa-truck me-2 text-success"></i>Enviados</h6>
+                        <h3 class="mb-0 text-success" id="dashEnviados">0</h3>
+                        <small class="text-white-50">Em trânsito/Entregue</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="text-white">Gerenciamento de Pedidos Online</h2>
             <div class="d-flex gap-2">
                 <div class="input-group">
+                    <select class="form-select bg-dark text-white border-secondary" id="statusFilter"
+                        onchange="loadOnlineOrders(1)">
+                        <option value="">Todos os Status</option>
+                        <option value="Pendente">Pendente</option>
+                        <option value="Em separação">Em separação</option>
+                        <option value="Saiu para entrega">Saiu para entrega (Motoboy)</option>
+                        <option value="Produto Postado">Produto Postado (Correios)</option>
+                        <option value="Pronto para retirada">Pronto para retirada</option>
+                        <option value="Entregue">Entregue</option>
+                        <option value="Cancelada">Cancelada</option>
+                    </select>
                     <span class="input-group-text bg-dark border-secondary text-white"><i
                             class="fas fa-search"></i></span>
                     <input type="text" id="searchInput" class="form-control bg-dark text-white border-secondary"
@@ -217,6 +278,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
             loadOnlineOrders();
+            loadOnlineDashboard();
             if ("Notification" in window) {
                 Notification.requestPermission();
             }

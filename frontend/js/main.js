@@ -224,6 +224,38 @@ function updateBadges(count) {
 // --- Lógica da Página Loja Online ---
 // let allOrdersCache = []; // Removed: Server-side pagination used now
 
+async function loadOnlineDashboard() {
+    // Only run if elements exist
+    if (!document.getElementById('dashHojeTotal')) return;
+
+    const token = localStorage.getItem('authToken');
+    try {
+        const response = await fetch(`${API_URL}/api/relatorios/online-dashboard`, {
+            headers: { 'x-access-token': token }
+        });
+
+        if (!response.ok) return; // Silent fail
+
+        const data = await response.json();
+
+        // Populate Today
+        document.getElementById('dashHojeTotal').textContent = `R$ ${parseFloat(data.hoje.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        document.getElementById('dashHojeQtd').textContent = data.hoje.quantidade;
+
+        // Populate Month
+        document.getElementById('dashMesTotal').textContent = `R$ ${parseFloat(data.mes.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        document.getElementById('dashMesQtd').textContent = data.mes.quantidade;
+
+        // Populate Status Counts
+        document.getElementById('dashPendentes').textContent = data.status.pendentes;
+        document.getElementById('dashSeparacao').textContent = data.status.separacao;
+        document.getElementById('dashEnviados').textContent = data.status.enviados;
+
+    } catch (e) {
+        console.error("Dashboard Load Error:", e);
+    }
+}
+
 async function loadOnlineOrders(page = 1) {
     const tableBody = document.querySelector('#onlineOrdersTable tbody');
     if (!tableBody) return; // Não estamos na página correta
@@ -231,13 +263,18 @@ async function loadOnlineOrders(page = 1) {
     const token = localStorage.getItem('authToken');
     const searchInput = document.getElementById('searchInput');
     const searchTerm = searchInput ? searchInput.value.trim() : '';
+    const statusFilter = document.getElementById('statusFilter');
+    const statusVal = statusFilter ? statusFilter.value : '';
 
-    tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Carregando...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-white py-4">Carregando...</td></tr>';
 
     try {
         let url = `${API_URL}/api/vendas/online?page=${page}&per_page=10`;
         if (searchTerm) {
             url += `&search=${encodeURIComponent(searchTerm)}`;
+        }
+        if (statusVal) {
+            url += `&status=${encodeURIComponent(statusVal)}`;
         }
 
         const response = await fetch(url, {
@@ -304,7 +341,7 @@ function renderOrders(pedidos) {
     tableBody.innerHTML = '';
 
     if (pedidos.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum pedido online encontrado.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-white py-4">Nenhum pedido online encontrado.</td></tr>';
         return;
     }
 

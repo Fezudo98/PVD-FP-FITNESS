@@ -529,9 +529,9 @@
             const isActive = index === 0 ? 'active' : '';
             const src = imgUrl.startsWith('http') ? imgUrl : `/uploads/${imgUrl}`;
 
-            // ADDED: zoom-container class, oncontextmenu="return false", and distinct id for logic
+            // ADDED: zoom-container class, REMOVED inline events
             const itemHtml = `
-                <div class="carousel-item ${isActive} h-100 product-zoom-container" onmousemove="zoom(event, this)" onmouseleave="unzoom(this)">
+                <div class="carousel-item ${isActive} h-100 product-zoom-container">
                     <img src="${src}" class="d-block w-100 h-100" alt="${product.nome}" 
                          style="object-fit: contain; pointer-events: none;" 
                          oncontextmenu="return false;">
@@ -585,11 +585,41 @@
             });
             myCarousel.dataset.listenerAttached = 'true';
         }
+
+        // Initialize Zoom only for Desktops
+        setupZoomInteractions();
     }
 
     // --- Zoom Functions ---
+    // Prevent multiple attachments
+    let zoomListenersAttached = false;
+
+    function setupZoomInteractions() {
+        if (zoomListenersAttached) return;
+
+        // Strict check: Only enable if device supports hover (Mouse)
+        if (!window.matchMedia('(hover: hover)').matches) return;
+
+        const carouselInner = document.getElementById('carouselInner');
+        if (!carouselInner) return;
+
+        carouselInner.addEventListener('mousemove', function (e) {
+            const container = e.target.closest('.product-zoom-container');
+            if (container) zoom(e, container);
+        });
+
+        carouselInner.addEventListener('mouseout', function (e) {
+            const container = e.target.closest('.product-zoom-container');
+            // Check if we actually left the container (not just moved to a child)
+            if (container && !container.contains(e.relatedTarget)) {
+                unzoom(container);
+            }
+        });
+
+        zoomListenersAttached = true;
+    }
+
     function zoom(e, container) {
-        if (window.matchMedia('(hover: none)').matches) return; // Disable on touch
         const img = container.querySelector('img');
         const rect = container.getBoundingClientRect();
 
