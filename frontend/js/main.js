@@ -40,7 +40,31 @@ document.addEventListener('DOMContentLoaded', () => {
             if (responsiveDiv) responsiveDiv.style.overflow = 'auto';
         });
     }
+
+    // Start Clock
+    updateClock();
+    setInterval(updateClock, 1000);
 });
+
+function updateClock() {
+    const clockEl = document.getElementById('clockDisplay');
+    if (!clockEl) return;
+
+    const now = new Date();
+
+    // Format: "Sáb, 27 de Dez"
+    const dateOptions = { weekday: 'short', day: 'numeric', month: 'short' };
+    const dateStr = now.toLocaleDateString('pt-BR', dateOptions).replace('.', ''); // Remove dot from abbr if present
+
+    // Format: "14:30"
+    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    // Combine nicely
+    // Capitalize first letter of dateStr for elegance
+    const dateFormatted = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+
+    clockEl.innerHTML = `<span>${dateFormatted}</span> <span class="mx-1">|</span> <strong>${timeStr}</strong>`;
+}
 
 function checkAuth() {
     const token = localStorage.getItem('authToken');

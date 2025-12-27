@@ -1,5 +1,8 @@
 from .extensions import db
-from datetime import datetime
+from datetime import datetime, timedelta
+
+def current_brazil_time():
+    return datetime.utcnow() - timedelta(hours=3)
 
 # 2. MODELOS DE DADOS
 # ----------------------------------------------------
@@ -72,7 +75,7 @@ class Cliente(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=True)
     senha_hash = db.Column(db.String(128), nullable=True)
     foto_perfil = db.Column(db.String(255), nullable=True) # URL/Path da foto
-    data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
+    data_cadastro = db.Column(db.DateTime, default=current_brazil_time)
     
     # Endereço Principal
     endereco_rua = db.Column(db.String(200), nullable=True)
@@ -130,7 +133,7 @@ venda_cupons = db.Table('venda_cupons',
 
 class Venda(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    data_hora = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    data_hora = db.Column(db.DateTime, nullable=False, default=current_brazil_time)
     total_venda = db.Column(db.Float, nullable=False)
     taxa_entrega = db.Column(db.Float, nullable=True, default=0.0)
     status = db.Column(db.String(20), nullable=False, default='Concluída')
@@ -168,7 +171,7 @@ class ItemVenda(db.Model):
 
 class Log(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, nullable=False, default=current_brazil_time)
     id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
     usuario_nome = db.Column(db.String(100))
     acao = db.Column(db.String(255), nullable=False)
@@ -176,7 +179,7 @@ class Log(db.Model):
 
 class MovimentacaoCaixa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, nullable=False, default=current_brazil_time)
     tipo = db.Column(db.String(50), nullable=False)
     valor = db.Column(db.Float, nullable=False)
     observacao = db.Column(db.String(255), nullable=True)
@@ -195,7 +198,7 @@ class Avaliacao(db.Model):
     id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
     nota = db.Column(db.Integer, nullable=False)
     comentario = db.Column(db.Text, nullable=True)
-    data_criacao = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    data_criacao = db.Column(db.DateTime, nullable=False, default=current_brazil_time)
     
     cliente = db.relationship('Cliente', backref='avaliacoes')
     produto = db.relationship('Produto', backref='avaliacoes')

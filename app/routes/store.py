@@ -142,6 +142,26 @@ def store_get_products():
         'categorias': categorias
     })
 
+@store_bp.route('/api/public/products/suggestions', methods=['GET'])
+def store_get_suggestions():
+    # Helper to randomize
+    query = db.session.query(
+        Produto.nome,
+        func.min(Produto.preco_venda).label('min_price'),
+        func.max(Produto.imagem_url).label('imagem_url'),
+        func.min(Produto.id).label('id')
+    ).filter(Produto.online_ativo == True, Produto.quantidade > 0)\
+     .group_by(Produto.nome)\
+     .order_by(func.random())\
+     .limit(3).all()
+    
+    return jsonify([{
+        'id': item.id,
+        'nome': item.nome,
+        'preco': item.min_price,
+        'imagem': item.imagem_url
+    } for item in query])
+
 @store_bp.route('/api/public/cupons/validar/<codigo>', methods=['GET'])
 def store_validate_coupon(codigo):
     codigo = codigo.upper()

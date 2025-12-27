@@ -23,14 +23,14 @@ function addToCart(productId, nome, price, image) {
 
     Swal.fire({
         icon: 'success',
-        title: 'Adicionado!',
-        text: 'Produto adicionado ao carrinho.',
-        toast: true,
-        position: 'top-end',
+        title: 'Produto Adicionado!',
+        text: 'Indo para o carrinho...',
+        timer: 800,
         showConfirmButton: false,
-        timer: 1500,
         background: '#1e1e1e',
         color: '#fff'
+    }).then(() => {
+        window.location.href = '/store/carrinho';
     });
 }
 
@@ -266,11 +266,46 @@ async function performCheckout(payload) {
             localStorage.removeItem('fp_fitness_cart');
             updateCartCount();
 
+            // Fetch Suggestions
+            let suggestionsHtml = '';
+            try {
+                const suggRes = await fetch('/api/public/products/suggestions');
+                if (suggRes.ok) {
+                    const suggestions = await suggRes.json();
+                    suggestionsHtml = `
+                        <div class="mt-4 pt-3 border-top border-secondary-subtle">
+                            <h5 class="text-warning mb-3 fw-bold">Você também pode gostar:</h5>
+                            <div class="row g-2 justify-content-center">
+                                ${suggestions.map(p => `
+                                    <div class="col-4">
+                                        <a href="/store/produto/${p.id}" class="text-decoration-none text-dark">
+                                            <div class="card h-100 border-0 shadow-sm">
+                                                <img src="${p.imagem ? '/uploads/' + p.imagem : 'https://via.placeholder.com/80'}" class="card-img-top object-fit-cover" style="height: 80px;" alt="${p.nome}">
+                                                <div class="card-body p-1 text-center">
+                                                    <small class="d-block text-truncate fw-bold" style="font-size: 0.7rem;">${p.nome}</small>
+                                                    <small class="text-success fw-bold" style="font-size: 0.7rem;">R$ ${parseFloat(p.preco).toFixed(2)}</small>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (err) { console.error('Error fetching suggestions', err); }
+
             Swal.fire({
                 icon: 'success',
-                title: 'Pedido Realizado!',
-                text: `Seu pedido #${result.id_pedido} foi confirmado com sucesso.`,
-                confirmButtonText: 'Voltar para Loja'
+                title: 'Obrigado!',
+                html: `
+                    <h5 class="fw-bold mb-3">Pedido #${result.id_pedido} Confirmado!</h5>
+                    <p class="mb-2">Recebemos seu pedido e já estamos preparando tudo.</p>
+                    ${suggestionsHtml}
+                `,
+                confirmButtonText: 'Voltar para Loja',
+                width: suggestionsHtml ? '600px' : '32em',
+                allowOutsideClick: false
             }).then(() => {
                 window.location.href = '/store/produtos';
             });

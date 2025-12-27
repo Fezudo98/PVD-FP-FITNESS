@@ -756,7 +756,17 @@
         }
         localStorage.setItem('fp_fitness_cart', JSON.stringify(cart));
         updateCartCount();
-        Swal.fire({ icon: 'success', title: 'Adicionado!', text: `${qty}x ${finalProduct.nome} adicionado ao carrinho.`, toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff' });
+        Swal.fire({
+            icon: 'success',
+            title: 'Produto Adicionado!',
+            text: 'Indo para o carrinho...',
+            timer: 800,
+            showConfirmButton: false,
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then(() => {
+            window.location.href = '/store/carrinho';
+        });
     }
 
     // --- REVIEWS LOGIC ---

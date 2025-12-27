@@ -143,199 +143,198 @@
             </div>
         </div>
 
-        <!-- Modais de Conteúdo -->
-
-        <!-- Modal Fotos -->
-        <div class="modal fade" id="modalFotos" tabindex="-1">
-            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                <div class="modal-content bg-dark text-white border-secondary">
-                    <div class="modal-header border-secondary">
-                        <h5 class="modal-title text-warning"><i class="fas fa-camera me-2"></i>Gestão de Imagens</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="accordion accordion-flush" id="accordionFotos">
-                            <div class="accordion-item bg-dark text-white border-secondary">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed bg-dark text-white shadow-none"
-                                        type="button" data-bs-toggle="collapse" data-bs-target="#foto-c1">
-                                        ⭐ A Função da "Estrela" (Capa)
-                                    </button>
-                                </h2>
-                                <div id="foto-c1" class="accordion-collapse collapse" data-bs-parent="#accordionFotos">
-                                    <div class="accordion-body text-secondary">
-                                        <p>A imagem marcada com a <strong>Estrela Dourada</strong> é definida como a
-                                            <strong>Capa do Produto</strong>. Esta é a imagem principal que aparecerá:
-                                        </p>
-                                        <ul>
-                                            <li>Na vitrine inicial do site.</li>
-                                            <li>Nos resultados de busca.</li>
-                                            <li>Como primeira imagem na página de detalhes do produto.</li>
-                                        </ul>
-                                        <p><strong>Ação Automática:</strong> Ao clicar na estrela (ou na estrela cinza
-                                            de outra foto), o sistema automaticamente define aquela imagem como capa e a
-                                            <strong>move para a primeira posição</strong> da lista.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="accordion-item bg-dark text-white border-secondary">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed bg-dark text-white shadow-none"
-                                        type="button" data-bs-toggle="collapse" data-bs-target="#foto-c2">
-                                        🔄 Reordenação (Arrastar e Soltar)
-                                    </button>
-                                </h2>
-                                <div id="foto-c2" class="accordion-collapse collapse" data-bs-parent="#accordionFotos">
-                                    <div class="accordion-body text-secondary">
-                                        <p>A ordem das fotos no painel administrativo é exatamente a ordem que será
-                                            exibida para o cliente no site. Para organizar:</p>
-                                        <ol>
-                                            <li>Clique e segure sobre a foto desejada.</li>
-                                            <li>Arraste-a para a posição correta.</li>
-                                            <li>Solte para salvar a nova ordem automaticamente.</li>
-                                        </ol>
-                                        <p><strong>Dica Importante:</strong> Se você arrastar qualquer foto para a
-                                            <strong>Primeira Posição</strong>, o sistema entenderá que ela deve ser a
-                                            nova capa e atualizará a estrela automaticamente.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal Cores -->
-        <div class="modal fade" id="modalCores" tabindex="-1">
-            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                <div class="modal-content bg-dark text-white border-secondary">
-                    <div class="modal-header border-secondary">
-                        <h5 class="modal-title text-warning"><i class="fas fa-palette me-2"></i>Cores e Filtros</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="accordion accordion-flush" id="accordionCores">
-                            <div class="accordion-item bg-dark text-white border-secondary">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed bg-dark text-white shadow-none"
-                                        type="button" data-bs-toggle="collapse" data-bs-target="#cor-c1">
-                                        🎨 Diferença entre "Cor" e "Cor Hex"
-                                    </button>
-                                </h2>
-                                <div id="cor-c1" class="accordion-collapse collapse" data-bs-parent="#accordionCores">
-                                    <div class="accordion-body text-secondary">
-                                        <p>No cadastro do produto, existem dois campos relacionados à cor, e cada um tem
-                                            uma função vital:</p>
-                                        <ul>
-                                            <li><strong>Campo "Cor" (Texto):</strong> Este é o nome que aparece escrito
-                                                para o cliente (Ex: "Azul Marinho", "Rosa Neon"). Ele serve para
-                                                identificação verbal.</li>
-                                            <li><strong>Campo "Cor Hex" (Seletor Visual):</strong> Este é o código
-                                                visual da cor. No site, ele aparece como uma "bolinha colorida" que
-                                                permite ao cliente clicar para filtrar ou selecionar a variação.</li>
-                                        </ul>
-                                        <div class="alert border-warning mt-2"
-                                            style="background: rgba(255, 193, 7, 0.1);">
-                                            <i class="fas fa-exclamation-triangle text-warning me-2"></i><strong
-                                                class="text-warning">Atenção:</strong> <span class="text-white">Se você
-                                                não selecionar a <strong class="text-warning">Cor Hex</strong> correta
-                                                no seletor, a bolinha no site ficará preta (padrão) ou com a cor errada,
-                                                confundindo o cliente na hora de filtrar.</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal Cadastro -->
-        <div class="modal fade" id="modalCadastro" tabindex="-1">
-            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                <div class="modal-content bg-dark text-white border-secondary">
-                    <div class="modal-header border-secondary">
-                        <h5 class="modal-title text-warning"><i class="fas fa-tag me-2"></i>Nomenclatura de Produtos
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="accordion accordion-flush" id="accordionCadastro">
-                            <div class="accordion-item bg-dark text-white border-secondary">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed bg-dark text-white shadow-none"
-                                        type="button" data-bs-toggle="collapse" data-bs-target="#cad-c1">
-                                        📝 Padronização de Nomes
-                                    </button>
-                                </h2>
-                                <div id="cad-c1" class="accordion-collapse collapse"
-                                    data-bs-parent="#accordionCadastro">
-                                    <div class="accordion-body text-secondary">
-                                        <p>Para manter o site organizado e profissional, siga este padrão ao nomear
-                                            produtos:</p>
-                                        <p><strong>Tipo + Característica Principal</strong></p>
-                                        <p>Exemplos Corretos:</p>
-                                        <ul>
-                                            <li><em>Legging Montaria Cirrê</em></li>
-                                            <li><em>Top Nadador Suplex</em></li>
-                                            <li><em>Conjunto Fitness Poliamida</em></li>
-                                        </ul>
-                                        <p>Evite colocar a cor no nome do produto (Ex: "Legging Preta"), pois o cliente
-                                            selecionará a cor através das opções de variação. Mantenha o nome "limpo"
-                                            para agrupar as variações corretamente se necessário.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal Categorias -->
-        <div class="modal fade" id="modalCategorias" tabindex="-1">
-            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                <div class="modal-content bg-dark text-white border-secondary">
-                    <div class="modal-header border-secondary">
-                        <h5 class="modal-title text-warning"><i class="fas fa-layer-group me-2"></i>Categorias do Site
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="accordion accordion-flush" id="accordionCategorias">
-                            <div class="accordion-item bg-dark text-white border-secondary">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed bg-dark text-white shadow-none"
-                                        type="button" data-bs-toggle="collapse" data-bs-target="#cat-c1">
-                                        📂 Estrutura de Menu
-                                    </button>
-                                </h2>
-                                <div id="cat-c1" class="accordion-collapse collapse"
-                                    data-bs-parent="#accordionCategorias">
-                                    <div class="accordion-body text-secondary">
-                                        <p>As categorias cadastradas ("Leggings", "Tops", "Shorts") transformam-se
-                                            automaticamente nos menus de navegação do site.</p>
-                                        <p><strong>Importante:</strong></p>
-                                        <ul>
-                                            <li>Evite criar categorias duplicadas com nomes ligeiramente diferentes (Ex:
-                                                "Legging" e "Calça Legging"). Isso fragmenta os produtos no site.</li>
-                                            <li>Produtos sem categoria podem não aparecer nas buscas principais. Sempre
-                                                classifique cada item.</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
     </main>
+
+    <!-- Modais de Conteúdo -->
+
+    <!-- Modal Fotos -->
+    <div class="modal fade" id="modalFotos" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning"><i class="fas fa-camera me-2"></i>Gestão de Imagens</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="accordion accordion-flush" id="accordionFotos">
+                        <div class="accordion-item bg-dark text-white border-secondary">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-dark text-white shadow-none" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#foto-c1">
+                                    ⭐ A Função da "Estrela" (Capa)
+                                </button>
+                            </h2>
+                            <div id="foto-c1" class="accordion-collapse collapse" data-bs-parent="#accordionFotos">
+                                <div class="accordion-body text-secondary">
+                                    <p>A imagem marcada com a <strong>Estrela Dourada</strong> é definida como a
+                                        <strong>Capa do Produto</strong>. Esta é a imagem principal que aparecerá:
+                                    </p>
+                                    <ul>
+                                        <li>Na vitrine inicial do site.</li>
+                                        <li>Nos resultados de busca.</li>
+                                        <li>Como primeira imagem na página de detalhes do produto.</li>
+                                    </ul>
+                                    <p><strong>Ação Automática:</strong> Ao clicar na estrela (ou na estrela cinza
+                                        de outra foto), o sistema automaticamente define aquela imagem como capa e a
+                                        <strong>move para a primeira posição</strong> da lista.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item bg-dark text-white border-secondary">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-dark text-white shadow-none" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#foto-c2">
+                                    🔄 Reordenação (Arrastar e Soltar)
+                                </button>
+                            </h2>
+                            <div id="foto-c2" class="accordion-collapse collapse" data-bs-parent="#accordionFotos">
+                                <div class="accordion-body text-secondary">
+                                    <p>A ordem das fotos no painel administrativo é exatamente a ordem que será
+                                        exibida para o cliente no site. Para organizar:</p>
+                                    <ol>
+                                        <li>Clique e segure sobre a foto desejada.</li>
+                                        <li>Arraste-a para a posição correta.</li>
+                                        <li>Solte para salvar a nova ordem automaticamente.</li>
+                                    </ol>
+                                    <p><strong>Dica Importante:</strong> Se você arrastar qualquer foto para a
+                                        <strong>Primeira Posição</strong>, o sistema entenderá que ela deve ser a
+                                        nova capa e atualizará a estrela automaticamente.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cores -->
+    <div class="modal fade" id="modalCores" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning"><i class="fas fa-palette me-2"></i>Cores e Filtros</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="accordion accordion-flush" id="accordionCores">
+                        <div class="accordion-item bg-dark text-white border-secondary">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-dark text-white shadow-none" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#cor-c1">
+                                    🎨 Diferença entre "Cor" e "Cor Hex"
+                                </button>
+                            </h2>
+                            <div id="cor-c1" class="accordion-collapse collapse" data-bs-parent="#accordionCores">
+                                <div class="accordion-body text-secondary">
+                                    <p>No cadastro do produto, existem dois campos relacionados à cor, e cada um tem
+                                        uma função vital:</p>
+                                    <ul>
+                                        <li><strong>Campo "Cor" (Texto):</strong> Este é o nome que aparece escrito
+                                            para o cliente (Ex: "Azul Marinho", "Rosa Neon"). Ele serve para
+                                            identificação verbal.</li>
+                                        <li><strong>Campo "Cor Hex" (Seletor Visual):</strong> Este é o código
+                                            visual da cor. No site, ele aparece como uma "bolinha colorida" que
+                                            permite ao cliente clicar para filtrar ou selecionar a variação.</li>
+                                    </ul>
+                                    <div class="alert border-warning mt-2" style="background: rgba(255, 193, 7, 0.1);">
+                                        <i class="fas fa-exclamation-triangle text-warning me-2"></i><strong
+                                            class="text-warning">Atenção:</strong> <span class="text-white">Se você
+                                            não selecionar a <strong class="text-warning">Cor Hex</strong> correta
+                                            no seletor, a bolinha no site ficará preta (padrão) ou com a cor errada,
+                                            confundindo o cliente na hora de filtrar.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cadastro -->
+    <div class="modal fade" id="modalCadastro" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning"><i class="fas fa-tag me-2"></i>Nomenclatura de Produtos
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="accordion accordion-flush" id="accordionCadastro">
+                        <div class="accordion-item bg-dark text-white border-secondary">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-dark text-white shadow-none" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#cad-c1">
+                                    📝 Padronização de Nomes
+                                </button>
+                            </h2>
+                            <div id="cad-c1" class="accordion-collapse collapse" data-bs-parent="#accordionCadastro">
+                                <div class="accordion-body text-secondary">
+                                    <p>Para manter o site organizado e profissional, siga este padrão ao nomear
+                                        produtos:</p>
+                                    <p><strong>Tipo + Característica Principal</strong></p>
+                                    <p>Exemplos Corretos:</p>
+                                    <ul>
+                                        <li><em>Legging Montaria Cirrê</em></li>
+                                        <li><em>Top Nadador Suplex</em></li>
+                                        <li><em>Conjunto Fitness Poliamida</em></li>
+                                    </ul>
+                                    <p>Evite colocar a cor no nome do produto (Ex: "Legging Preta"), pois o cliente
+                                        selecionará a cor através das opções de variação. Mantenha o nome "limpo"
+                                        para agrupar as variações corretamente se necessário.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Categorias -->
+    <div class="modal fade" id="modalCategorias" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning"><i class="fas fa-layer-group me-2"></i>Categorias do Site
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="accordion accordion-flush" id="accordionCategorias">
+                        <div class="accordion-item bg-dark text-white border-secondary">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-dark text-white shadow-none" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#cat-c1">
+                                    📂 Estrutura de Menu
+                                </button>
+                            </h2>
+                            <div id="cat-c1" class="accordion-collapse collapse" data-bs-parent="#accordionCategorias">
+                                <div class="accordion-body text-secondary">
+                                    <p>As categorias cadastradas ("Leggings", "Tops", "Shorts") transformam-se
+                                        automaticamente nos menus de navegação do site.</p>
+                                    <p><strong>Importante:</strong></p>
+                                    <ul>
+                                        <li>Evite criar categorias duplicadas com nomes ligeiramente diferentes (Ex:
+                                            "Legging" e "Calça Legging"). Isso fragmenta os produtos no site.</li>
+                                        <li>Produtos sem categoria podem não aparecer nas buscas principais. Sempre
+                                            classifique cada item.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/theme_manager.js"></script>
