@@ -87,6 +87,9 @@
                         onclick="addToCartCurrent()">
                         <i class="fa-solid fa-cart-plus me-2"></i> Adicionar ao Carrinho
                     </button>
+                    <button class="btn btn-success btn-lg rounded-pill py-3 fw-bold shadow-lg" onclick="buyNow()">
+                        <i class="fa-solid fa-bolt me-2"></i> Comprar Agora
+                    </button>
                     <button class="btn btn-outline-warning btn-lg rounded-pill py-3 fw-bold">
                         <i class="fa-regular fa-heart me-2"></i> Adicionar aos Favoritos
                     </button>
@@ -767,6 +770,41 @@
         }).then(() => {
             window.location.href = '/store/carrinho';
         });
+    }
+
+    function buyNow() {
+        const variant = findSelectedVariant();
+        if (allVariants.some(v => v.cor) && !selectedColor) {
+            Swal.fire({ icon: 'info', title: 'Selecione uma cor', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+        if (allVariants.some(v => v.tamanho) && !selectedSize) {
+            Swal.fire({ icon: 'info', title: 'Selecione um tamanho', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+        if (!variant && allVariants.length > 1) {
+            Swal.fire({ icon: 'error', title: 'Produto indisponível', text: 'Combinação não encontrada.', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+
+        const finalProduct = variant || currentProduct;
+        const qty = parseInt(document.getElementById('productQty').value);
+        let cart = JSON.parse(localStorage.getItem('fp_fitness_cart')) || [];
+        const existingItem = cart.find(item => item.id === finalProduct.id && item.color === (finalProduct.cor || null) && item.size === (finalProduct.tamanho || null));
+
+        if (existingItem) {
+            existingItem.quantity += qty;
+        } else {
+            cart.push({
+                id: finalProduct.id, quantity: qty, size: finalProduct.tamanho || null, color: finalProduct.cor || null,
+                nome: finalProduct.nome, price: finalProduct.preco_venda, image: finalProduct.imagem_url
+            });
+        }
+        localStorage.setItem('fp_fitness_cart', JSON.stringify(cart));
+        updateCartCount();
+
+        // Direct redirect to checkout
+        window.location.href = '/store/checkout';
     }
 
     // --- REVIEWS LOGIC ---

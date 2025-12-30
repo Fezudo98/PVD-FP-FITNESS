@@ -184,13 +184,18 @@ function renderCheckoutPage() {
         const itemTotal = item.price * item.quantity;
         subtotal += itemTotal;
         return `
-            <li class="list-group-item bg-transparent text-dark d-flex justify-content-between lh-sm border-bottom border-secondary-subtle">
-                <div>
-                    <h6 class="my-0 fw-bold text-dark">${item.nome || 'Produto'}</h6>
-                    <small class="text-secondary">Qtd: ${item.quantity}</small>
-                    ${item.size ? `<br><small class="text-secondary">Tamanho: ${item.size}</small>` : ''}
+            <li class="list-group-item bg-transparent text-dark d-flex justify-content-between lh-sm border-bottom border-secondary-subtle align-items-center">
+                <div class="d-flex align-items-center">
+                    <img src="${item.image ? '/uploads/' + item.image : 'https://via.placeholder.com/40'}" 
+                         alt="${item.nome}" 
+                         class="rounded me-2 object-fit-cover" 
+                         style="width: 40px; height: 40px;">
+                    <div>
+                        <h6 class="my-0 fw-bold text-dark" style="font-size: 0.9rem;">${item.nome || 'Produto'}</h6>
+                        <small class="text-secondary" style="font-size: 0.8rem;">Qtd: ${item.quantity} ${item.size ? ' | Tam: ' + item.size : ''}</small>
+                    </div>
                 </div>
-                <span class="text-dark fw-bold">R$ ${itemTotal.toFixed(2)}</span>
+                <span class="text-dark fw-bold" style="font-size: 0.9rem;">R$ ${itemTotal.toFixed(2)}</span>
             </li>
         `;
     }).join('');
