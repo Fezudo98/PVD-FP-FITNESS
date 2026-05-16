@@ -39,6 +39,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteContainer = document.getElementById('deleteContainer');
     const confirmCategoryActionBtn = document.getElementById('confirmCategoryActionBtn');
     const targetCategorySelect = document.getElementById('targetCategorySelect');
+    
+    const tamanhoSelect = document.getElementById('tamanhoSelect');
+    const tamanhoInput = document.getElementById('tamanhoInput');
+
+    tamanhoSelect.addEventListener('change', () => {
+        if (tamanhoSelect.value === 'Outro') {
+            tamanhoInput.style.display = 'block';
+            tamanhoInput.required = true;
+            tamanhoInput.focus();
+        } else {
+            tamanhoInput.style.display = 'none';
+            tamanhoInput.required = false;
+        }
+    });
 
     let isNewCategory = false;
 
@@ -387,7 +401,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('cor').value = produto.cor;
         document.getElementById('cor_hex').value = produto.cor_hex || '#000000';
-        document.getElementById('tamanho').value = produto.tamanho;
+        
+        const optionsTamanho = Array.from(tamanhoSelect.options).map(opt => opt.value);
+        if (produto.tamanho && optionsTamanho.includes(produto.tamanho) && produto.tamanho !== 'Outro') {
+            tamanhoSelect.value = produto.tamanho;
+            tamanhoInput.style.display = 'none';
+            tamanhoInput.value = '';
+            tamanhoInput.required = false;
+        } else if (produto.tamanho) {
+            tamanhoSelect.value = 'Outro';
+            tamanhoInput.style.display = 'block';
+            tamanhoInput.value = produto.tamanho;
+            tamanhoInput.required = true;
+        } else {
+            tamanhoSelect.value = '';
+            tamanhoInput.style.display = 'none';
+            tamanhoInput.value = '';
+            tamanhoInput.required = false;
+        }
+        
         document.getElementById('preco_custo').value = produto.preco_custo;
         document.getElementById('preco_venda').value = produto.preco_venda;
         document.getElementById('quantidade').value = produto.quantidade;
@@ -632,6 +664,12 @@ document.addEventListener('DOMContentLoaded', () => {
         produtoForm.reset();
         document.getElementById('produtoId').value = '';
         document.getElementById('cor_hex').value = '#000000';
+        
+        tamanhoSelect.value = '';
+        tamanhoInput.value = '';
+        tamanhoInput.style.display = 'none';
+        tamanhoInput.required = false;
+        
         document.getElementById('barcodePreviewContainer').style.display = 'none';
         document.getElementById('imagePreviewContainer').innerHTML = ''; // Limpa previews
         selectedFiles = []; // Clear selected files
@@ -662,7 +700,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         formData.append('cor', document.getElementById('cor').value);
         formData.append('cor_hex', document.getElementById('cor_hex').value);
-        formData.append('tamanho', document.getElementById('tamanho').value);
+        
+        const tamanhoValue = tamanhoSelect.value === 'Outro' ? tamanhoInput.value : tamanhoSelect.value;
+        formData.append('tamanho', tamanhoValue);
+        
         formData.append('preco_custo', document.getElementById('preco_custo').value);
         formData.append('preco_venda', document.getElementById('preco_venda').value);
         formData.append('quantidade', document.getElementById('quantidade').value);

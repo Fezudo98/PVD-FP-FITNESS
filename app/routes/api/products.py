@@ -112,6 +112,10 @@ def gerenciar_produtos(current_user):
         if Produto.query.filter_by(sku=standard_sku).first():
             return jsonify({'erro': f'Produto já existe (SKU: {standard_sku})'}), 400
         
+        quantidade_val = int(dados['quantidade'])
+        if quantidade_val < 0:
+            return jsonify({'erro': 'A quantidade não pode ser negativa'}), 400
+            
         novo_produto = Produto(
             sku=standard_sku,
             nome=dados['nome'],
@@ -121,7 +125,7 @@ def gerenciar_produtos(current_user):
             tamanho=dados.get('tamanho'),
             preco_custo=float(dados['preco_custo']),
             preco_venda=float(dados['preco_venda']),
-            quantidade=int(dados['quantidade']),
+            quantidade=quantidade_val,
             descricao=dados.get('descricao'),
             online_ativo=True
         )
@@ -214,7 +218,10 @@ def gerenciar_produto_especifico(current_user, produto_id):
         produto.tamanho = dados.get('tamanho', produto.tamanho)
         produto.preco_custo = float(dados.get('preco_custo', produto.preco_custo))
         produto.preco_venda = float(dados.get('preco_venda', produto.preco_venda))
-        produto.quantidade = int(dados.get('quantidade', produto.quantidade))
+        quantidade_val = int(dados.get('quantidade', produto.quantidade))
+        if quantidade_val < 0:
+            return jsonify({'erro': 'A quantidade não pode ser negativa'}), 400
+        produto.quantidade = quantidade_val
         produto.descricao = dados.get('descricao', produto.descricao)
         
         imagens_files = request.files.getlist('imagem')

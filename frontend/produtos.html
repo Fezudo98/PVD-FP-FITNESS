@@ -150,22 +150,28 @@
                                     name="cor_hex" value="#000000" title="Escolha a cor">
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label for="tamanho" class="form-label">Tamanho</label>
-                                <input type="text" class="form-control" id="tamanho" name="tamanho" list="tamanhosList">
-                                <datalist id="tamanhosList">
-                                    <option value="P">
-                                    <option value="M">
-                                    <option value="G">
-                                    <option value="GG">
-                                    <option value="XG">
-                                    <option value="Único">
-                                    <option value="34">
-                                    <option value="36">
-                                    <option value="38">
-                                    <option value="40">
-                                    <option value="42">
-                                    <option value="44">
-                                </datalist>
+                                <label for="tamanhoSelect" class="form-label">Tamanho</label>
+                                <div class="input-group">
+                                    <select class="form-select" id="tamanhoSelect">
+                                        <option value="">Selecione...</option>
+                                        <option value="PP">PP</option>
+                                        <option value="P">P</option>
+                                        <option value="M">M</option>
+                                        <option value="G">G</option>
+                                        <option value="GG">GG</option>
+                                        <option value="XG">XG</option>
+                                        <option value="XXG">XXG</option>
+                                        <option value="Único">Único</option>
+                                        <option value="34">34</option>
+                                        <option value="36">36</option>
+                                        <option value="38">38</option>
+                                        <option value="40">40</option>
+                                        <option value="42">42</option>
+                                        <option value="44">44</option>
+                                        <option value="Outro">Outro</option>
+                                    </select>
+                                    <input type="text" class="form-control" id="tamanhoInput" style="display: none;" placeholder="Digite">
+                                </div>
                             </div>
                         </div>
 
@@ -195,7 +201,7 @@
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label for="quantidade" class="form-label">Quantidade</label>
-                                <input type="number" class="form-control" id="quantidade" required>
+                                <input type="number" class="form-control" id="quantidade" min="0" required>
                             </div>
                         </div>
 

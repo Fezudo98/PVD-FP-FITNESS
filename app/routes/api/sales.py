@@ -113,14 +113,18 @@ def registrar_venda(current_user):
             nova_venda.pagamentos.append(Pagamento(forma=pg_data['forma'], valor=round(float(pg_data['valor']), 2)))
 
         for item_data in itens_venda_data:
+            quantidade_venda = int(item_data['quantidade'])
+            if quantidade_venda <= 0:
+                return jsonify({'erro': 'Quantidade do item deve ser maior que zero.'}), 400
+                
             produto = produtos_map.get(item_data['id_produto'])
-            if produto.quantidade < item_data['quantidade']:
+            if produto.quantidade < quantidade_venda:
                 db.session.rollback()
                 return jsonify({'erro': f'Estoque insuficiente para {produto.nome}.'}), 400
-            produto.quantidade -= item_data['quantidade']
+            produto.quantidade -= quantidade_venda
             nova_venda.itens.append(ItemVenda(
                 id_produto=produto.id, 
-                quantidade=item_data['quantidade'], 
+                quantidade=quantidade_venda, 
                 preco_unitario_momento=produto.preco_venda,
                 preco_custo_momento=produto.preco_custo
             ))
