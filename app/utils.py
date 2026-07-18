@@ -74,11 +74,14 @@ def generate_standard_sku(nome, cor, tamanho):
         text = text.lower().strip()
         text = re.sub(r'[^\w\s-]', '', text)
         text = re.sub(r'[-\s]+', '-', text)
-        return text
+        return text.strip('-')
 
     nome_slug = slugify(nome)
     cor_slug = slugify(cor if cor else "unica")
-    tamanho_slug = (tamanho if tamanho else "U").upper().replace(" ", "")
+    tamanho_clean = normalize('NFKD', str(tamanho) if tamanho else "U").encode('ASCII', 'ignore').decode('ASCII')
+    tamanho_slug = re.sub(r'[^\w\s-]', '', tamanho_clean).strip().upper().replace(" ", "")
+    if not tamanho_slug:
+        tamanho_slug = "U"
     
     return f"{nome_slug}-{cor_slug}-{tamanho_slug}"
 

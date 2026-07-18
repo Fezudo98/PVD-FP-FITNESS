@@ -180,71 +180,77 @@ def gerenciar_produto_especifico(current_user, produto_id):
     if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
 
     if request.method == 'PUT':
-        dados = request.form
-        nome_efetivo = dados.get('nome', produto.nome)
-        cor_efetiva = dados.get('cor', produto.cor)
-        tamanho_efetivo = dados.get('tamanho', produto.tamanho)
-        novo_sku = generate_standard_sku(nome_efetivo, cor_efetiva, tamanho_efetivo)
-        
-        if novo_sku != produto.sku:
-            if Produto.query.filter_by(sku=novo_sku).first():
-                return jsonify({'erro': f'Conflito: SKU Padronizado {novo_sku} já existe em outro produto.'}), 400
+        try:
+            dados = request.form
+            nome_efetivo = dados.get('nome', produto.nome)
+            cor_efetiva = dados.get('cor', produto.cor)
+            tamanho_efetivo = dados.get('tamanho', produto.tamanho)
+            novo_sku = generate_standard_sku(nome_efetivo, cor_efetiva, tamanho_efetivo)
             
-            if produto.codigo_barras_url:
-                old_barcode_path = os.path.join(base_dir, 'barcodes', produto.codigo_barras_url)
-                if os.path.exists(old_barcode_path):
-                    try: os.remove(old_barcode_path)
-                    except: pass
-            
-            produto.sku = novo_sku
-            try:
-                from barcode.writer import SVGWriter
-                barcodes_dir = os.path.join(base_dir, 'barcodes')
-                os.makedirs(barcodes_dir, exist_ok=True)
-                filename = f"{secure_filename(produto.sku)}"
-                filepath = os.path.join(barcodes_dir, filename)
-                CODE128 = barcode.get_barcode_class('code128')
-                codigo_gerado = CODE128(produto.sku, writer=SVGWriter())
-                codigo_gerado.save(filepath)
-                produto.codigo_barras_url = f"{filename}.svg"
-            except Exception as e:
-                print(f"Erro ao regenerar barcode: {e}")
-                return jsonify({'erro': f'Erro ao gerar código de barras: {str(e)}'}), 500
-
-        produto.nome = dados.get('nome', produto.nome)
-        produto.categoria = dados.get('categoria', produto.categoria)
-        produto.cor = dados.get('cor', produto.cor)
-        produto.cor_hex = dados.get('cor_hex', produto.cor_hex)
-        produto.tamanho = dados.get('tamanho', produto.tamanho)
-        produto.preco_custo = float(dados.get('preco_custo', produto.preco_custo))
-        produto.preco_venda = float(dados.get('preco_venda', produto.preco_venda))
-        quantidade_val = int(dados.get('quantidade', produto.quantidade))
-        if quantidade_val < 0:
-            return jsonify({'erro': 'A quantidade não pode ser negativa'}), 400
-        produto.quantidade = quantidade_val
-        produto.descricao = dados.get('descricao', produto.descricao)
-        
-        imagens_files = request.files.getlist('imagem')
-        if imagens_files:
-            uploads_dir = os.path.join(base_dir, 'uploads')
-            os.makedirs(uploads_dir, exist_ok=True)
-            
-            for i, file in enumerate(imagens_files):
-                if file.filename == '':
-                    continue
-                filename = secure_filename(file.filename)
-                filename = f"{int(datetime.now().timestamp())}_{i}_{filename}"
-                file.save(os.path.join(uploads_dir, filename))
+            if novo_sku != produto.sku:
+                if Produto.query.filter_by(sku=novo_sku).first():
+                    return jsonify({'erro': f'Conflito: SKU Padronizado {novo_sku} já existe em outro produto.'}), 400
                 
-                if i == 0:
-                    produto.imagem_url = filename
+                if produto.codigo_barras_url:
+                    old_barcode_path = os.path.join(base_dir, 'barcodes', produto.codigo_barras_url)
+                    if os.path.exists(old_barcode_path):
+                        try: os.remove(old_barcode_path)
+                        except: pass
                 
-                nova_img = ProdutoImagem(produto_id=produto.id, imagem_url=filename)
-                db.session.add(nova_img)
+                produto.sku = novo_sku
+                try:
+                    from barcode.writer import SVGWriter
+                    barcodes_dir = os.path.join(base_dir, 'barcodes')
+                    os.makedirs(barcodes_dir, exist_ok=True)
+                    filename = f"{secure_filename(produto.sku)}"
+                    filepath = os.path.join(barcodes_dir, filename)
+                    CODE128 = barcode.get_barcode_class('code128')
+                    codigo_gerado = CODE128(produto.sku, writer=SVGWriter())
+                    codigo_gerado.save(filepath)
+                    produto.codigo_barras_url = f"{filename}.svg"
+                except Exception as e:
+                    print(f"Erro ao regenerar barcode: {e}")
+                    # Não aborta a transação em caso de erro de arquivo do barcode, assim como no POST
 
-        registrar_log(current_user, "Produto Atualizado", f"SKU: {produto.sku}")
-        db.session.commit()
-        return jsonify(produto.to_dict())
+            produto.nome = dados.get('nome', produto.nome)
+            produto.categoria = dados.get('categoria', produto.categoria)
+            produto.cor = dados.get('cor', produto.cor)
+            produto.cor_hex = dados.get('cor_hex', produto.cor_hex)
+            produto.tamanho = dados.get('tamanho', produto.tamanho)
+            produto.preco_custo = float(dados.get('preco_custo', produto.preco_custo))
+            produto.preco_venda = float(dados.get('preco_venda', produto.preco_venda))
+            quantidade_val = int(dados.get('quantidade', produto.quantidade))
+            if quantidade_val < 0:
+                db.session.rollback()
+                return jsonify({'erro': 'A quantidade não pode ser negativa'}), 400
+            produto.quantidade = quantidade_val
+            produto.descricao = dados.get('descricao', produto.descricao)
+            
+            imagens_files = request.files.getlist('imagem')
+            if imagens_files:
+                uploads_dir = os.path.join(base_dir, 'uploads')
+                os.makedirs(uploads_dir, exist_ok=True)
+                
+                for i, file in enumerate(imagens_files):
+                    if file.filename == '':
+                        continue
+                    filename = secure_filename(file.filename)
+                    filename = f"{int(datetime.now().timestamp())}_{i}_{filename}"
+                    file.save(os.path.join(uploads_dir, filename))
+                    
+                    if i == 0:
+                        produto.imagem_url = filename
+                    
+                    nova_img = ProdutoImagem(produto_id=produto.id, imagem_url=filename)
+                    db.session.add(nova_img)
+
+            registrar_log(current_user, "Produto Atualizado", f"SKU: {produto.sku}")
+            db.session.commit()
+            return jsonify(produto.to_dict())
+        except Exception as e:
+            db.session.rollback()
+            print(f"Erro ao atualizar produto: {e}")
+            return jsonify({'erro': f'Erro interno ao atualizar produto: {str(e)}'}), 500
 
     if request.method == 'DELETE':
         if produto.imagem_url:
