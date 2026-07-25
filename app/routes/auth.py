@@ -60,6 +60,18 @@ def login():
     return jsonify({'token': token, 'user': user.to_dict()})
 
 # --- Autenticação Cliente ---
+@auth_bp.route('/api/client/check-cpf/<cpf>', methods=['GET'])
+def check_client_cpf(cpf):
+    # Remove formatações caso venham
+    cpf_limpo = cpf.replace('.', '').replace('-', '')
+    
+    # Busca cliente por CPF (tentando match exato com ou sem formatação)
+    cliente = Cliente.query.filter((Cliente.cpf == cpf) | (Cliente.cpf == cpf_limpo)).first()
+    
+    if cliente:
+        return jsonify({'exists': True})
+    return jsonify({'exists': False})
+
 @auth_bp.route('/api/client/register', methods=['POST'])
 def register_client():
     dados = request.get_json()

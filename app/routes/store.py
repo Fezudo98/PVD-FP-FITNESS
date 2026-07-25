@@ -471,7 +471,7 @@ def calcular_frete():
     opcoes = []
     
     # 1. Retirada (Sempre grátis)
-    opcoes.append({'id': 'retirada', 'nome': 'Retirada na Loja (Grátis)', 'valor': 0.00, 'prazo': 'Pronto em 1h'})
+    opcoes.append({'id': 'retirada', 'nome': 'Retirada na Loja (Grátis)', 'valor': 0.00, 'prazo': 'Pronto em 1h (Seg-Sex, 09h às 18h)'})
     
     # 2. Motoboy (A Combinar)
     opcoes.append({'id': 'motoboy', 'nome': 'Entrega Expressa (Motoboy) - Valor a combinar', 'valor': 0.00, 'prazo': '1 dia útil'})
@@ -561,8 +561,22 @@ def store_checkout():
     desconto_total = 0.0
     cupom_aplicado = None
     
-    if cupom_id:
-        cupom = Cupom.query.get(cupom_id)
+    if cupom_id is not None:
+        if str(cupom_id) == '0':
+            percent_config = Configuracao.query.filter_by(chave='promo_primeira_compra_percent').first()
+            percent = float(percent_config.valor) if percent_config else 10.0
+            class MockCupom:
+                pass
+            cupom = MockCupom()
+            cupom.codigo = 'PRIMEIRACOMPRA'
+            cupom.ativo = True
+            cupom.aplicacao = 'total'
+            cupom.tipo_desconto = 'percentual'
+            cupom.valor_desconto = percent
+            cupom.produtos = []
+        else:
+            cupom = Cupom.query.get(cupom_id)
+
         if cupom and cupom.ativo:
             if cupom.codigo == 'PRIMEIRACOMPRA':
                 has_orders = Venda.query.filter_by(id_cliente=cliente.id).filter(Venda.status != 'Cancelada').count()
@@ -614,8 +628,7 @@ def store_checkout():
         transportadora=dados.get('transportadora')
     )
 
-    
-    if cupom_aplicado:
+    if cupom_aplicado and type(cupom_aplicado).__name__ != 'MockCupom':
         nova_venda.cupons.append(cupom_aplicado)
         
     db.session.add(nova_venda)
@@ -669,48 +682,32 @@ def store_checkout():
 
     sdk = mercadopago.SDK(mp_access_token)
 
-    # Preparar itens para a Preference do Mercado Pago
-    mp_items = []
-    for item_obj in itens_venda_objs:
-        produto = Produto.query.get(item_obj.id_produto)
-        mp_items.append({
-            "title": produto.nome,
-            "quantity": item_obj.quantidade,
-            "unit_price": item_obj.preco_unitario_momento,
-            "currency_id": "BRL"
-        })
-    
-    # Se houver frete, adiciona como um item na preferência
-    if nova_venda.taxa_entrega > 0:
-        mp_items.append({
-            "title": "Taxa de Entrega",
-            "quantity": 1,
-            "unit_price": float(nova_venda.taxa_entrega),
-            "currency_id": "BRL"
-        })
-        
-    # Se houver desconto, adiciona um item negativo
-    if desconto_total > 0:
-        mp_items.append({
-            "title": "Desconto Aplicado",
-            "quantity": 1,
-            "unit_price": -float(desconto_total),
-            "currency_id": "BRL"
-        })
+    # Para evitar erros de arredondamento de centavos ou rejeição por descontos negativos
+    # no Mercado Pago, passamos o totalizador consolidado.
+    mp_items = [{
+        "title": f"Pedido #{nova_venda.id} - FP Fitness",
+        "quantity": 1,
+        "unit_price": round(total_final + nova_venda.taxa_entrega, 2),
+        "currency_id": "BRL"
+    }]
 
     preference_data = {
         "items": mp_items,
         "payer": {
             "name": cliente.nome,
             "email": cliente.email,
+            "identification": {
+                "type": "CPF",
+                "number": cliente.cpf.replace('.', '').replace('-', '') if cliente.cpf else ""
+            }
         },
         "external_reference": str(nova_venda.id),
         "back_urls": {
-            "success": f"{request.url_root.rstrip('/')}/store/conta",
-            "failure": f"{request.url_root.rstrip('/')}/store/checkout",
-            "pending": f"{request.url_root.rstrip('/')}/store/conta"
+            "success": "http://localhost:5000/store/conta",
+            "failure": "http://localhost:5000/store/checkout",
+            "pending": "http://localhost:5000/store/conta"
         },
-        "auto_return": "approved",
+        # "auto_return": "approved", # Comentado para evitar erro de validação estrita no ambiente local
     }
     
     preference_response = sdk.preference().create(preference_data)
@@ -718,7 +715,10 @@ def store_checkout():
     
     if "init_point" not in preference:
         db.session.rollback()
-        return jsonify({'erro': 'Erro ao gerar checkout do Mercado Pago.', 'detalhes': preference}), 500
+        import json
+        detalhes_str = json.dumps(preference)
+        print("MERCADO PAGO ERROR:", detalhes_str, flush=True)
+        return jsonify({'erro': f'Erro MP: {detalhes_str}'}), 500
 
     db.session.commit()
     
