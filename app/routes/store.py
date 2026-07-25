@@ -6,15 +6,42 @@ import os
 import json
 import urllib.request
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 from ..extensions import db
-from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao
+from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, current_brazil_time
 from ..utils import token_required, client_token_required, validate_cpf
 from ..services.frete_service import calcular_melhor_envio
 import mercadopago
 
 store_bp = Blueprint('store', __name__)
+
+def limpar_vendas_abandonadas():
+    """
+    Procura por vendas online Pendentes que tenham mais de 30 minutos e as cancela, 
+    devolvendo o estoque dos produtos.
+    """
+    try:
+        limite_tempo = current_brazil_time() - timedelta(minutes=30)
+        vendas_abandonadas = Venda.query.filter(
+            Venda.status == 'Pendente',
+            Venda.data_hora < limite_tempo,
+            Venda.id_vendedor == None
+        ).all()
+
+        for venda in vendas_abandonadas:
+            for item in venda.itens:
+                produto = Produto.query.get(item.id_produto)
+                if produto:
+                    produto.quantidade += item.quantidade
+            venda.status = 'Cancelada'
+            
+        if vendas_abandonadas:
+            db.session.commit()
+            print(f"[Estoque] {len(vendas_abandonadas)} vendas abandonadas canceladas.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"[Estoque] Erro ao limpar vendas abandonadas: {e}")
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'mp4', 'mov', 'avi'}
 
@@ -63,6 +90,7 @@ def get_public_theme():
 
 @store_bp.route('/api/store/products', methods=['GET'])
 def store_get_products():
+    limpar_vendas_abandonadas()
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 12, type=int)
     categoria = request.args.get('categoria')
@@ -442,49 +470,12 @@ def calcular_frete():
     cep_clean = ''.join(filter(str.isdigit, str(cep_destino)))
     opcoes = []
     
-    # 1. Retirada
+    # 1. Retirada (Sempre grátis)
     opcoes.append({'id': 'retirada', 'nome': 'Retirada na Loja (Grátis)', 'valor': 0.00, 'prazo': 'Pronto em 1h'})
     
-    # 2. Motoboy (Google Maps Distance Matrix)
-    motoboy_added = False
-    try:
-        lat_store = current_app.config['LOJA_LAT']
-        lon_store = current_app.config['LOJA_LON']
-        max_dist = current_app.config['ENTREGA_RAIO_MAX_KM']
-        price_per_km = current_app.config['ENTREGA_PRECO_POR_KM']
-        min_fee = current_app.config['ENTREGA_TAXA_MINIMA']
-        api_key = current_app.config.get('GOOGLE_MAPS_API_KEY')
-
-        if len(cep_clean) == 8 and api_key and 'COLE_SUA_CHAVE' not in api_key:
-            url = f"https://maps.googleapis.com/maps/api/distancematrix/json?origins={lat_store},{lon_store}&destinations={cep_clean}&mode=driving&key={api_key}"
-            req = urllib.request.Request(url)
-            with urllib.request.urlopen(req, timeout=5) as response:
-                result = json.loads(response.read().decode())
-            
-            if result['status'] == 'OK' and result['rows'][0]['elements'][0]['status'] == 'OK':
-                dist_meters = result['rows'][0]['elements'][0]['distance']['value']
-                dist_km = dist_meters / 1000.0
-                
-                if dist_km <= max_dist:
-                    total_frete = max(min_fee, dist_km * price_per_km)
-                    opcoes.append({'id': 'motoboy', 'nome': 'Entrega Expressa (Motoboy)', 'valor': round(total_frete, 2), 'prazo': '1 dia útil'})
-                    motoboy_added = True
-    except Exception as e:
-        print(f"Erro calculo motoboy (GoogleMaps): {e}")
-
-    if not motoboy_added:
-        try:
-            cep_int = int(cep_clean)
-            # Fallback 1: Local (Maracanaú - 61900-000 to 61999-999)
-            if 61900000 <= cep_int <= 61999999:
-                 min_fee = current_app.config.get('ENTREGA_TAXA_MINIMA', 5.00)
-                 opcoes.append({'id': 'motoboy', 'nome': 'Entrega Motoboy (Local)', 'valor': float(min_fee), 'prazo': '1 dia útil'})
-            # Fallback 2: Fortaleza (60000-000 to 60999-999) + Metro
-            elif 60000000 <= cep_int <= 61999999: # Covering broader range if needed
-                 opcoes.append({'id': 'motoboy', 'nome': 'Entrega Motoboy (Metropolitana)', 'valor': 20.00, 'prazo': '1 dia útil'})
-        except: pass
-
-    # 3. PAC/SEDEX
+    # 2. Motoboy (A Combinar)
+    opcoes.append({'id': 'motoboy', 'nome': 'Entrega Expressa (Motoboy) - Valor a combinar', 'valor': 0.00, 'prazo': '1 dia útil'})
+    
     # 3. Melhor Envio (Correios/Transportadoras)
     try:
         itens_carrinho = data.get('items', [])
@@ -504,6 +495,7 @@ def get_store_config():
 
 @store_bp.route('/api/store/checkout', methods=['POST'])
 def store_checkout():
+    limpar_vendas_abandonadas()
     dados = request.get_json()
     cliente_data = dados.get('cliente')
     itens_data = dados.get('itens')

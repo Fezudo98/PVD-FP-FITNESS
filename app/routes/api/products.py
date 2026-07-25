@@ -1,12 +1,16 @@
+# pyrefly: ignore [missing-import]
 from flask import request, jsonify, current_app
 from . import api_bp
 from ...extensions import db
 from ...models import Produto, ProdutoImagem
 from ...utils import token_required, registrar_log, generate_standard_sku
+# pyrefly: ignore [missing-import]
 from sqlalchemy import or_
 import os
+# pyrefly: ignore [missing-import]
 from werkzeug.utils import secure_filename
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 import barcode
 
 @api_bp.route('/api/produtos/nomes', methods=['GET'])
@@ -151,6 +155,7 @@ def gerenciar_produtos(current_user):
                 novo_produto.imagens.append(nova_img)
 
         try:
+            # pyrefly: ignore [missing-import]
             from barcode.writer import SVGWriter
             barcodes_dir = os.path.join(base_dir, 'barcodes')
             os.makedirs(barcodes_dir, exist_ok=True)
@@ -199,6 +204,7 @@ def gerenciar_produto_especifico(current_user, produto_id):
                 
                 produto.sku = novo_sku
                 try:
+                    # pyrefly: ignore [missing-import]
                     from barcode.writer import SVGWriter
                     barcodes_dir = os.path.join(base_dir, 'barcodes')
                     os.makedirs(barcodes_dir, exist_ok=True)
@@ -365,6 +371,7 @@ def gerar_barcode_manual(current_user, produto_id):
     produto = Produto.query.get_or_404(produto_id)
     if not produto.sku: return jsonify({'erro': 'Produto precisa de SKU.'}), 400
     try:
+        # pyrefly: ignore [missing-import]
         from barcode.writer import SVGWriter
         barcodes_dir = os.path.join(base_dir, 'barcodes')
         os.makedirs(barcodes_dir, exist_ok=True)

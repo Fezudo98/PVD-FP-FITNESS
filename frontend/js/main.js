@@ -780,3 +780,4 @@ async function updateOrderStatus(id, newStatus) {
         Swal.fire('Erro', error.message, 'error');
     }
 }
+
