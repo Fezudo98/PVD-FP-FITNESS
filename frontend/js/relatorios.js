@@ -130,7 +130,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${venda.status === 'Concluída'
                     ? `<button class="btn btn-sm btn-warning reembolsar-btn" data-id="${venda.id}">Reembolsar</button>`
                     : `<span class="badge bg-danger">${venda.status}</span>`
-                }
+                    }
+                    ${(venda.status === 'Concluída' && venda.tipo_entrega && venda.tipo_entrega.startsWith('me_') && !venda.codigo_rastreio)
+                    ? `<button class="btn btn-sm btn-success gerar-etiqueta-btn ms-1" data-id="${venda.id}">Gerar Etiqueta</button>`
+                    : ''
+                    }
+                    ${venda.codigo_rastreio ? `<span class="badge bg-success ms-1"><i class="bi bi-box-seam"></i> Enviado</span>` : ''}
                 </td>
             `;
         });
@@ -212,7 +217,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const target = event.target;
         if (target.classList.contains('reembolsar-btn')) {
             const vendaId = target.dataset.id;
-            if (confirm(`Tem certeza que deseja reembolsar a venda ID ${vendaId}? Esta ação não pode ser desfeita e o estoque dos produtos será devolvido.`)) {
+            const confirmMsg = `ATENÇÃO: Você tem certeza que deseja reembolsar a venda ID ${vendaId}?\n\nSe esta foi uma venda online, o dinheiro será IMEDIATAMENTE estornado via Mercado Pago. O estoque dos produtos também será devolvido.\n\nESTA AÇÃO É IRREVERSÍVEL.`;
+            if (confirm(confirmMsg)) {
                 try {
                     const response = await fetch(`${API_URL}/api/vendas/${vendaId}/reembolsar`, { method: 'POST', headers: { 'x-access-token': token } });
                     const result = await response.json();
@@ -223,6 +229,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Erro ao reembolsar venda:', error);
                     alert(`Falha no reembolso: ${error.message}`);
                 }
+            }
+        }
+        if (target.classList.contains('gerar-etiqueta-btn')) {
+            const vendaId = target.dataset.id;
+            const originalText = target.innerHTML;
+            target.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Gerando...';
+            target.disabled = true;
+
+            try {
+                const response = await fetch(`${API_URL}/api/vendas/${vendaId}/etiqueta`, { method: 'POST', headers: { 'x-access-token': token } });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.erro || 'Erro desconhecido');
+                
+                alert('Etiqueta gerada com sucesso! O PDF será aberto em uma nova guia.');
+                window.open(result.url, '_blank');
+                fetchAndRenderDashboard();
+            } catch (error) {
+                console.error('Erro ao gerar etiqueta:', error);
+                alert(`Falha ao gerar etiqueta: ${error.message}`);
+                target.innerHTML = originalText;
+                target.disabled = false;
             }
         }
         if (target.classList.contains('view-receipt-btn')) {

@@ -125,6 +125,7 @@ class Pagamento(db.Model):
     valor = db.Column(db.Float, nullable=False)
     forma = db.Column(db.String(50), nullable=False) 
     id_venda = db.Column(db.Integer, db.ForeignKey('venda.id'), nullable=False)
+    transacao_id = db.Column(db.String(100), nullable=True)
 
 venda_cupons = db.Table('venda_cupons',
     db.Column('venda_id', db.Integer, db.ForeignKey('venda.id'), primary_key=True),

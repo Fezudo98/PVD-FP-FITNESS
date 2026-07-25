@@ -760,7 +760,8 @@ def mercadopago_webhook():
                     pg = Pagamento(
                         valor=venda.total_venda,
                         forma=metodo,
-                        id_venda=venda.id
+                        id_venda=venda.id,
+                        transacao_id=str(payment_id)
                     )
                     db.session.add(pg)
                     db.session.commit()

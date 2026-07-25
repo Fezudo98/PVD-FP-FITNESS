@@ -1,9 +1,12 @@
 from flask import request, jsonify, current_app
 from . import api_bp
 from ...extensions import db
-from ...models import Venda, ItemVenda, Pagamento, Cupom, MovimentacaoCaixa, Produto, Usuario, Cliente
+from ...models import Venda, ItemVenda, Pagamento, Cupom, MovimentacaoCaixa, Produto, Usuario, Cliente, Configuracao
 from ...utils import token_required, registrar_log, salvar_recibo_html
+from ...services.etiqueta_service import gerar_etiqueta_me
 import math
+import os
+import mercadopago
 from datetime import datetime, timedelta
 from sqlalchemy import func
 
@@ -247,6 +250,20 @@ def reembolsar_venda(current_user, venda_id):
             )
             db.session.add(mov_reembolso)
 
+        # Integração de Estorno Mercado Pago
+        for p in venda.pagamentos:
+            if p.forma == 'mercadopago' and p.transacao_id:
+                config_mp = Configuracao.query.filter_by(chave='MERCADOPAGO_ACCESS_TOKEN').first()
+                mp_access_token = config_mp.valor if config_mp else os.environ.get('MERCADOPAGO_ACCESS_TOKEN')
+                if not mp_access_token:
+                    return jsonify({'erro': 'Token do MP não configurado.'}), 500
+                
+                sdk = mercadopago.SDK(mp_access_token)
+                refund_response = sdk.refund().create(p.transacao_id)
+                # Verifica se a criação do estorno teve sucesso
+                if refund_response.get("status") not in (200, 201):
+                    raise Exception(f"Erro na API do Mercado Pago: {refund_response}")
+
         for item in venda.itens:
             if item.produto: item.produto.quantidade += item.quantidade
         venda.status = 'Reembolsada'
@@ -256,6 +273,20 @@ def reembolsar_venda(current_user, venda_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': 'Erro ao processar reembolso.', 'detalhes': str(e)}), 500
+
+@api_bp.route('/api/vendas/<int:venda_id>/etiqueta', methods=['POST'])
+@token_required
+def gerar_etiqueta(current_user, venda_id):
+    if current_user.role != 'admin': return jsonify({'erro': 'Acesso negado.'}), 403
+    venda = Venda.query.get_or_404(venda_id)
+    
+    try:
+        url_pdf = gerar_etiqueta_me(venda)
+        db.session.commit()
+        return jsonify({'mensagem': 'Etiqueta gerada com sucesso!', 'url': url_pdf})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'erro': str(e)}), 500
 
 @api_bp.route('/api/vendas/online/pendentes/count', methods=['GET'])
 @token_required

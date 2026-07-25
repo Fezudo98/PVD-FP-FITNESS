@@ -1,0 +1,23 @@
+[Unit]
+Description=Gunicorn instance to serve FP Fitness App
+After=network.target
+
+[Service]
+User=root
+# Se você for usar um usuário não-root (recomendado), altere o User acima e dê as devidas permissões
+Group=www-data
+WorkingDirectory=/var/www/fpfitness
+Environment="PATH=/var/www/fpfitness/venv/bin"
+Environment="FLASK_APP=run.py"
+Environment="FLASK_ENV=production"
+
+# Configura o Gunicorn. 
+# -w 3 significa 3 workers (capaz de segurar múltiplos acessos concorrentes)
+# -b 127.0.0.1:8000 diz para rodar na porta 8000
+ExecStart=/var/www/fpfitness/venv/bin/gunicorn -w 3 -b 127.0.0.1:8000 "app:create_app()"
+
+# Se o processo cair, reinicia automaticamente
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
