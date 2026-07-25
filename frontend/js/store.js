@@ -404,7 +404,7 @@ async function submitOrder() {
                     // Better: save data to localstorage to restore?
                     // checkout.html already has auto-fill from user data, but maybe we want to keep current form?
                     // It's safer to just redirect to login page for now.
-                    window.location.href = '/store/login';
+                    window.location.href = '/store/login?redirect=/store/checkout';
                 }
             });
             return;
@@ -657,5 +657,44 @@ document.addEventListener('DOMContentLoaded', () => {
         form.addEventListener('input', saveFormData);
         form.addEventListener('change', saveFormData);
         setTimeout(restoreFormData, 500); // Small delay to override autofill if needed
+        
+        const cpfInput = document.getElementById('cpf');
+        if (cpfInput) {
+            cpfInput.addEventListener('blur', async () => {
+                const cpfVal = cpfInput.value.replace(/\D/g, '');
+                if (cpfVal.length === 11) {
+                    try {
+                        const res = await fetch(`/api/client/data-by-cpf/${cpfVal}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if(data.nome) document.getElementById('nome').value = data.nome;
+                            if(data.email) document.getElementById('email').value = data.email;
+                            if(data.telefone) document.getElementById('telefone').value = data.telefone;
+                            if(data.cep) {
+                                document.getElementById('cep').value = data.cep;
+                                document.getElementById('cep').dispatchEvent(new Event('blur'));
+                            }
+                            if(data.rua) document.getElementById('rua').value = data.rua;
+                            if(data.numero) document.getElementById('numero').value = data.numero;
+                            if(data.bairro) document.getElementById('bairro').value = data.bairro;
+                            if(data.cidade) document.getElementById('cidade').value = data.cidade;
+                            if(data.estado) document.getElementById('estado').value = data.estado;
+                            
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Cadastro Encontrado!',
+                                text: 'Preenchemos seus dados automaticamente.',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                toast: true,
+                                position: 'top-end'
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Erro ao buscar CPF:', e);
+                    }
+                }
+            });
+        }
     }
 });

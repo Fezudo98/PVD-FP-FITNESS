@@ -72,6 +72,33 @@ def check_client_cpf(cpf):
         return jsonify({'exists': True})
     return jsonify({'exists': False})
 
+@auth_bp.route('/api/client/data-by-cpf/<cpf>', methods=['GET'])
+def get_client_by_cpf(cpf):
+    cpf_limpo = cpf.replace('.', '').replace('-', '')
+    
+    # Formata CPF limpo (ex: 61442733365) para pontuado (614.427.333-65) para garantir match
+    if len(cpf_limpo) == 11:
+        cpf_formatado = f"{cpf_limpo[:3]}.{cpf_limpo[3:6]}.{cpf_limpo[6:9]}-{cpf_limpo[9:]}"
+    else:
+        cpf_formatado = cpf
+        
+    cliente = Cliente.query.filter((Cliente.cpf == cpf) | (Cliente.cpf == cpf_limpo) | (Cliente.cpf == cpf_formatado)).first()
+    
+    if cliente:
+        # Avoid sending password hash
+        return jsonify({
+            'nome': cliente.nome,
+            'email': cliente.email,
+            'telefone': cliente.telefone,
+            'rua': cliente.endereco_rua,
+            'numero': cliente.endereco_numero,
+            'bairro': cliente.endereco_bairro,
+            'cidade': cliente.endereco_cidade,
+            'estado': cliente.endereco_estado,
+            'cep': cliente.endereco_cep
+        })
+    return jsonify({'erro': 'Cliente não encontrado'}), 404
+
 @auth_bp.route('/api/client/register', methods=['POST'])
 def register_client():
     dados = request.get_json()

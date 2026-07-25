@@ -212,7 +212,9 @@
                         timer: 1500,
                         showConfirmButton: false
                     }).then(() => {
-                        window.location.href = '/store/conta';
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const redirectUrl = urlParams.get('redirect');
+                        window.location.href = redirectUrl ? redirectUrl : '/store/conta';
                     });
                     return; // Sucesso como cliente, encerra aqui
                 }

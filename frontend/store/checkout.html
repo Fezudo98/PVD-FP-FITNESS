@@ -15,6 +15,12 @@
                     <form id="checkoutForm">
                         <div class="row g-3">
                             <div class="col-md-6">
+                                <label for="cpf" class="form-label text-muted small text-uppercase fw-bold">CPF</label>
+                                <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
+                                    id="cpf" required style="padding: 0.75rem;" maxlength="14" placeholder="Digite seu CPF">
+                                <div id="cpfFeedback" class="form-text mt-1" style="min-height: 1.5em;"></div>
+                            </div>
+                            <div class="col-md-6">
                                 <label for="nome" class="form-label text-muted small text-uppercase fw-bold">Nome
                                     Completo</label>
                                 <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
@@ -25,12 +31,6 @@
                                     class="form-label text-muted small text-uppercase fw-bold">Email</label>
                                 <input type="email" class="form-control bg-white text-dark border-secondary-subtle"
                                     id="email" required style="padding: 0.75rem;">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="cpf" class="form-label text-muted small text-uppercase fw-bold">CPF</label>
-                                <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
-                                    id="cpf" required style="padding: 0.75rem;" maxlength="14">
-                                <div id="cpfFeedback" class="form-text mt-1" style="min-height: 1.5em;"></div>
                             </div>
                             <div class="col-md-6">
                                 <label for="telefone"
