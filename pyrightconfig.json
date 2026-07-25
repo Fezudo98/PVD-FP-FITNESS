@@ -1,0 +1,10 @@
+{
+  "venvPath": ".",
+  "venv": "venv",
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
+  "reportGeneralTypeIssues": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownVariableType": "none",
+  "reportCallIssue": "none"
+}

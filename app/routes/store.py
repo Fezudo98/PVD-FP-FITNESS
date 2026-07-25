@@ -12,6 +12,7 @@ from ..extensions import db
 from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao
 from ..utils import token_required, client_token_required, validate_cpf
 from ..services.frete_service import calcular_melhor_envio
+import mercadopago
 
 store_bp = Blueprint('store', __name__)
 
@@ -666,36 +667,113 @@ def store_checkout():
 
     db.session.add(nova_venda) # Ensure updates are tracked
     
-    # Pagamento (Moved after total update)
-    pagamento_data = dados.get('pagamento', {})
-    # Handle list or object. Frontend sends list now [{...}].
-    # But backend code lines 616 looked for get('pagamento', {}) -> Dict.
-    # My frontend change sent `pagamento: [pagamento]`.
-    # Wait. If I changed frontend to send LIST, this backend code `dados.get('pagamento', {})` might break if it expects dict?
-    # `dados.get` returns the list if it is a list.
-    # `if pagamento_data:` (List is truthy).
-    # `pagamento_data.get('forma')` -> List has no .get! CRASH RISK!
+    # Configurar Mercado Pago
+    config_mp = Configuracao.query.filter_by(chave='MERCADOPAGO_ACCESS_TOKEN').first()
+    mp_access_token = config_mp.valor if config_mp else os.environ.get('MERCADOPAGO_ACCESS_TOKEN')
     
-    # I MUST Handle the frontend format change.
-    # If `pagamento_data` is a list, take first item.
-    if isinstance(pagamento_data, list) and len(pagamento_data) > 0:
-         pagamento_data = pagamento_data[0]
-         
-    if pagamento_data:
-        pg = Pagamento(
-            valor=nova_venda.total_venda, # Use FINAL total including shipping
-            forma=pagamento_data.get('forma', 'PIX'),
-            id_venda=nova_venda.id
-        )
-        db.session.add(pg)
+    if not mp_access_token:
+        db.session.rollback()
+        return jsonify({'erro': 'Token do Mercado Pago não configurado no sistema.'}), 500
+
+    sdk = mercadopago.SDK(mp_access_token)
+
+    # Preparar itens para a Preference do Mercado Pago
+    mp_items = []
+    for item_obj in itens_venda_objs:
+        produto = Produto.query.get(item_obj.id_produto)
+        mp_items.append({
+            "title": produto.nome,
+            "quantity": item_obj.quantidade,
+            "unit_price": item_obj.preco_unitario_momento,
+            "currency_id": "BRL"
+        })
+    
+    # Se houver frete, adiciona como um item na preferência
+    if nova_venda.taxa_entrega > 0:
+        mp_items.append({
+            "title": "Taxa de Entrega",
+            "quantity": 1,
+            "unit_price": float(nova_venda.taxa_entrega),
+            "currency_id": "BRL"
+        })
+        
+    # Se houver desconto, adiciona um item negativo
+    if desconto_total > 0:
+        mp_items.append({
+            "title": "Desconto Aplicado",
+            "quantity": 1,
+            "unit_price": -float(desconto_total),
+            "currency_id": "BRL"
+        })
+
+    preference_data = {
+        "items": mp_items,
+        "payer": {
+            "name": cliente.nome,
+            "email": cliente.email,
+        },
+        "external_reference": str(nova_venda.id),
+        "back_urls": {
+            "success": f"{request.url_root.rstrip('/')}/store/conta",
+            "failure": f"{request.url_root.rstrip('/')}/store/checkout",
+            "pending": f"{request.url_root.rstrip('/')}/store/conta"
+        },
+        "auto_return": "approved",
+    }
+    
+    preference_response = sdk.preference().create(preference_data)
+    preference = preference_response["response"]
+    
+    if "init_point" not in preference:
+        db.session.rollback()
+        return jsonify({'erro': 'Erro ao gerar checkout do Mercado Pago.', 'detalhes': preference}), 500
 
     db.session.commit()
     
     return jsonify({
-        'mensagem': 'Pedido realizado com sucesso!',
+        'mensagem': 'Redirecionando para o pagamento...',
         'id_pedido': nova_venda.id,
-        'total': nova_venda.total_venda
+        'total': nova_venda.total_venda,
+        'init_point': preference['init_point']
     })
+
+@store_bp.route('/api/store/webhook/mercadopago', methods=['POST'])
+def mercadopago_webhook():
+    topic = request.args.get('topic') or request.args.get('type')
+    if topic == 'payment':
+        payment_id = request.args.get('id') or request.args.get('data.id')
+        if not payment_id:
+            return jsonify({'status': 'ignorado'}), 200
+            
+        config_mp = Configuracao.query.filter_by(chave='MERCADOPAGO_ACCESS_TOKEN').first()
+        mp_access_token = config_mp.valor if config_mp else os.environ.get('MERCADOPAGO_ACCESS_TOKEN')
+        if not mp_access_token:
+            return jsonify({'erro': 'MP Token ausente'}), 500
+            
+        sdk = mercadopago.SDK(mp_access_token)
+        payment_info = sdk.payment().get(payment_id)
+        
+        if payment_info.get("status") == 200:
+            payment_data = payment_info["response"]
+            external_reference = payment_data.get("external_reference")
+            payment_status = payment_data.get("status")
+            
+            if external_reference and payment_status == 'approved':
+                venda = Venda.query.get(external_reference)
+                if venda and venda.status == 'Pendente':
+                    venda.status = 'Concluída'
+                    
+                    # Registrar o pagamento
+                    metodo = payment_data.get('payment_method_id', 'mercadopago')
+                    pg = Pagamento(
+                        valor=venda.total_venda,
+                        forma=metodo,
+                        id_venda=venda.id
+                    )
+                    db.session.add(pg)
+                    db.session.commit()
+                    
+    return jsonify({'status': 'sucesso'}), 200
 
 # --- Client API ---
 @store_bp.route('/api/client/me', methods=['GET', 'PUT'])

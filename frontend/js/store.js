@@ -273,47 +273,20 @@ async function performCheckout(payload) {
 
             // Fetch Suggestions
             let suggestionsHtml = '';
-            try {
-                const suggRes = await fetch('/api/public/products/suggestions');
-                if (suggRes.ok) {
-                    const suggestions = await suggRes.json();
-                    suggestionsHtml = `
-                        <div class="mt-4 pt-3 border-top border-secondary-subtle">
-                            <h5 class="text-warning mb-3 fw-bold">Você também pode gostar:</h5>
-                            <div class="row g-2 justify-content-center">
-                                ${suggestions.map(p => `
-                                    <div class="col-4">
-                                        <a href="/store/produto/${p.id}" class="text-decoration-none text-dark">
-                                            <div class="card h-100 border-0 shadow-sm">
-                                                <img src="${p.imagem ? '/uploads/' + p.imagem : 'https://via.placeholder.com/80'}" class="card-img-top object-fit-cover" style="height: 80px;" alt="${p.nome}">
-                                                <div class="card-body p-1 text-center">
-                                                    <small class="d-block text-truncate fw-bold" style="font-size: 0.7rem;">${p.nome}</small>
-                                                    <small class="text-success fw-bold" style="font-size: 0.7rem;">R$ ${parseFloat(p.preco).toFixed(2)}</small>
-                                                </div>
-                                            </div>
-                                        </a>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
-            } catch (err) { console.error('Error fetching suggestions', err); }
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Obrigado!',
-                html: `
-                    <h5 class="fw-bold mb-3">Pedido #${result.id_pedido} Confirmado!</h5>
-                    <p class="mb-2">Recebemos seu pedido e já estamos preparando tudo.</p>
-                    ${suggestionsHtml}
-                `,
-                confirmButtonText: 'Voltar para Loja',
-                width: suggestionsHtml ? '600px' : '32em',
-                allowOutsideClick: false
-            }).then(() => {
-                window.location.href = '/store/produtos';
-            });
+            // Ignorado no checkout pro para ser rápido, mas pode ser adicionado
+            
+            if (result.init_point) {
+                window.location.href = result.init_point;
+            } else {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Obrigado!',
+                    text: 'Pedido recebido com sucesso!',
+                    confirmButtonText: 'Ver meus pedidos'
+                }).then(() => {
+                    window.location.href = '/store/conta';
+                });
+            }
         } else {
             throw new Error(result.erro || 'Erro ao processar pedido.');
         }
@@ -388,74 +361,9 @@ async function submitOrder() {
         taxaEntrega = parseFloat(selectedShipping.value) || window.shippingCost || 0;
     }
 
-    let totalProdutos = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    // Apply discount if exists? logic is in renderCheckoutPage but not fully synced here?
-    // For safety, recalculate discount logic here or assume subtotal check.
-    // Ideally we should replicate the exact total calc: Subtotal - Discount + Shipping.
-
-    // Recalculating Discount Logic briefly to be accurate
-    let discount = 0;
-    if (currentCoupon) {
-        if (currentCoupon.aplicacao === 'total') {
-            if (currentCoupon.tipo_desconto === 'percentual') {
-                discount = totalProdutos * (currentCoupon.valor_desconto / 100);
-            } else {
-                discount = parseFloat(currentCoupon.valor_desconto);
-            }
-        }
-        if (discount > totalProdutos) discount = totalProdutos;
-    }
-
-    const finalTotal = totalProdutos - discount + taxaEntrega;
-
-    const pagamento = {
-        forma: document.querySelector('input[name="pagamento"]:checked').value,
-        valor: finalTotal
-    };
-
     const payload = {
         cliente: clienteData,
         itens,
-        pagamento: [pagamento], // Backend expects list? "pagamentos_data = dados.get('pagamentos')" -> yes list in python usually? 
-        // Wait, Python: "sum(float(p['valor']) for p in pagamentos_data)" iterates.
-        // Frontend "pagamento" was an object in previous code: "pagamento, ...".
-        // Let's check Python: "pagamentos_data = dados.get('pagamentos')". If it's a list, it iterates.
-        // If frontend sends object in 'pagamento' key vs 'pagamentos', checking payload construction below.
-        // Original code: "pagamento, ...".
-        // Python: "pagamentos_data = dados.get('pagamentos')". 
-        // IF payload key is 'pagamento', Python 'pagamentos' would be None?
-        // Ah, looking at lines 358: "pagamento,".
-        // Python: "pagamentos_data = dados.get('pagamentos')".
-        // Mismatch? 
-        // Let's check "app/routes/api/sales.py" Line 15: "pagamentos_data = dados.get('pagamentos')".
-        // Frontend Line 361: "pagamento,".
-        // Key is "pagamento". Backend expects "pagamentos"?
-        // If key is "pagamento", `dados.get('pagamentos')` is None!
-        // Line 19: `if not pagamentos_data: return jsonify...`.
-
-        // WAIT. If backend requires 'pagamentos' and frontend sends 'pagamento', it should fail "Pagamentos não podem estar vazios".
-        // So frontend MUST be sending 'pagamentos'. 
-        // Let's check `store.js` line 361 carefully in previous `view_file`.
-        // Line 361: `pagamento,` inside `payload`.
-        // This implies the key is `pagamento`.
-        // So `sales.py` MUST be looking for `pagamento` OR I missed something.
-        // Let's re-read `sales.py` line 15.
-        // `pagamentos_data = dados.get('pagamentos')`
-        // THIS IS A MAJOR DISCREPANCY.
-        // Unless `pagamento` variable holds a list?
-        // Line 321: `const pagamento = { forma: ..., valor: ... }`. It is an object.
-
-        // Maybe I am misreading `sales.py`?
-        // Or maybe `store.js` uses a different endpoint? `/api/store/checkout`.
-        // `sales.py` has `@api_bp.route('/api/vendas', methods=['POST'])`.
-        // `store.js` calls `/api/store/checkout` (Line 256).
-        // I need to find the route `/api/store/checkout`. It is likely in `app/routes/api/store.py`!
-        // I was looking at `sales.py` which is likely the internal POS API.
-        // Online store likely uses `store.py`.
-
-        // I will PAUSE the replace to verify `store.py`.
-        // This explains why validation passed! Different code path!
-
         cupom_id: currentCoupon ? currentCoupon.id : null,
         salvar_endereco: document.getElementById('salvarEndereco') ? document.getElementById('salvarEndereco').checked : false,
         tipo_entrega: tipoEntrega,
