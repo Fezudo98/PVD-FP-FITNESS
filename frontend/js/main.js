@@ -16,7 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicia verificação de notificações em qualquer página autenticada
     if (localStorage.getItem('authToken')) {
         checkPendingOrders();
+        checkPaidOrders();
         setInterval(checkPendingOrders, 5000); // Polling rápido: 5 segundos
+        setInterval(checkPaidOrders, 5000); // Polling de pagamentos
 
         // Solicita permissão para notificações se suportado
         if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
@@ -217,7 +219,74 @@ async function checkPendingOrders() {
         updateBadges(count);
 
     } catch (error) {
-        console.error("Erro polling:", error);
+        console.error("Erro polling pendentes:", error);
+    }
+}
+
+async function checkPaidOrders() {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+
+    let lastId = localStorage.getItem('lastPaidOrderId') || 0;
+
+    try {
+        const response = await fetch(`${API_URL}/api/vendas/novas_notificacoes?last_id=${lastId}`, {
+            headers: { 'x-access-token': token }
+        });
+        if (!response.ok) return;
+
+        const data = await response.json();
+        
+        if (data.tem_novas) {
+            // Se for o primeiro carregamento (lastId == 0), apenas salva o max_id sem notificar retroativamente
+            if (lastId == 0) {
+                localStorage.setItem('lastPaidOrderId', data.max_id);
+                return;
+            }
+
+            console.log("NOVO PAGAMENTO APROVADO! Tocando o sino...");
+            playNotificationSound(); // Ka-ching!
+
+            // Auto-Refresh da Tabela se estiver na página de vendas online
+            if (typeof loadOnlineOrders === 'function' && document.getElementById('onlineOrdersTable')) {
+                loadOnlineOrders();
+            }
+
+            if (Notification.permission === "granted") {
+                data.vendas.forEach(v => {
+                    new Notification("💰 Pagamento Aprovado!", {
+                        body: `Cliente: ${v.cliente}\nTotal: R$ ${v.total.toFixed(2)}`,
+                        icon: '/logo.jpg',
+                        tag: `paid-${v.id}`
+                    });
+                });
+            }
+
+            // Exibir Toast Premium no sistema
+            if (data.vendas.length > 0) {
+                const toastContainer = document.getElementById('toast-container');
+                if (toastContainer) {
+                    const toastHTML = `
+                        <div class="toast align-items-center text-white bg-success border-0 mb-2 show" role="alert" aria-live="assertive" aria-atomic="true" style="animation: slideInRight 0.3s ease-out;">
+                            <div class="d-flex">
+                                <div class="toast-body fw-bold">
+                                    <i class="fa-solid fa-money-bill-wave me-2"></i> Nova Venda de R$ ${data.vendas[0].total.toFixed(2)} aprovada!
+                                </div>
+                                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                        </div>`;
+                    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+                    setTimeout(() => {
+                        const toasts = toastContainer.querySelectorAll('.toast');
+                        if (toasts.length > 0) toasts[toasts.length - 1].remove();
+                    }, 5000);
+                }
+            }
+
+            localStorage.setItem('lastPaidOrderId', data.max_id);
+        }
+    } catch (error) {
+        console.error("Erro polling pagos:", error);
     }
 }
 
@@ -472,11 +541,11 @@ async function viewOrderDetails(id) {
         // NEW STRUCTURE
         const clientInfoDiv = document.getElementById('modalClientInfo');
 
-        // WhatsApp Message Construction
         let waBtn = '';
-        if (venda.cliente_telefone) {
-            const cleanPhone = venda.cliente_telefone.replace(/\D/g, '');
-            const firstName = venda.cliente_nome.split(' ')[0];
+        let emailBtn = '';
+        if (venda.cliente_telefone || venda.cliente_email) {
+            const cleanPhone = venda.cliente_telefone ? venda.cliente_telefone.replace(/\D/g, '') : '';
+            const firstName = (venda.cliente_nome || '').split(' ')[0];
 
             // Items List
             let itemsMsg = '';
@@ -497,26 +566,24 @@ async function viewOrderDetails(id) {
             const freteMsg = parseFloat(venda.taxa_entrega).toFixed(2);
             const descMsg = parseFloat(venda.desconto_total).toFixed(2);
 
-            // 0x1F680 is the Rocket Emoji 🚀. Derived at runtime to avoid file encoding issues.
-            const rocketEmoji = String.fromCodePoint(0x1F680);
-
-            // 0x1F680 is the Rocket Emoji 🚀. Derived at runtime to avoid file encoding issues.
-            // User requested to remove rocket. keeping variable commented or empty just in case.
-            // const rocketEmoji = String.fromCodePoint(0x1F680); 
-
             let maskedCpf = 'Não informado';
             if (venda.cliente_cpf) {
-                // Keep first 3 chars, mask the rest. Assumes formatted CPF or raw.
-                // If formatted 123.456.789-00 -> 123.XXX.XXX-XX
                 maskedCpf = venda.cliente_cpf.replace(/(\d{3})\.(\d{3})\.(\d{3})-(\d{2})/, '$1.XXX.XXX-$4');
-                // Fallback for unformatted or other variations if needed, but regex covers standard format
                 if (maskedCpf === venda.cliente_cpf && venda.cliente_cpf.length > 5) {
                     maskedCpf = venda.cliente_cpf.substring(0, 3) + '.XXX.XXX-XX';
                 }
             }
 
+            let statusMsg = "Seu pedido foi recebido!";
+            if (venda.status === 'Concluída') statusMsg = "Oba! Seu pagamento foi aprovado! Estamos preparando seu pedido.";
+            else if (venda.status === 'Em separação' || venda.status === 'Em preparação') statusMsg = "Seu pedido já está separado e pronto para envio.";
+            else if (venda.status === 'Saiu para entrega') statusMsg = "Seu pedido saiu para entrega! Fique de olho, ele chegará em breve.";
+            else if (venda.status === 'Produto Postado') statusMsg = `Seu pedido foi postado! Acompanhe pelo rastreio: ${venda.codigo_rastreio || 'Em breve'}`;
+            else if (venda.status === 'Pronto para retirada') statusMsg = "Seu pedido está pronto para ser retirado na nossa loja!";
+            else if (venda.status === 'Entregue') statusMsg = "Seu pedido consta como entregue! Esperamos que aproveite sua compra.";
+
             const rawMessage = `Olá ${firstName}, agradecemos pela preferência!\n` +
-                `Seu pedido já está separado e pronto para ser entregue.\n\n` +
+                `${statusMsg}\n\n` +
                 `*Detalhes do Pedido #${venda.id}*\n` +
                 `--------------------------------\n` +
                 `*Dados do Cliente:*\n` +
@@ -532,9 +599,14 @@ async function viewOrderDetails(id) {
                 `Prazo de entrega (após postagem): Consultar Rastreio\n` +
                 `*Total: R$ ${totalMsg}*\n` +
                 `--------------------------------\n` +
-                `_Essa é uma mensagem automática, não precisa responder._`;
+                `_Essa é uma mensagem automática, se precisar, chame a gente!_`;
 
-            waBtn = `<a href="https://wa.me/55${cleanPhone}?text=${encodeURIComponent(rawMessage)}" target="_blank" class="ms-2 text-success text-decoration-none" title="Enviar Detalhes no WhatsApp"><i class="fab fa-whatsapp fs-5"></i></a>`;
+            if (cleanPhone) {
+                waBtn = `<a href="https://wa.me/55${cleanPhone}?text=${encodeURIComponent(rawMessage)}" target="_blank" class="ms-2 text-success text-decoration-none" title="Enviar Detalhes no WhatsApp"><i class="fab fa-whatsapp fs-5"></i></a>`;
+            }
+            if (venda.cliente_email) {
+                emailBtn = `<a href="mailto:${venda.cliente_email}?subject=Atualização do Pedido #${venda.id}&body=${encodeURIComponent(rawMessage)}" target="_blank" class="ms-2 text-primary text-decoration-none" title="Enviar E-mail"><i class="fas fa-envelope fs-5"></i></a>`;
+            }
         }
 
         clientInfoDiv.innerHTML = `
@@ -548,7 +620,7 @@ async function viewOrderDetails(id) {
             </div>
              <div class="col-md-6">
                 <small class="text-white-50 d-block">Email</small>
-                <span class="text-white">${venda.cliente_email || 'Não informado'}</span>
+                <span class="text-white">${venda.cliente_email || 'Não informado'}</span> ${emailBtn}
             </div>
              <div class="col-md-6">
                 <small class="text-white-50 d-block">CPF</small>

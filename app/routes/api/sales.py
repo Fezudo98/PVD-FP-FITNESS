@@ -214,6 +214,22 @@ def get_venda_details(current_user, venda_id):
         'transportadora': venda.transportadora
     })
 
+@api_bp.route('/api/vendas/novas_notificacoes', methods=['GET'])
+@token_required
+def check_novas_vendas(current_user):
+    last_id = request.args.get('last_id', 0, type=int)
+    novas = Venda.query.filter(Venda.id > last_id, Venda.status == 'Concluída').order_by(Venda.id.asc()).all()
+    
+    if not novas:
+        return jsonify({'tem_novas': False})
+        
+    vendas_data = [{'id': v.id, 'total': v.total_venda, 'cliente': v.cliente.nome if v.cliente else 'Cliente'} for v in novas]
+    return jsonify({
+        'tem_novas': True,
+        'max_id': max(v.id for v in novas),
+        'vendas': vendas_data
+    })
+
 @api_bp.route('/api/vendas/<int:venda_id>/rastreio', methods=['PUT'])
 @token_required
 def update_venda_rastreio(current_user, venda_id):

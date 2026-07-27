@@ -25,6 +25,7 @@ class Produto(db.Model):
     online_ativo = db.Column(db.Boolean, default=False)
     descricao = db.Column(db.Text, nullable=True)
     destaque = db.Column(db.Boolean, default=False)
+    deletado = db.Column(db.Boolean, default=False)
     
     # Campos para Frete (Correios/Transportadora)
     peso = db.Column(db.Float, default=0.3, nullable=True) # em kg

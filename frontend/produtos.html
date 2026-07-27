@@ -60,25 +60,40 @@
                 </select>
             </div>
         </div>
+        
+        <!-- Barra de Ações em Massa (Oculta por padrão) -->
+        <div id="bulkActionsBar" class="bg-dark border border-secondary rounded p-3 mb-4 d-none d-flex justify-content-between align-items-center shadow-lg" style="transition: all 0.3s ease;">
+            <div>
+                <span class="text-white fw-bold me-3"><span id="selectedCount">0</span> itens selecionados</span>
+                <button class="btn btn-sm btn-outline-danger me-2" id="bulkDeleteBtn"><i class="fas fa-trash-alt me-1"></i> Excluir Selecionados</button>
+                <button class="btn btn-sm btn-outline-warning" id="bulkZeroStockBtn"><i class="fas fa-box-open me-1"></i> Zerar Estoque</button>
+            </div>
+            <button class="btn btn-sm btn-close btn-close-white" id="closeBulkBtn"></button>
+        </div>
 
-        <!-- Tabela de Produtos -->
         <div class="table-responsive">
-            <table class="table table-dark table-hover">
+            <table class="table table-dark table-hover align-middle">
                 <thead>
                     <tr>
+                        <th style="width: 40px;"><input class="form-check-input" type="checkbox" id="selectAllCheckbox"></th>
                         <th>Imagem</th>
                         <th>SKU</th>
                         <th>Nome</th>
                         <th>Categoria</th>
                         <th>Preço Venda</th>
                         <th>Qtd.</th>
-                        <th>Ações</th>
+                        <th class="text-end">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="produtosTableBody">
                     <!-- Linhas da tabela serão inseridas aqui pelo JavaScript -->
                 </tbody>
             </table>
+        </div>
+        
+        <!-- Toast Container para Mensagens e Undo -->
+        <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+            <!-- Toasts serão injetados via JS -->
         </div>
     </main>
 

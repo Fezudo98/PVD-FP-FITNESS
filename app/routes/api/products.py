@@ -96,7 +96,8 @@ def gerenciar_produtos(current_user):
         search_query = request.args.get('q', '', type=str)
         category_filter = request.args.get('categoria', '', type=str)
         
-        query = Produto.query.order_by(Produto.nome)
+        query = Produto.query.filter_by(deletado=False).order_by(Produto.nome)
+        
         
         if search_query:
             termo_busca = f"%{search_query}%"
@@ -172,6 +173,67 @@ def gerenciar_produtos(current_user):
         registrar_log(current_user, "Produto Criado", f"SKU: {novo_produto.sku}, Nome: {novo_produto.nome}")
         db.session.commit()
         return jsonify(novo_produto.to_dict()), 201
+
+@api_bp.route('/api/produtos/bulk', methods=['DELETE'])
+@token_required
+def deletar_produtos_em_massa(current_user):
+    if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
+    
+    dados = request.get_json()
+    if not dados or 'ids' not in dados:
+        return jsonify({'erro': 'Lista de IDs não fornecida'}), 400
+        
+    ids = dados['ids']
+    if not isinstance(ids, list):
+        return jsonify({'erro': 'O formato dos IDs deve ser uma lista'}), 400
+        
+    base_dir = os.path.abspath(os.path.join(current_app.root_path, '..'))
+    
+    produtos = Produto.query.filter(Produto.id.in_(ids)).all()
+    if not produtos:
+        return jsonify({'message': 'Nenhum produto encontrado para exclusão'}), 404
+        
+    for produto in produtos:
+        try:
+            produto.deletado = True
+            registrar_log(current_user, "Produto Soft-Deleted (Bulk)", f"SKU: {produto.sku}")
+        except Exception as e:
+            print(f"Erro ao processar soft delete do produto {produto.id}: {e}")
+            
+    try:
+        db.session.commit()
+        return jsonify({'message': f'{len(produtos)} produtos excluídos (soft delete) com sucesso!'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'erro': f'Falha ao excluir no banco de dados: {str(e)}'}), 500
+
+@api_bp.route('/api/produtos/<int:produto_id>/quick', methods=['PATCH'])
+@token_required
+def edicao_rapida_produto(current_user, produto_id):
+    if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
+    
+    produto = Produto.query.get_or_404(produto_id)
+    dados = request.get_json()
+    
+    if not dados:
+        return jsonify({'erro': 'Nenhum dado fornecido'}), 400
+        
+    try:
+        if 'quantidade' in dados:
+            nova_qtd = int(dados['quantidade'])
+            if nova_qtd < 0: return jsonify({'erro': 'A quantidade não pode ser negativa'}), 400
+            produto.quantidade = nova_qtd
+            
+        if 'preco_venda' in dados:
+            produto.preco_venda = float(dados['preco_venda'])
+            
+        registrar_log(current_user, "Produto Edição Rápida", f"SKU: {produto.sku}")
+        db.session.commit()
+        return jsonify(produto.to_dict()), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'erro': str(e)}), 500
+
 
 @api_bp.route('/api/produtos/<int:produto_id>', methods=['GET', 'PUT', 'DELETE'])
 @token_required
@@ -259,22 +321,14 @@ def gerenciar_produto_especifico(current_user, produto_id):
             return jsonify({'erro': f'Erro interno ao atualizar produto: {str(e)}'}), 500
 
     if request.method == 'DELETE':
-        if produto.imagem_url:
-            try: os.remove(os.path.join(base_dir, 'uploads', produto.imagem_url))
-            except: pass
-            
-        for img in produto.imagens:
-            try: os.remove(os.path.join(base_dir, 'uploads', img.imagem_url))
-            except: pass
-            
-        if produto.codigo_barras_url:
-            try: os.remove(os.path.join(base_dir, 'barcodes', produto.codigo_barras_url))
-            except: pass
-
-        registrar_log(current_user, "Produto Deletado", f"SKU: {produto.sku}, Nome: {produto.nome}")
-        db.session.delete(produto)
-        db.session.commit()
-        return jsonify({'mensagem': 'Produto deletado com sucesso!'})
+        try:
+            produto.deletado = True
+            registrar_log(current_user, "Produto Soft-Deleted", f"SKU: {produto.sku}, Nome: {produto.nome}")
+            db.session.commit()
+            return jsonify({'mensagem': 'Produto deletado (soft delete) com sucesso!'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'erro': f'Erro ao deletar produto: {str(e)}'}), 500
 
 @api_bp.route('/api/produtos/imagem/<int:imagem_id>', methods=['DELETE'])
 @token_required

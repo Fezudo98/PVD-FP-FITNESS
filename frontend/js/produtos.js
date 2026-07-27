@@ -99,26 +99,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
             produtosTableBody.innerHTML = '';
             if (data.produtos.length === 0) {
-                produtosTableBody.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum produto encontrado.</td></tr>';
+                produtosTableBody.innerHTML = '<tr><td colspan="8" class="text-center">Nenhum produto encontrado.</td></tr>';
             } else {
                 data.produtos.forEach(produto => {
                     const tr = document.createElement('tr');
+                    tr.dataset.id = produto.id;
                     tr.innerHTML = `
+                        <td><input class="form-check-input row-checkbox" type="checkbox" value="${produto.id}"></td>
                         <td><img src="${API_URL}/uploads/${produto.imagem_url || 'default.png'}" alt="${produto.nome}" width="50" class="rounded"></td>
                         <td>${produto.sku}</td>
-                        <td>${produto.nome}</td>
+                        <td class="text-truncate" style="max-width: 150px;" title="${produto.nome}">${produto.nome}</td>
                         <td>${produto.categoria || 'N/A'}</td>
-                        <td>R$ ${produto.preco_venda.toFixed(2)}</td>
-                        <td>${produto.quantidade}</td>
                         <td>
-                            <button class="btn btn-sm btn-info edit-btn" data-id="${produto.id}">Editar</button>
-                            <button class="btn btn-sm btn-danger delete-btn" data-id="${produto.id}">Excluir</button>
-                            ${produto.codigo_barras_url ? `<a href="/barcodes/${produto.codigo_barras_url}" target="_blank" class="btn btn-sm btn-outline-light mt-1">Ver Cód.</a>` : ''}
+                            <div class="input-group input-group-sm" style="width: 110px;">
+                                <span class="input-group-text bg-dark text-white border-secondary">R$</span>
+                                <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary inline-edit-price" value="${produto.preco_venda.toFixed(2)}" data-id="${produto.id}" data-original="${produto.preco_venda}">
+                            </div>
+                        </td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary inline-edit-qty" style="width: 70px;" value="${produto.quantidade}" data-id="${produto.id}" data-original="${produto.quantidade}">
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-info rounded-circle me-1 edit-btn" title="Editar Completo" data-id="${produto.id}" style="width: 32px; height: 32px; padding: 0;">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger rounded-circle me-1 delete-btn" title="Excluir" data-id="${produto.id}" style="width: 32px; height: 32px; padding: 0;">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            ${produto.codigo_barras_url ? `<a href="/barcodes/${produto.codigo_barras_url}" target="_blank" class="btn btn-sm btn-outline-light rounded-circle" title="Ver Cód. Barras" style="width: 32px; height: 32px; padding: 0; line-height: 30px;"><i class="fas fa-barcode"></i></a>` : ''}
                         </td>
                     `;
                     produtosTableBody.appendChild(tr);
                 });
             }
+            updateBulkActionBar();
 
             renderPagination(data.pagina_atual, data.total_paginas);
             currentPage = data.pagina_atual;
@@ -186,6 +200,239 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- EVENT LISTENERS ---
+    
+    // --- LÓGICA DE BULK ACTIONS & INLINE EDIT & UNDO ---
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const bulkActionsBar = document.getElementById('bulkActionsBar');
+    const selectedCountSpan = document.getElementById('selectedCount');
+    let pendingDeletes = {}; // Armazena timeouts de exclusão pendentes
+
+    function showToast(message, undoCallback = null, duration = 5000) {
+        const toastContainer = document.querySelector('.toast-container');
+        const toastId = 'toast-' + Date.now();
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center text-white bg-dark border-secondary" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="${duration}">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    ${undoCallback ? `<button type="button" class="btn btn-sm btn-outline-warning ms-auto me-2 my-auto undo-btn" style="height: 30px;">Desfazer</button>` : ''}
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                ${undoCallback ? `<div class="progress" style="height: 3px;"><div class="progress-bar bg-warning toast-progress" style="width: 100%; transition: width ${duration}ms linear;"></div></div>` : ''}
+            </div>
+        `;
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        const toastEl = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastEl);
+        
+        if (undoCallback) {
+            // Animação da barra de progresso
+            setTimeout(() => {
+                const bar = toastEl.querySelector('.progress-bar');
+                if(bar) bar.style.width = '0%';
+            }, 50);
+
+            const undoBtn = toastEl.querySelector('.undo-btn');
+            undoBtn.addEventListener('click', () => {
+                undoCallback();
+                toast.hide();
+            });
+        }
+        
+        toast.show();
+        toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    }
+
+    function getSelectedIds() {
+        const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+        return Array.from(checkboxes).map(cb => parseInt(cb.value));
+    }
+
+    window.updateBulkActionBar = function() {
+        const selected = getSelectedIds();
+        if (selected.length > 0) {
+            selectedCountSpan.textContent = selected.length;
+            bulkActionsBar.classList.remove('d-none');
+        } else {
+            bulkActionsBar.classList.add('d-none');
+        }
+        
+        if(selectAllCheckbox) {
+            const allBoxes = document.querySelectorAll('.row-checkbox');
+            selectAllCheckbox.checked = allBoxes.length > 0 && selected.length === allBoxes.length;
+        }
+    };
+
+    if(selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', (e) => {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(cb => cb.checked = e.target.checked);
+            updateBulkActionBar();
+        });
+    }
+
+    document.addEventListener('change', (e) => {
+        if (e.target.classList.contains('row-checkbox')) {
+            updateBulkActionBar();
+        }
+    });
+
+    document.getElementById('closeBulkBtn').addEventListener('click', () => {
+        const checkboxes = document.querySelectorAll('.row-checkbox');
+        checkboxes.forEach(cb => cb.checked = false);
+        updateBulkActionBar();
+    });
+
+    // Inline Edit Logic
+    async function quickUpdate(id, field, value, originalValue, inputEl) {
+        try {
+            const body = {};
+            body[field] = value;
+            const res = await fetch(`${API_URL}/api/produtos/${id}/quick`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'x-access-token': token },
+                body: JSON.stringify(body)
+            });
+            if(!res.ok) throw new Error("Erro ao salvar");
+            
+            inputEl.dataset.original = value;
+            inputEl.classList.add('border-success');
+            setTimeout(() => inputEl.classList.remove('border-success'), 1000);
+
+            showToast(`${field === 'quantidade' ? 'Estoque' : 'Preço'} atualizado.`, async () => {
+                // Undo Logic
+                const undoBody = {};
+                undoBody[field] = originalValue;
+                await fetch(`${API_URL}/api/produtos/${id}/quick`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'x-access-token': token },
+                    body: JSON.stringify(undoBody)
+                });
+                inputEl.value = originalValue;
+                inputEl.dataset.original = originalValue;
+            });
+        } catch(e) {
+            showToast(`Erro ao atualizar: ${e.message}`);
+            inputEl.value = originalValue; // Revert visually
+        }
+    }
+
+    produtosTableBody.addEventListener('change', (e) => {
+        if(e.target.classList.contains('inline-edit-qty')) {
+            const id = e.target.dataset.id;
+            const original = e.target.dataset.original;
+            quickUpdate(id, 'quantidade', e.target.value, original, e.target);
+        } else if(e.target.classList.contains('inline-edit-price')) {
+            const id = e.target.dataset.id;
+            const original = e.target.dataset.original;
+            quickUpdate(id, 'preco_venda', e.target.value, original, e.target);
+        }
+    });
+
+    // Bulk Delete Logic (Delay Delete)
+    document.getElementById('bulkDeleteBtn').addEventListener('click', () => {
+        const ids = getSelectedIds();
+        if(ids.length === 0) return;
+        
+        // Hide rows instantly
+        ids.forEach(id => {
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            if(row) row.style.display = 'none';
+        });
+        
+        // Uncheck all so bar hides
+        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+        updateBulkActionBar();
+
+        const timeoutId = setTimeout(async () => {
+            // Actual delete
+            try {
+                await fetch(`${API_URL}/api/produtos/bulk`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'x-access-token': token },
+                    body: JSON.stringify({ ids: ids })
+                });
+                delete pendingDeletes[timeoutId];
+            } catch(e) { console.error("Falha ao excluir bulk:", e); }
+        }, 5000);
+        
+        pendingDeletes[timeoutId] = ids;
+        
+        showToast(`${ids.length} produto(s) excluído(s).`, () => {
+            // Undo
+            clearTimeout(timeoutId);
+            delete pendingDeletes[timeoutId];
+            ids.forEach(id => {
+                const row = document.querySelector(`tr[data-id="${id}"]`);
+                if(row) row.style.display = '';
+            });
+        }, 5000);
+    });
+
+    document.getElementById('bulkZeroStockBtn').addEventListener('click', async () => {
+        const ids = getSelectedIds();
+        if(ids.length === 0) return;
+
+        let errorCount = 0;
+        
+        for (const id of ids) {
+            try {
+                const inputEl = document.querySelector(`tr[data-id="${id}"] .inline-edit-qty`);
+                const originalValue = inputEl.dataset.original;
+                
+                await fetch(`${API_URL}/api/produtos/${id}/quick`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'x-access-token': token },
+                    body: JSON.stringify({ quantidade: 0 })
+                });
+                
+                if (inputEl) {
+                    inputEl.value = 0;
+                    inputEl.dataset.original = 0;
+                    inputEl.classList.add('border-success');
+                    setTimeout(() => inputEl.classList.remove('border-success'), 1000);
+                }
+            } catch(e) {
+                errorCount++;
+            }
+        }
+        
+        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+        updateBulkActionBar();
+        
+        if (errorCount === 0) {
+            showToast(`${ids.length} produto(s) zerados com sucesso.`);
+        } else {
+            showToast(`Concluído, porém ${errorCount} erro(s) ao zerar.`);
+        }
+    });
+
+    // Single Delete Override (Delay Delete)
+    produtosTableBody.addEventListener('click', (e) => {
+        const deleteBtn = e.target.closest('.delete-btn');
+        if (deleteBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const id = parseInt(deleteBtn.dataset.id);
+            const row = deleteBtn.closest('tr');
+            row.style.display = 'none';
+            
+            const timeoutId = setTimeout(async () => {
+                try {
+                    await fetch(`${API_URL}/api/produtos/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'x-access-token': token }
+                    });
+                } catch(err) { console.error(err); }
+            }, 5000);
+            
+            showToast(`Produto excluído.`, () => {
+                clearTimeout(timeoutId);
+                row.style.display = '';
+            }, 5000);
+        }
+    });
 
     // Listener para o filtro de categoria
     categoryFilterSelect.addEventListener('change', () => {

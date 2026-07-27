@@ -102,6 +102,7 @@ def store_get_products():
         Produto.nome, 
         func.sum(ItemVenda.quantidade).label('total_sold')
     ).join(ItemVenda, Produto.id == ItemVenda.id_produto)\
+     .filter(Produto.deletado == False)\
      .group_by(Produto.nome)\
      .order_by(func.sum(ItemVenda.quantidade).desc(), Produto.nome.asc())\
      .limit(5).all()
@@ -117,7 +118,7 @@ def store_get_products():
         func.max(Produto.imagem_url).label('imagem_url'), 
         func.max(Produto.categoria).label('categoria'),
         func.sum(Produto.quantidade).label('total_stock')
-    ).filter(Produto.online_ativo == True, Produto.quantidade > 0)
+    ).filter(Produto.online_ativo == True, Produto.quantidade > 0, Produto.deletado == False)
     
     # Filters
     if categoria:
@@ -152,7 +153,7 @@ def store_get_products():
     items = query.offset((page - 1) * per_page).limit(per_page).all()
     
     # Categories
-    categorias_query = db.session.query(Produto.categoria).filter_by(online_ativo=True).distinct().order_by(Produto.categoria).all()
+    categorias_query = db.session.query(Produto.categoria).filter_by(online_ativo=True, deletado=False).distinct().order_by(Produto.categoria).all()
     categorias = [c[0] for c in categorias_query if c[0]]
 
     return jsonify({
@@ -255,8 +256,8 @@ def store_validate_coupon(codigo):
 
 @store_bp.route('/api/store/products/<int:produto_id>', methods=['GET'])
 def store_get_product_detail(produto_id):
-    produto = Produto.query.filter_by(id=produto_id, online_ativo=True).first_or_404()
-    variants = Produto.query.filter_by(nome=produto.nome, online_ativo=True).filter(Produto.quantidade > 0).all()
+    produto = Produto.query.filter_by(id=produto_id, online_ativo=True, deletado=False).first_or_404()
+    variants = Produto.query.filter_by(nome=produto.nome, online_ativo=True, deletado=False).filter(Produto.quantidade > 0).all()
     
     # Rating Info (Adding if missing in original snippet but good to have)
     # The original didn't allow getting reviews here?
@@ -648,34 +649,6 @@ def store_checkout():
         item_obj.id_venda = nova_venda.id
         db.session.add(item_obj)
         
-    # Entrega
-    if total_final >= 299:
-        nova_venda.entrega_gratuita = True
-        nova_venda.taxa_entrega = 0.0
-    else:
-        nova_venda.taxa_entrega = dados.get('taxa_entrega', 20.0) # Use sent value or fallback
-        # Note: Frontend sends calculated shipping. We should trust it or re-calculate.
-        # Current logic trusts frontend 'taxa_entrega' (line 599) but here (line 630) hardcoded 20.0 fallback?
-        # Let's use the one set in line 599/602 if possible, or ensure consistency.
-        # In line 599 it sets: taxa_entrega=dados.get('taxa_entrega', 0.0).
-        # So nova_venda.taxa_entrega is ALREADY set.
-        # Why override it here?
-        # Lines 626-630 seem to override logic.
-        # If total >= 299, free. Else 20.0 fixed?
-        # This conflicts with "Motoboy (Local)" which might be 5.00.
-        # I should remove the hardcoded 20.0 override if possible, and trust the logic or re-verify.
-        # But to be safe and solve the specific "Payment Mismatch", I will focus on the Payment Amount placement.
-        # I will preserve the existing logic structure but use the final total.
-        
-        # Actually logic at 626 checks for free shipping threshold.
-        # If not free, it seems to force 20.0? This might be another bug if shipping was 5.0.
-        # But for now, let's stick to fixing the Payment = Total.
-        pass
-
-    # Re-evaluating the free shipping logic to match what seems intended:
-    if total_final >= 299:
-        nova_venda.entrega_gratuita = True
-        nova_venda.taxa_entrega = 0.0
     
     # Update Total with Shipping
     nova_venda.total_venda = total_final + nova_venda.taxa_entrega
@@ -760,20 +733,28 @@ def mercadopago_webhook():
             external_reference = payment_data.get("external_reference")
             payment_status = payment_data.get("status")
             
-            if external_reference and payment_status == 'approved':
+            if external_reference:
                 venda = Venda.query.get(external_reference)
                 if venda and venda.status == 'Pendente':
-                    venda.status = 'Concluída'
+                    if payment_status == 'approved':
+                        venda.status = 'Concluída'
+                        # Registrar o pagamento
+                        metodo = payment_data.get('payment_method_id', 'mercadopago')
+                        pg = Pagamento(
+                            valor=venda.total_venda,
+                            forma=metodo,
+                            id_venda=venda.id,
+                            transacao_id=str(payment_id)
+                        )
+                        db.session.add(pg)
+                    elif payment_status in ['rejected', 'cancelled']:
+                        # Devolver o estoque imediatamente
+                        venda.status = 'Cancelada'
+                        for item in venda.itens:
+                            produto = Produto.query.get(item.id_produto)
+                            if produto:
+                                produto.quantidade += item.quantidade
                     
-                    # Registrar o pagamento
-                    metodo = payment_data.get('payment_method_id', 'mercadopago')
-                    pg = Pagamento(
-                        valor=venda.total_venda,
-                        forma=metodo,
-                        id_venda=venda.id,
-                        transacao_id=str(payment_id)
-                    )
-                    db.session.add(pg)
                     db.session.commit()
                     
     return jsonify({'status': 'sucesso'}), 200
