@@ -281,9 +281,18 @@ def gerar_etiqueta(current_user, venda_id):
     venda = Venda.query.get_or_404(venda_id)
     
     try:
-        url_pdf = gerar_etiqueta_me(venda)
+        url_pdf, tracking_code = gerar_etiqueta_me(venda)
+        
+        if tracking_code:
+            venda.codigo_rastreio = tracking_code
+            registrar_log(current_user, "Rastreio Automático ME", f"ID: {venda.id} - Rastreio: {tracking_code}")
+            
         db.session.commit()
-        return jsonify({'mensagem': 'Etiqueta gerada com sucesso!', 'url': url_pdf})
+        return jsonify({
+            'mensagem': 'Etiqueta gerada com sucesso!', 
+            'url': url_pdf,
+            'tracking_code': tracking_code
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': str(e)}), 500

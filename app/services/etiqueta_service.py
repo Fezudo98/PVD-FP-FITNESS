@@ -126,4 +126,17 @@ def gerar_etiqueta_me(venda):
     print_data = resp_print.json()
     pdf_url = print_data.get("url")
     
-    return pdf_url
+    # 6. Tracking Automático
+    tracking_code = None
+    try:
+        tracking_payload = { "orders": [str(order_id)] }
+        resp_tracking = requests.post(f"{url_base}/api/v2/me/shipment/tracking", json=tracking_payload, headers=headers, timeout=10)
+        if resp_tracking.ok:
+            tracking_data = resp_tracking.json()
+            if isinstance(tracking_data, dict):
+                tracking_info = tracking_data.get(str(order_id), {})
+                tracking_code = tracking_info.get("tracking")
+    except Exception as e:
+        print(f"Aviso: Não foi possível puxar o rastreio automático do ME: {e}")
+    
+    return pdf_url, tracking_code

@@ -386,9 +386,11 @@ function renderOrders(pedidos) {
                 <td class="text-warning fw-bold">R$ ${p.total.toFixed(2)}</td>
                 <td><span class="badge ${statusClass} status-badge">${p.status}</span></td>
                 <td class="text-end">
-                    <button class="btn btn-sm btn-outline-info me-1" onclick="viewOrderDetails(${p.id})">Detalhes</button>
+                    <button class="btn btn-sm btn-outline-info rounded-circle me-1" title="Ver Detalhes" style="width: 32px; height: 32px; padding: 0;" onclick="viewOrderDetails(${p.id})">
+                        <i class="fas fa-eye"></i>
+                    </button>
                     <div class="btn-group">
-                        <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle rounded-pill px-3" data-bs-toggle="dropdown" aria-expanded="false">
                             Ações
                         </button>
                         <ul class="dropdown-menu dropdown-menu-dark">
@@ -436,17 +438,18 @@ function getContextualActions(id, status, tipo) {
 }
 
 function getStatusClass(status) {
+    const baseClasses = "rounded-pill";
     switch (status) {
-        case 'Pendente': return 'bg-warning text-dark';
-        case 'Em separação': return 'bg-info text-dark';
-        case 'Em preparação': return 'bg-primary'; // Still support old status
-        case 'Saiu para entrega': return 'bg-primary';
-        case 'Pronto para retirada': return 'bg-primary';
-        case 'Produto Postado': return 'bg-primary';
-        case 'Entregue': return 'bg-success';
-        case 'Concluída': return 'bg-success'; // Legacy
-        case 'Cancelada': return 'bg-danger';
-        default: return 'bg-secondary';
+        case 'Pendente': return `bg-warning bg-opacity-25 text-warning border border-warning border-opacity-50 ${baseClasses}`;
+        case 'Em separação': return `bg-info bg-opacity-25 text-info border border-info border-opacity-50 ${baseClasses}`;
+        case 'Em preparação': return `bg-primary bg-opacity-25 text-primary border border-primary border-opacity-50 ${baseClasses}`; 
+        case 'Saiu para entrega': return `bg-primary bg-opacity-25 text-primary border border-primary border-opacity-50 ${baseClasses}`;
+        case 'Pronto para retirada': return `bg-primary bg-opacity-25 text-primary border border-primary border-opacity-50 ${baseClasses}`;
+        case 'Produto Postado': return `bg-primary bg-opacity-25 text-primary border border-primary border-opacity-50 ${baseClasses}`;
+        case 'Entregue': return `bg-success bg-opacity-25 text-success border border-success border-opacity-50 ${baseClasses}`;
+        case 'Concluída': return `bg-success bg-opacity-25 text-success border border-success border-opacity-50 ${baseClasses}`; 
+        case 'Cancelada': return `bg-danger bg-opacity-25 text-danger border border-danger border-opacity-50 ${baseClasses}`;
+        default: return `bg-secondary bg-opacity-25 text-light border border-secondary border-opacity-50 ${baseClasses}`;
     }
 }
 
