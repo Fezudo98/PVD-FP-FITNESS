@@ -201,23 +201,33 @@ def store_validate_coupon(codigo):
         if not config_ativo or str(config_ativo.valor).lower() != 'true':
             return jsonify({'erro': 'Cupom inválido ou expirado.'}), 404
             
-        # Check eligibility via Token (if provided)
+        # Check eligibility via Token or CPF
+        c_id = None
         token = request.headers.get('x-client-token')
         if token:
             try:
                 data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
                 c_id = data.get('id') or data.get('id_cliente')
-                cliente = Cliente.query.get(c_id)
-                if cliente:
-                    has_orders = Venda.query.filter(
-                        Venda.id_cliente == cliente.id,
-                        Venda.status != 'Cancelada'
-                    ).first()
-                    if has_orders:
-                        return jsonify({'erro': 'Este cupom é válido apenas para a primeira compra.'}), 400
             except:
-                pass # If token invalid, we might allow validation but Checkout will block it if email matches existing client.
+                pass
+                
+        cliente = None
+        if c_id:
+            cliente = Cliente.query.get(c_id)
+        else:
+            cpf = request.args.get('cpf')
+            if cpf:
+                cpf = cpf.replace('.', '').replace('-', '')
+                # Como o CPF pode ou não estar formatado no BD, tentamos as duas formas
+                cliente = Cliente.query.filter((Cliente.cpf == cpf) | (Cliente.cpf.like(f'%{cpf}%'))).first()
 
+        if cliente:
+            has_orders = Venda.query.filter(
+                Venda.id_cliente == cliente.id,
+                Venda.status != 'Cancelada'
+            ).first()
+            if has_orders:
+                return jsonify({'erro': 'Este cupom é válido apenas para a primeira compra.'}), 400
         percent_config = Configuracao.query.filter_by(chave='promo_primeira_compra_percent').first()
         percent = float(percent_config.valor) if percent_config else 10.0
         
@@ -703,11 +713,11 @@ def store_checkout():
         },
         "external_reference": str(nova_venda.id),
         "back_urls": {
-            "success": "http://localhost:5000/store/conta",
-            "failure": "http://localhost:5000/store/checkout",
-            "pending": "http://localhost:5000/store/conta"
+            "success": "https://www.fpfitness.com.br/store/conta",
+            "failure": "https://www.fpfitness.com.br/store/checkout",
+            "pending": "https://www.fpfitness.com.br/store/conta"
         },
-        # "auto_return": "approved", # Comentado para evitar erro de validação estrita no ambiente local
+        "auto_return": "approved",
     }
     
     preference_response = sdk.preference().create(preference_data)

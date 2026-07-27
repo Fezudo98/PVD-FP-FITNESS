@@ -61,28 +61,32 @@ function renderCartPage() {
         const subtotal = price * quantity;
         total += subtotal;
         return `
-            <tr>
-                <td>
+            <tr class="align-middle border-bottom border-light">
+                <td class="py-4">
                     <div class="d-flex align-items-center">
-                        <img src="${item.image ? '/uploads/' + item.image : 'https://via.placeholder.com/50'}" alt="${item.nome || 'Produto'}" class="rounded me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                        <a href="/store/produto/${item.id}" class="d-block overflow-hidden rounded-3 shadow-sm me-3 hover-zoom-container" style="width: 70px; height: 70px;">
+                            <img src="${item.image ? '/uploads/' + item.image : 'https://via.placeholder.com/50'}" alt="${item.nome || 'Produto'}" class="w-100 h-100 transition-scale" style="object-fit: cover;">
+                        </a>
                         <div>
-                            <h6 class="mb-0 text-dark">${item.nome || 'Produto sem nome'}</h6>
-                            ${item.size ? `<small class="text-muted">Tamanho: ${item.size}</small>` : ''}
+                            <h6 class="mb-1 fw-bold" style="font-family: 'Outfit', sans-serif;">
+                                <a href="/store/produto/${item.id}" class="text-dark text-decoration-none hover-warning transition-color">${item.nome || 'Produto sem nome'}</a>
+                            </h6>
+                            ${item.size ? `<small class="text-muted fw-semibold">Tamanho: ${item.size}</small>` : ''}
                         </div>
                     </div>
                 </td>
-                <td class="text-dark">R$ ${price.toFixed(2)}</td>
+                <td class="text-dark fw-semibold">R$ ${price.toFixed(2)}</td>
                 <td>
-                    <div class="input-group input-group-sm" style="width: 100px;">
-                        <button class="btn btn-outline-secondary" onclick="updateQuantity(${item.id}, -1)">-</button>
-                        <input type="text" class="form-control text-center bg-white text-dark border-secondary" value="${quantity}" readonly>
-                        <button class="btn btn-outline-secondary" onclick="updateQuantity(${item.id}, 1)">+</button>
+                    <div class="input-group input-group-sm rounded-pill border overflow-hidden" style="width: 110px; background-color: #f8f9fa;">
+                        <button class="btn btn-light border-0 text-dark fw-bold px-3" onclick="updateQuantity(${item.id}, -1)">-</button>
+                        <input type="text" class="form-control text-center bg-transparent border-0 text-dark fw-bold p-0" value="${quantity}" readonly>
+                        <button class="btn btn-light border-0 text-dark fw-bold px-3" onclick="updateQuantity(${item.id}, 1)">+</button>
                     </div>
                 </td>
-                <td class="text-dark fw-bold">R$ ${subtotal.toFixed(2)}</td>
-                <td>
-                    <button class="btn btn-link text-danger p-0" onclick="removeFromCart(${item.id})">
-                        <i class="fa-solid fa-trash"></i>
+                <td class="text-dark fw-bold h6 mb-0">R$ ${subtotal.toFixed(2)}</td>
+                <td class="text-end">
+                    <button class="btn btn-link text-muted p-0 transition-scale" onclick="removeFromCart(${item.id})" onmouseover="this.classList.remove('text-muted'); this.classList.add('text-danger');" onmouseout="this.classList.remove('text-danger'); this.classList.add('text-muted');">
+                        <i class="fa-regular fa-trash-can fs-5"></i>
                     </button>
                 </td>
             </tr>
@@ -151,6 +155,9 @@ async function applyCoupon() {
             currentCoupon = data;
             messageDiv.textContent = `Cupom ${data.codigo} aplicado!`;
             messageDiv.className = 'form-text mt-1 text-success';
+            document.getElementById('btnAplicarCupom').classList.add('d-none');
+            document.getElementById('btnRemoverCupom').classList.remove('d-none');
+            document.getElementById('cupomInput').disabled = true;
             renderCheckoutPage(); // Re-render to show discount
         } else {
             currentCoupon = null;
@@ -163,6 +170,21 @@ async function applyCoupon() {
         messageDiv.textContent = 'Erro ao validar cupom.';
         messageDiv.className = 'form-text mt-1 text-danger';
     }
+}
+
+function removeCoupon() {
+    currentCoupon = null;
+    const codeInput = document.getElementById('cupomInput');
+    const messageDiv = document.getElementById('cupomMessage');
+    
+    codeInput.value = '';
+    codeInput.disabled = false;
+    messageDiv.textContent = '';
+    
+    document.getElementById('btnAplicarCupom').classList.remove('d-none');
+    document.getElementById('btnRemoverCupom').classList.add('d-none');
+    
+    renderCheckoutPage();
 }
 
 function renderCheckoutPage() {
@@ -184,18 +206,18 @@ function renderCheckoutPage() {
         const itemTotal = item.price * item.quantity;
         subtotal += itemTotal;
         return `
-            <li class="list-group-item bg-transparent text-dark d-flex justify-content-between lh-sm border-bottom border-secondary-subtle align-items-center">
+            <li class="list-group-item bg-transparent text-white d-flex justify-content-between lh-sm border-bottom border-secondary border-opacity-50 align-items-center py-3">
                 <div class="d-flex align-items-center">
                     <img src="${item.image ? '/uploads/' + item.image : 'https://via.placeholder.com/40'}" 
                          alt="${item.nome}" 
-                         class="rounded me-2 object-fit-cover" 
-                         style="width: 40px; height: 40px;">
+                         class="rounded-3 shadow-sm me-3 object-fit-cover" 
+                         style="width: 50px; height: 50px;">
                     <div>
-                        <h6 class="my-0 fw-bold text-dark" style="font-size: 0.9rem;">${item.nome || 'Produto'}</h6>
-                        <small class="text-secondary" style="font-size: 0.8rem;">Qtd: ${item.quantity} ${item.size ? ' | Tam: ' + item.size : ''}</small>
+                        <h6 class="my-0 fw-bold text-white" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif;">${item.nome || 'Produto'}</h6>
+                        <small class="text-light text-opacity-75" style="font-size: 0.8rem;">Qtd: ${item.quantity} ${item.size ? ' | Tam: ' + item.size : ''}</small>
                     </div>
                 </div>
-                <span class="text-dark fw-bold" style="font-size: 0.9rem;">R$ ${itemTotal.toFixed(2)}</span>
+                <span class="text-warning fw-bold" style="font-size: 1rem;">R$ ${itemTotal.toFixed(2)}</span>
             </li>
         `;
     }).join('');

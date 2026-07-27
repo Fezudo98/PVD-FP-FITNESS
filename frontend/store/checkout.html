@@ -1,16 +1,34 @@
 {% extends "store/base.html" %}
 
 {% block content %}
-<section class="py-5 bg-white" style="min-height: 80vh;">
+<section class="py-5 bg-light" style="min-height: 80vh;">
     <div class="container py-5">
         <h1 class="display-4 fw-bold text-dark mb-5 text-center" style="font-family: 'Outfit', sans-serif;">
             Finalizar <span class="text-warning">Compra</span>
         </h1>
 
+        <style>
+            .form-control, .form-select {
+                padding: 0.85rem 1.25rem !important;
+                border-radius: 0.75rem !important;
+                background-color: #f8f9fa !important;
+                border: 1px solid #e9ecef !important;
+                box-shadow: none !important;
+                transition: all 0.3s ease;
+            }
+            .form-control:focus, .form-select:focus {
+                background-color: #ffffff !important;
+                border-color: #ffc107 !important;
+                box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.15) !important;
+            }
+        </style>
+
         <div class="row g-5">
             <!-- Checkout Form -->
             <div class="col-lg-8">
-                <div class="p-4 rounded-4 bg-light border border-light-subtle shadow-sm">
+                <div class="p-4 p-md-5 rounded-4 bg-white border-0 shadow-sm position-relative overflow-hidden">
+                    <!-- Accent Line -->
+                    <div class="position-absolute top-0 start-0 w-100 bg-warning" style="height: 4px;"></div>
                     <h4 class="fw-bold text-dark mb-4" style="font-family: 'Outfit', sans-serif;">Seus Dados</h4>
                     <form id="checkoutForm">
                         <div class="row g-3">
@@ -125,14 +143,15 @@
                             </div>
                         </div>
 
-                        <h5 class="fw-bold text-dark mt-4 mb-3" style="font-family: 'Outfit', sans-serif;">Pagamento
-                        </h5>
-                        <div class="alert alert-info border-0 rounded-4" role="alert">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-shield-lock-fill fs-3 text-info me-3"></i>
+                        <h5 class="fw-bold text-dark mt-5 mb-3" style="font-family: 'Outfit', sans-serif;">Pagamento</h5>
+                        <div class="alert bg-dark text-white border-0 rounded-4 shadow-sm position-relative overflow-hidden" role="alert">
+                            <!-- Ambient Glow -->
+                            <div class="position-absolute top-0 end-0 w-100 h-100 rounded-4" style="background: radial-gradient(circle at top right, rgba(255, 193, 7, 0.15), transparent 60%); pointer-events: none;"></div>
+                            <div class="d-flex align-items-center position-relative z-2">
+                                <i class="bi bi-shield-lock-fill fs-3 text-warning me-3"></i>
                                 <div>
-                                    <h6 class="fw-bold mb-1 text-dark">Pagamento 100% Seguro</h6>
-                                    <small class="text-muted">Você será redirecionado para o ambiente seguro do <strong>Mercado Pago</strong> para escolher sua forma de pagamento (PIX, Cartão ou Boleto).</small>
+                                    <h6 class="fw-bold mb-1 text-white">Pagamento 100% Seguro</h6>
+                                    <small class="text-light text-opacity-75">Você será redirecionado para o ambiente seguro do <strong class="text-warning">Mercado Pago</strong> para escolher sua forma de pagamento (PIX, Cartão ou Boleto).</small>
                                 </div>
                             </div>
                         </div>
@@ -142,51 +161,52 @@
 
             <!-- Order Summary -->
             <div class="col-lg-4">
-                <div class="p-4 rounded-4 position-sticky bg-light border border-light-subtle shadow-sm"
-                    style="top: 100px;">
-                    <h4 class="fw-bold text-dark mb-4" style="font-family: 'Outfit', sans-serif;">Resumo</h4>
-                    <ul class="list-group list-group-flush mb-3 bg-transparent" id="checkoutItems">
+                <div class="p-4 p-md-5 rounded-4 position-sticky border-0 shadow-lg"
+                    style="top: 100px; background-color: #121212; color: #fff;">
+                    <!-- Ambient Glow -->
+                    <div class="position-absolute top-0 end-0 w-100 h-100 rounded-4" style="background: radial-gradient(circle at top right, rgba(255, 193, 7, 0.15), transparent 60%); pointer-events: none;"></div>
+                    
+                    <h4 class="fw-bold text-white mb-4 position-relative z-2" style="font-family: 'Outfit', sans-serif;">Resumo do Pedido</h4>
+                    <ul class="list-group list-group-flush mb-3 bg-transparent position-relative z-2" id="checkoutItems">
                         <!-- Items injected via JS -->
                     </ul>
-                    <div class="d-flex justify-content-between mb-3 text-secondary">
+                    <div class="d-flex justify-content-between mb-3 text-light text-opacity-75 position-relative z-2">
                         <span>Subtotal</span>
-                        <span id="checkoutSubtotal" class="text-dark fw-bold">R$ 0,00</span>
+                        <span id="checkoutSubtotal" class="text-white fw-bold">R$ 0,00</span>
                     </div>
                     <!-- Shipping Options injected via JS -->
-                    <div id="shippingOptions" class="mb-3 small border-bottom border-light-subtle pb-3"></div>
+                    <div id="shippingOptions" class="mb-3 small border-bottom border-secondary border-opacity-50 pb-3 position-relative z-2"></div>
 
-                    <div class="d-flex justify-content-between mb-3 text-secondary">
+                    <div class="d-flex justify-content-between mb-3 text-light text-opacity-75 position-relative z-2">
                         <span>Entrega</span>
-                        <span id="checkoutShipping" class="text-dark fw-bold">---</span>
+                        <span id="checkoutShipping" class="text-warning fw-bold">---</span>
                     </div>
 
                     <!-- Coupon Input -->
-                    <div class="mb-4">
-                        <label for="cupomInput" class="form-label text-muted small text-uppercase fw-bold">Cupom de
-                            Desconto</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control bg-white text-dark border-secondary-subtle"
-                                id="cupomInput" placeholder="Código" style="text-transform: uppercase;">
-                            <button class="btn btn-outline-warning" type="button"
-                                onclick="applyCoupon()">Aplicar</button>
+                    <div class="mb-4 position-relative z-2">
+                        <label for="cupomInput" class="form-label text-light text-opacity-75 small text-uppercase fw-bold">Cupom de Desconto</label>
+                        <div class="input-group input-group-lg rounded-pill overflow-hidden shadow-sm border border-secondary border-opacity-50">
+                            <input type="text" class="form-control premium-filter bg-dark text-white border-0" id="cupomInput" placeholder="CÓDIGO" style="text-transform: uppercase; box-shadow: none;">
+                            <button class="btn btn-warning border-0 px-4 fw-bold" type="button" id="btnAplicarCupom" onclick="applyCoupon()">Aplicar</button>
+                            <button class="btn btn-danger border-0 px-4 d-none" type="button" id="btnRemoverCupom" onclick="removeCoupon()"><i class="fa-solid fa-xmark"></i></button>
                         </div>
-                        <div id="cupomMessage" class="form-text mt-1"></div>
+                        <div id="cupomMessage" class="form-text mt-1 text-warning"></div>
                     </div>
 
                     <!-- Discount Display (Hidden by default) -->
-                    <div class="d-flex justify-content-between mb-3 text-success d-none" id="discountRow">
-                        <span>Desconto</span>
-                        <span id="checkoutDiscount" class="fw-bold">- R$ 0,00</span>
+                    <div class="d-flex justify-content-between mb-3 text-success d-none position-relative z-2" id="discountRow">
+                        <span class="text-light text-opacity-75">Desconto</span>
+                        <span id="checkoutDiscount" class="text-success fw-bold">- R$ 0,00</span>
                     </div>
 
-                    <hr class="my-4 border-secondary-subtle">
-                    <div class="d-flex justify-content-between mb-4 align-items-center">
-                        <span class="fw-bold text-dark h5 mb-0">Total</span>
-                        <span class="fw-bold text-warning h4 mb-0" id="checkoutTotal">R$ 0,00</span>
+                    <hr class="my-4 border-secondary border-opacity-50 position-relative z-2">
+                    <div class="d-flex justify-content-between mb-5 align-items-center position-relative z-2">
+                        <span class="fw-bold text-white h5 mb-0">Total</span>
+                        <span class="fw-bold text-warning h3 mb-0" id="checkoutTotal">R$ 0,00</span>
                     </div>
 
                     <button onclick="submitOrder()"
-                        class="btn btn-warning w-100 py-3 rounded-pill fw-bold shadow-sm text-uppercase"
+                        class="btn btn-warning w-100 py-3 rounded-pill fw-bold shadow-lg mb-3 text-uppercase pulse-btn position-relative z-2"
                         style="letter-spacing: 1px; transition: all 0.3s ease;">
                         Confirmar Pedido
                     </button>

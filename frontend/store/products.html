@@ -7,29 +7,45 @@
             <h1 class="display-5 fw-bold text-dark mb-3">Nossos Produtos</h1>
             <p class="text-muted lead">Confira nossa coleção completa.</p>
         </div>
-        <div class="row mb-4">
-            <div class="col-md-8 mx-auto">
-                <div class="input-group">
-                    <select class="form-select bg-white text-dark border-secondary" id="categoryFilter"
-                        onchange="filterByCategory()" style="max-width: 200px;">
-                        <option value="">Todas as Categorias</option>
-                        <!-- Categories will be loaded here -->
-                    </select>
-                    <select class="form-select bg-white text-dark border-secondary ms-2" id="sortFilter"
-                        onchange="filterBySort()" style="max-width: 200px;">
-                        <option value="mais_vendidos">Mais Vendidos</option>
-                        <option value="alfabetica">Ordem Alfabética</option>
-                        <option value="preco_crescente">Menor Preço</option>
-                        <option value="preco_decrescente">Maior Preço</option>
-                    </select>
-                    <input type="text" class="form-control bg-white text-dark border-secondary"
-                        placeholder="Buscar produtos..." id="searchInput">
-                    <button class="btn btn-warning" type="button" onclick="searchProducts()">
-                        <i class="fas fa-search"></i>
-                    </button>
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="d-flex flex-column flex-md-row justify-content-center align-items-center gap-3">
+                    <!-- Category Select -->
+                    <div class="position-relative">
+                        <select class="form-select premium-filter rounded-pill shadow-sm border-0 py-2 px-4 text-dark fw-bold" id="categoryFilter" onchange="filterByCategory()" style="min-width: 220px; background-color: #ffffff;">
+                            <option value="">Todas as Categorias</option>
+                            <!-- Categories will be loaded here -->
+                        </select>
+                    </div>
+                    
+                    <!-- Sort Select -->
+                    <div class="position-relative">
+                        <select class="form-select premium-filter rounded-pill shadow-sm border-0 py-2 px-4 text-dark fw-bold" id="sortFilter" onchange="filterBySort()" style="min-width: 220px; background-color: #ffffff;">
+                            <option value="mais_vendidos">🔥 Mais Vendidos</option>
+                            <option value="alfabetica">📝 Ordem Alfabética</option>
+                            <option value="preco_crescente">🔽 Menor Preço</option>
+                            <option value="preco_decrescente">🔼 Maior Preço</option>
+                        </select>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white border border-0" style="max-width: 350px;">
+                        <input type="text" class="form-control premium-filter border-0 py-2 px-4 text-dark" placeholder="Buscar peças..." id="searchInput" style="box-shadow: none;">
+                        <button class="btn btn-warning border-0 px-4 transition-scale" type="button" onclick="searchProducts()">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <style>
+            .premium-filter:focus {
+                border-color: #ffc107 !important;
+                box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
+                outline: none;
+            }
+        </style>
 
         <div class="row g-4" id="productsContainer">
             <!-- Products will be loaded here via JS -->

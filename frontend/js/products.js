@@ -135,31 +135,29 @@ async function loadProducts() {
                 }
 
                 const bestSellerBadge = p.is_best_seller ?
-                    `<span class="badge badge-best-seller position-absolute bottom-0 start-0 m-3 px-3 py-2 rounded-pill z-2 shadow-sm">
+                    `<span class="badge bg-dark text-warning position-absolute top-0 start-0 m-3 px-3 py-2 rounded-pill z-2 shadow-sm border border-warning border-opacity-25" style="letter-spacing: 1px;">
                         <i class="fas fa-fire me-1"></i> Mais Vendido
                      </span>` : '';
 
                 return `
                 <div class="col-md-6 col-lg-3">
-                    <div class="product-card h-100 position-relative">
-                        <div class="product-img-wrapper position-relative" style="height: 300px;">
+                    <div class="product-card h-100 position-relative border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+                        <div class="product-img-wrapper position-relative overflow-hidden" style="height: 300px;">
                             ${bestSellerBadge}
-                            <span class="badge badge-gold position-absolute top-0 end-0 m-3 px-3 py-2 rounded-pill z-2">
-                                ${priceDisplay}
-                            </span>
                             <a href="/store/produto/${p.id}" class="d-block h-100">
                                 <img src="${p.imagem_url ? '/uploads/' + p.imagem_url : 'https://via.placeholder.com/300x400?text=Sem+Imagem'}" 
                                      alt="${p.nome}" 
-                                     class="w-100 h-100 object-fit-cover"
+                                     class="w-100 h-100 object-fit-cover transition-scale"
                                      style="object-fit: cover;">
                             </a>
                         </div>
-                        <div class="card-body p-4">
-                            <div class="text-muted small mb-2 text-uppercase">${p.categoria || 'Geral'}</div>
-                            <h5 class="card-title fw-bold mb-3">
+                        <div class="card-body p-4 d-flex flex-column text-center">
+                            <div class="text-muted small mb-1 text-uppercase" style="letter-spacing: 1px;">${p.categoria || 'Geral'}</div>
+                            <h5 class="card-title fw-bold mb-2 flex-grow-1" style="font-family: 'Outfit', sans-serif;">
                                 <a href="/store/produto/${p.id}" class="text-dark text-decoration-none stretched-link">${p.nome}</a>
                             </h5>
-                            <a href="/store/produto/${p.id}" class="btn btn-outline-warning w-100 rounded-pill position-relative z-2">
+                            <h4 class="text-warning fw-bold mb-4">${priceDisplay}</h4>
+                            <a href="/store/produto/${p.id}" class="btn btn-outline-dark w-100 rounded-pill position-relative z-2 fw-bold">
                                 <i class="fa-solid fa-eye me-2"></i>Ver Detalhes
                             </a>
                         </div>

@@ -28,11 +28,14 @@
 </section>
 
 <!-- Featured Products -->
-<section id="featured" class="py-5">
-    <div class="container py-5">
+<section id="featured" class="py-4 mt-3">
+    <div class="container py-4">
         <div class="text-center mb-5">
-            <h2 class="display-5 fw-bold text-warning mb-3">Destaques</h2>
-            <p class="text-muted lead">As peças mais desejadas do momento.</p>
+            <h2 class="display-5 fw-bold text-dark mb-2" style="font-family: 'Outfit', sans-serif;">
+                Nossos <span class="text-warning">Destaques</span>
+            </h2>
+            <p class="text-muted lead" style="font-weight: 300;">As peças mais desejadas do momento.</p>
+            <div class="mx-auto bg-warning mt-3" style="width: 60px; height: 3px; border-radius: 3px;"></div>
         </div>
 
         <div class="row g-4" id="featuredProductsContainer">
@@ -51,79 +54,82 @@
 </section>
 
 <!-- Categories/Banner -->
-<section class="py-5 bg-light">
-    <div class="container">
+<section class="py-4 bg-light mb-5">
+    <div class="container pb-4">
         <div class="row g-4">
             <div class="col-md-6">
-                <div class="card bg-dark text-white border-0 overflow-hidden h-100 position-relative">
-                    <img src="/static/img/leggings.png" class="card-img opacity-50" alt="Leggings"
-                        style="height: 300px; object-fit: cover;">
-                    <div class="card-img-overlay d-flex flex-column justify-content-center align-items-start p-5">
+                <div class="card bg-dark text-white border-0 overflow-hidden h-100 position-relative category-card shadow-sm rounded-4">
+                    <img src="/static/img/leggings.png" class="card-img opacity-50 transition-scale" alt="Leggings"
+                        style="height: 320px; object-fit: cover;">
+                    <div class="card-img-overlay d-flex flex-column justify-content-center align-items-start p-5 z-2">
                         <h3 class="card-title display-6 fw-bold">Leggings</h3>
-                        <p class="card-text">Conforto e flexibilidade para qualquer treino.</p>
-                        <a href="/store/produtos?categoria=Legging" class="btn btn-light rounded-pill mt-3">Comprar
-                            Agora</a>
+                        <p class="card-text fs-5" style="font-weight: 300;">Conforto e flexibilidade para qualquer treino.</p>
+                        <a href="/store/produtos?categoria=Legging" class="btn btn-outline-light rounded-pill mt-3 px-4 fw-bold">Comprar Agora</a>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="card bg-dark text-white border-0 overflow-hidden h-100 position-relative">
-                    <img src="/static/img/tops.png" class="card-img opacity-50" alt="Tops"
-                        style="height: 300px; object-fit: cover;">
-                    <div class="card-img-overlay d-flex flex-column justify-content-center align-items-start p-5">
+                <div class="card bg-dark text-white border-0 overflow-hidden h-100 position-relative category-card shadow-sm rounded-4">
+                    <img src="/static/img/tops.png" class="card-img opacity-50 transition-scale" alt="Tops"
+                        style="height: 320px; object-fit: cover;">
+                    <div class="card-img-overlay d-flex flex-column justify-content-center align-items-start p-5 z-2">
                         <h3 class="card-title display-6 fw-bold">Tops</h3>
-                        <p class="card-text">Sustentação e estilo em cada detalhe.</p>
-                        <a href="/store/produtos?categoria=Top" class="btn btn-light rounded-pill mt-3">Comprar
-                            Agora</a>
+                        <p class="card-text fs-5" style="font-weight: 300;">Sustentação e estilo em cada detalhe.</p>
+                        <a href="/store/produtos?categoria=Top" class="btn btn-outline-light rounded-pill mt-3 px-4 fw-bold">Comprar Agora</a>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</section>
-<!-- Welcome Modal -->
-<div class="modal fade" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true"
-    data-bs-backdrop="static">
+    </di<!-- Welcome Modal -->
+<div class="modal fade" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow-lg border-2 border-warning"
-            style="background: linear-gradient(135deg, #1f1c2c, #928DAB); color: white;">
-            <div class="modal-header border-0 text-center justify-content-center">
-                <div class="display-1 text-warning mb-2 animate__animated animate__tada">🎁</div>
-            </div>
-            <div class="modal-body text-center pt-0 px-4">
-                <h2 class="fw-bold text-white mb-3" style="font-family: 'Outfit', sans-serif;">Boas-vindas à FP Fitness!
-                </h2>
-                <p class="lead mb-4">Que bom ter você aqui! Para começar com o pé direito, preparamos um presente
-                    especial:</p>
+        <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden position-relative" style="background-color: #121212;">
+            <!-- Background Elements for Premium Feel -->
+            <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at top right, rgba(255, 193, 7, 0.15) 0%, transparent 50%), radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.05) 0%, transparent 50%); pointer-events: none;"></div>
+            
+            <!-- Close Button -->
+            <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 z-3" data-bs-dismiss="modal" aria-label="Close" onclick="closeWelcomeModal()"></button>
 
-                <div
-                    class="bg-white text-dark rounded-3 p-3 mb-3 shadow-sm border border-warning position-relative overflow-hidden">
-                    <h5 class="fw-bold text-muted text-uppercase small mb-1">Seu Cupom Exclusivo</h5>
-                    <div class="d-flex align-items-center justify-content-center gap-2 cursor-pointer"
-                        onclick="copyCoupon('PRIMEIRACOMPRA')" title="Clique para copiar">
-                        <h1 class="display-5 fw-bold text-warning mb-0" style="letter-spacing: 2px;">PRIMEIRACOMPRA</h1>
-                        <i class="fa-regular fa-copy text-muted"></i>
+            <div class="modal-body text-center p-5 position-relative z-2">
+                <!-- Icon -->
+                <div class="mb-4 animate__animated animate__fadeInDown">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning rounded-circle" style="width: 80px; height: 80px; box-shadow: 0 0 20px rgba(255,193,7,0.2);">
+                        <i class="fa-solid fa-gift fs-1"></i>
                     </div>
                 </div>
-                <p class="text-warning fw-bold fs-5 mb-1">🎉 20% DE DESCONTO 🎉</p>
-                <p class="small text-white-50">na sua primeira compra online!</p>
 
-                <hr class="border-secondary my-4">
+                <!-- Title -->
+                <h2 class="fw-bold text-white mb-3" style="font-family: 'Outfit', sans-serif;">Bem-vindo à FP Fitness</h2>
+                <p class="text-light mb-4 fs-5" style="font-weight: 300;">Para começar a treinar com estilo, preparamos um presente especial para você.</p>
 
-                <div
-                    class="d-flex align-items-center justify-content-center gap-3 text-start bg-dark bg-opacity-25 p-3 rounded-3">
-                    <i class="fa-solid fa-star text-warning fs-3"></i>
+                <!-- Coupon Ticket -->
+                <div class="coupon-ticket position-relative bg-dark rounded-3 p-4 mb-4 border border-warning border-opacity-50 text-center animate__animated animate__zoomIn animate__delay-1s" style="box-shadow: 0 5px 15px rgba(0,0,0,0.3); border-style: dashed !important;">
+                    <p class="text-warning text-uppercase fw-bold small mb-2" style="letter-spacing: 1px;">Use o cupom no checkout</p>
+                    <div class="d-flex align-items-center justify-content-center gap-3 cursor-pointer user-select-all" onclick="copyCoupon('PRIMEIRACOMPRA')" title="Clique para copiar">
+                        <h1 class="display-5 fw-bold text-white mb-0" style="letter-spacing: 2px;">PRIMEIRACOMPRA</h1>
+                        <i class="fa-regular fa-copy text-warning fs-4"></i>
+                    </div>
+                    <div class="mt-3">
+                        <span class="badge bg-warning text-dark px-3 py-2 fs-6 fw-bold rounded-pill shadow-sm">20% DE DESCONTO</span>
+                    </div>
+                </div>
+
+                <hr class="border-secondary border-opacity-25 my-4">
+
+                <!-- Perks -->
+                <div class="d-flex align-items-start justify-content-center gap-3 text-start mb-4">
+                    <div class="bg-dark bg-opacity-50 p-2 rounded-circle border border-secondary border-opacity-25 mt-1">
+                        <i class="fa-solid fa-star text-warning"></i>
+                    </div>
                     <div>
-                        <h6 class="fw-bold mb-0 text-white">Quer mais vantagens?</h6>
-                        <small class="text-light">Avalie seus produtos após receber e ganhe <span
-                                class="text-warning fw-bold">+5% OFF</span> na próxima compra!</small>
+                        <h6 class="fw-bold mb-1 text-white">Mais Vantagens</h6>
+                        <small class="text-light text-opacity-75">Após a primeira compra, avalie seus produtos e ganhe <span class="text-warning fw-bold">+5% OFF</span> na próxima visita!</small>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer border-0 justify-content-center pb-4">
-                <button type="button" class="btn btn-warning btn-lg rounded-pill px-5 fw-bold shadow pulse-btn"
-                    data-bs-dismiss="modal" onclick="closeWelcomeModal()">
-                    Resgatar meu Desconto! 🛍️
+
+                <!-- Action Button -->
+                <button type="button" class="btn btn-warning btn-lg rounded-pill w-100 fw-bold shadow-lg pulse-btn py-3 text-uppercase" style="letter-spacing: 1px;" data-bs-dismiss="modal" onclick="closeWelcomeModal()">
+                    Resgatar Meu Desconto
                 </button>
             </div>
         </div>
@@ -136,20 +142,29 @@
     }
 
     @keyframes pulse-gold {
-        0% {
-            box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
-        }
+        0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+        70% { box-shadow: 0 0 0 15px rgba(255, 193, 7, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+    }
 
-        70% {
-            box-shadow: 0 0 0 10px rgba(255, 215, 0, 0);
-        }
+    .transition-scale {
+        transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
 
-        100% {
-            box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
-        }
+    .category-card:hover .transition-scale,
+    .product-card:hover .transition-scale {
+        transform: scale(1.08);
+    }
+    
+    .product-card {
+        transition: box-shadow 0.3s ease, transform 0.3s ease;
+    }
+    
+    .product-card:hover {
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+        transform: translateY(-5px);
     }
 </style>
-
 {% endblock %}
 
 {% block scripts %}
@@ -227,24 +242,22 @@
 
                     return `
                     <div class="col-md-6 col-lg-3">
-                        <div class="product-card h-100 position-relative">
-                            <div class="product-img-wrapper position-relative">
-                                <span class="badge bg-danger position-absolute bottom-0 start-0 m-3 px-3 py-2 rounded-pill z-2 shadow-sm">
+                        <div class="product-card h-100 position-relative border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+                            <div class="product-img-wrapper position-relative overflow-hidden" style="height: 300px;">
+                                <span class="badge bg-dark text-warning position-absolute top-0 start-0 m-3 px-3 py-2 rounded-pill z-2 shadow-sm border border-warning border-opacity-25" style="letter-spacing: 1px;">
                                     <i class="fas fa-fire me-1"></i> Mais Vendido
                                 </span>
-                                <span class="badge badge-gold position-absolute top-0 end-0 m-3 px-3 py-2 rounded-pill z-2">
-                                    ${priceDisplay}
-                                </span>
                                 <a href="/store/produto/${p.id}">
-                                    <img src="${p.imagem_url ? '/uploads/' + p.imagem_url : 'https://via.placeholder.com/300x400?text=Sem+Imagem'}" alt="${p.nome}" class="img-fluid">
+                                    <img src="${p.imagem_url ? '/uploads/' + p.imagem_url : 'https://via.placeholder.com/300x400?text=Sem+Imagem'}" alt="${p.nome}" class="img-fluid w-100 h-100 transition-scale" style="object-fit: cover;">
                                 </a>
                             </div>
-                            <div class="card-body p-4">
-                                <div class="text-muted small mb-2 text-uppercase">${p.categoria || 'Geral'}</div>
-                                <h5 class="card-title fw-bold mb-3">
+                            <div class="card-body p-4 d-flex flex-column text-center">
+                                <div class="text-muted small mb-1 text-uppercase" style="letter-spacing: 1px;">${p.categoria || 'Geral'}</div>
+                                <h5 class="card-title fw-bold mb-2 flex-grow-1" style="font-family: 'Outfit', sans-serif;">
                                     <a href="/store/produto/${p.id}" class="text-dark text-decoration-none stretched-link">${p.nome}</a>
                                 </h5>
-                                <button class="btn btn-outline-warning w-100 rounded-pill position-relative z-2" onclick="addToCart(${p.id}, '${p.nome}', ${p.preco_venda}, '${p.imagem_url || ''}')">
+                                <h4 class="text-warning fw-bold mb-4">${priceDisplay}</h4>
+                                <button class="btn btn-outline-dark w-100 rounded-pill position-relative z-2 fw-bold" onclick="addToCart(${p.id}, '${p.nome}', ${p.preco_venda}, '${p.imagem_url || ''}')">
                                     <i class="fa-solid fa-cart-plus me-2"></i>Adicionar
                                 </button>
                             </div>

@@ -5,13 +5,13 @@
     <div class="row g-5">
         <!-- Product Image -->
         <div class="col-md-6">
-            <div class="card border-0 bg-dark overflow-hidden rounded-4 shadow-lg">
+            <div class="card border-0 bg-white overflow-hidden rounded-4 shadow-sm h-100">
                 <div id="productCarousel" class="carousel slide" data-bs-ride="false">
-                    <div class="carousel-inner" id="carouselInner" style="height: 500px;">
+                    <div class="carousel-inner" id="carouselInner" style="height: 550px;">
                         <!-- Images will be loaded here -->
                         <div class="carousel-item active h-100">
-                            <img id="productImage" src="" class="d-block w-100 h-100 object-fit-cover"
-                                alt="Product Image" style="object-fit: contain;">
+                            <img id="productImage" src="" class="d-block w-100 h-100"
+                                alt="Product Image" style="object-fit: cover; object-position: center;">
                         </div>
                     </div>
                     <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel"
@@ -26,13 +26,13 @@
                     </button>
 
                     <div class="position-absolute top-0 start-0 m-4" style="z-index: 10;">
-                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold"
-                            id="productCategory"></span>
+                        <span class="badge bg-dark text-warning px-3 py-2 rounded-pill fw-bold border border-warning border-opacity-25 shadow-sm"
+                            id="productCategory" style="letter-spacing: 1px;"></span>
                     </div>
                 </div>
 
                 <!-- Thumbnails Container -->
-                <div class="d-flex justify-content-center gap-2 p-3 bg-secondary bg-opacity-10 overflow-auto"
+                <div class="d-flex justify-content-center gap-2 p-3 bg-light border-top"
                     id="carouselThumbnails">
                     <!-- Thumbnails will be loaded here -->
                 </div>
@@ -41,41 +41,41 @@
 
         <!-- Product Details -->
         <div class="col-md-6">
-            <div class="d-flex flex-column h-100">
-                <h1 class="display-5 fw-bold text-dark mb-1" id="productName">Carregando...</h1>
+            <div class="d-flex flex-column h-100 ps-md-4 py-3">
+                <h1 class="display-4 fw-bold text-dark mb-2" id="productName" style="font-family: 'Outfit', sans-serif; line-height: 1.1;">Carregando...</h1>
 
                 <!-- Dynamic Rating Summary -->
-                <div class="d-flex align-items-center mb-2" id="ratingSummaryContainer"
+                <div class="d-flex align-items-center mb-3" id="ratingSummaryContainer"
                     style="display: none !important;">
                     <div class="text-warning me-3" id="ratingStars"></div>
-                    <span class="text-muted small" id="ratingCount"></span>
+                    <span class="text-muted small fw-semibold" id="ratingCount"></span>
                 </div>
 
-                <h2 class="display-6 fw-bold text-warning mb-2" id="productPrice">R$ --,--</h2>
+                <h2 class="display-6 fw-bold text-warning mb-4" id="productPrice">R$ --,--</h2>
 
-                <p class="lead text-muted mb-3 fs-6" id="productDescription">
+                <p class="lead text-muted mb-4 fs-6" id="productDescription" style="line-height: 1.7;">
                     Carregando detalhes do produto...
                 </p>
 
                 <!-- Options -->
-                <div class="row g-2 mb-3">
+                <div class="row g-3 mb-4">
                     <div class="col-12" id="colorOptionsContainer">
                         <!-- Color options will be dynamically loaded here -->
                     </div>
                     <div class="col-12" id="sizeOptionsContainer">
-                        <label class="form-label text-muted small text-uppercase fw-bold mb-1">Tamanho</label>
+                        <label class="form-label text-muted small text-uppercase fw-bold mb-2" style="letter-spacing: 1px;">Tamanho</label>
                         <div class="d-flex flex-wrap gap-2" id="sizeButtons">
                             <!-- Size buttons will be dynamically loaded here -->
                         </div>
                     </div>
-                    <div class="col-6 mt-2">
-                        <label class="form-label text-muted small text-uppercase fw-bold">Quantidade</label>
-                        <div class="input-group">
-                            <button class="btn btn-outline-secondary rounded-start-pill" type="button"
+                    <div class="col-6 mt-3">
+                        <label class="form-label text-muted small text-uppercase fw-bold mb-2" style="letter-spacing: 1px;">Quantidade</label>
+                        <div class="input-group input-group-lg rounded-pill border overflow-hidden shadow-sm" style="width: 140px; background-color: #f8f9fa;">
+                            <button class="btn btn-light border-0 text-dark fw-bold px-3 transition-color hover-warning" type="button"
                                 onclick="adjustQty(-1)">-</button>
-                            <input type="text" class="form-control bg-dark text-white border-secondary text-center"
+                            <input type="text" class="form-control bg-transparent text-dark border-0 text-center fw-bold p-0"
                                 value="1" id="productQty" readonly>
-                            <button class="btn btn-outline-secondary rounded-end-pill" type="button"
+                            <button class="btn btn-light border-0 text-dark fw-bold px-3 transition-color hover-warning" type="button"
                                 onclick="adjustQty(1)">+</button>
                         </div>
                     </div>
@@ -83,14 +83,14 @@
 
                 <!-- Actions -->
                 <div class="d-grid gap-3">
-                    <button class="btn btn-warning btn-lg rounded-pill py-3 fw-bold shadow-lg"
-                        onclick="addToCartCurrent()">
-                        <i class="fa-solid fa-cart-plus me-2"></i> Adicionar ao Carrinho
+                    <button class="btn btn-dark btn-lg rounded-pill py-3 fw-bold shadow-lg transition-scale pulse-btn"
+                        onclick="addToCartCurrent()" style="letter-spacing: 1px;">
+                        <i class="fa-solid fa-cart-plus text-warning me-2"></i> Adicionar ao Carrinho
                     </button>
-                    <button class="btn btn-success btn-lg rounded-pill py-3 fw-bold shadow-lg" onclick="buyNow()">
+                    <button class="btn btn-warning btn-lg rounded-pill py-3 fw-bold shadow-sm transition-scale" onclick="buyNow()" style="letter-spacing: 1px;">
                         <i class="fa-solid fa-bolt me-2"></i> Comprar Agora
                     </button>
-                    <button class="btn btn-outline-warning btn-lg rounded-pill py-3 fw-bold">
+                    <button class="btn btn-outline-dark btn-lg rounded-pill py-3 fw-bold transition-scale" style="letter-spacing: 1px;">
                         <i class="fa-regular fa-heart me-2"></i> Adicionar aos Favoritos
                     </button>
                 </div>
@@ -698,7 +698,7 @@
         if (sizes.length > 0) {
             sizeContainer.innerHTML = sizes.map(size => `
                 <input type="radio" class="btn-check" name="sizeOption" id="size_${size}" value="${size}" autocomplete="off" onchange="handleSizeChange('${size}')">
-                <label class="btn btn-outline-dark px-3 py-2" for="size_${size}">${size}</label>
+                <label class="btn btn-outline-dark px-4 py-2 rounded-pill fw-bold transition-scale" for="size_${size}" style="min-width: 60px;">${size}</label>
             `).join('');
             selectedSize = null;
         } else {
