@@ -10,12 +10,20 @@ function updateCartCount() {
     badges.forEach(badge => badge.textContent = count);
 }
 
-function addToCart(productId, nome, price, image) {
+function addToCart(productId, nome, price, image, stock = 999) {
     const existingItem = cart.find(item => item.id === productId);
     if (existingItem) {
+        if (existingItem.quantity + 1 > stock) {
+            Swal.fire({ icon: 'warning', title: 'Estoque Insuficiente', text: `O estoque máximo é ${stock}.`, toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
         existingItem.quantity += 1;
     } else {
-        cart.push({ id: productId, nome: nome, price: price, image: image, quantity: 1 });
+        if (1 > stock) {
+            Swal.fire({ icon: 'warning', title: 'Estoque Esgotado', text: `Produto sem estoque.`, toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+        cart.push({ id: productId, nome: nome, price: price, image: image, quantity: 1, max_stock: stock });
     }
 
     localStorage.setItem('fp_fitness_cart', JSON.stringify(cart));

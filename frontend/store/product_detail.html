@@ -83,11 +83,11 @@
 
                 <!-- Actions -->
                 <div class="d-grid gap-3">
-                    <button class="btn btn-dark btn-lg rounded-pill py-3 fw-bold shadow-lg transition-scale pulse-btn"
+                    <button id="btnAddToCart" class="btn btn-dark btn-lg rounded-pill py-3 fw-bold shadow-lg transition-scale pulse-btn"
                         onclick="addToCartCurrent()" style="letter-spacing: 1px;">
                         <i class="fa-solid fa-cart-plus text-warning me-2"></i> Adicionar ao Carrinho
                     </button>
-                    <button class="btn btn-warning btn-lg rounded-pill py-3 fw-bold shadow-sm transition-scale" onclick="buyNow()" style="letter-spacing: 1px;">
+                    <button id="btnBuyNow" class="btn btn-warning btn-lg rounded-pill py-3 fw-bold shadow-sm transition-scale" onclick="buyNow()" style="letter-spacing: 1px;">
                         <i class="fa-solid fa-bolt me-2"></i> Comprar Agora
                     </button>
                     <button class="btn btn-outline-dark btn-lg rounded-pill py-3 fw-bold transition-scale" style="letter-spacing: 1px;">
@@ -502,6 +502,40 @@
         document.getElementById('productDescription').textContent = product.descricao || 'Sem descrição disponível.';
         document.getElementById('productCategory').textContent = product.categoria || 'Geral';
 
+        // --- Stock Warning ---
+        let totalStock = 0;
+        if (product.variants && product.variants.length > 0) {
+            totalStock = product.variants.reduce((acc, v) => acc + v.quantidade, 0);
+        } else {
+            totalStock = product.quantidade || 0;
+        }
+
+        const priceEl = document.getElementById('productPrice');
+        let stockWarningHtml = '';
+        if (totalStock <= 5 && totalStock > 0) {
+            stockWarningHtml = `<div class="text-danger small fw-bold mb-3"><i class="fa-solid fa-fire me-1"></i> Restam apenas ${totalStock} unidades! Compre antes que acabe.</div>`;
+        } else if (totalStock === 0) {
+            stockWarningHtml = `<div class="text-muted small fw-bold mb-3"><i class="fa-solid fa-ban me-1"></i> Produto Esgotado.</div>`;
+        }
+        
+        // Remove old warning if exists
+        const oldWarning = document.getElementById('stockWarning');
+        if (oldWarning) oldWarning.remove();
+
+        if (stockWarningHtml) {
+            priceEl.insertAdjacentHTML('afterend', `<div id="stockWarning">${stockWarningHtml}</div>`);
+        }
+
+        const btnAdd = document.getElementById('btnAddToCart');
+        const btnBuy = document.getElementById('btnBuyNow');
+        if (totalStock === 0) {
+            if (btnAdd) { btnAdd.disabled = true; btnAdd.classList.add('opacity-50'); }
+            if (btnBuy) { btnBuy.disabled = true; btnBuy.classList.add('opacity-50'); }
+        } else {
+            if (btnAdd) { btnAdd.disabled = false; btnAdd.classList.remove('opacity-50'); }
+            if (btnBuy) { btnBuy.disabled = false; btnBuy.classList.remove('opacity-50'); }
+        }
+
         // --- Image Carousel Logic ---
         const carouselInner = document.getElementById('carouselInner');
         const carouselThumbnails = document.getElementById('carouselThumbnails');
@@ -747,8 +781,16 @@
         const existingItem = cart.find(item => item.id === finalProduct.id && item.color === (finalProduct.cor || null) && item.size === (finalProduct.tamanho || null));
 
         if (existingItem) {
+            if (existingItem.quantity + qty > finalProduct.quantidade) {
+                Swal.fire({ icon: 'warning', title: 'Estoque Insuficiente', text: `Você já tem ${existingItem.quantity} unidades no carrinho. O estoque disponível é ${finalProduct.quantidade}.`, toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+                return;
+            }
             existingItem.quantity += qty;
         } else {
+            if (qty > finalProduct.quantidade) {
+                Swal.fire({ icon: 'warning', title: 'Estoque Insuficiente', text: `O estoque disponível é ${finalProduct.quantidade}.`, toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+                return;
+            }
             cart.push({
                 id: finalProduct.id, quantity: qty, size: finalProduct.tamanho || null, color: finalProduct.cor || null,
                 nome: finalProduct.nome, price: finalProduct.preco_venda, image: finalProduct.imagem_url

@@ -156,10 +156,13 @@ async function loadProducts() {
                             <h5 class="card-title fw-bold mb-2 flex-grow-1" style="font-family: 'Outfit', sans-serif;">
                                 <a href="/store/produto/${p.id}" class="text-dark text-decoration-none stretched-link">${p.nome}</a>
                             </h5>
-                            <h4 class="text-warning fw-bold mb-4">${priceDisplay}</h4>
-                            <a href="/store/produto/${p.id}" class="btn btn-outline-dark w-100 rounded-pill position-relative z-2 fw-bold">
-                                <i class="fa-solid fa-eye me-2"></i>Ver Detalhes
-                            </a>
+                            <h4 class="text-warning fw-bold mb-2">${priceDisplay}</h4>
+                            ${p.total_stock <= 5 && p.total_stock > 0 ? `<div class="text-danger small fw-bold mb-3"><i class="fa-solid fa-fire me-1"></i> Restam apenas ${p.total_stock} unidades!</div>` : '<div class="mb-3"></div>'}
+                            ${p.tem_variacoes ? 
+                                `<a href="/store/produto/${p.id}" class="btn btn-outline-dark w-100 rounded-pill position-relative z-2 fw-bold"><i class="fa-solid fa-eye me-2"></i>Ver Opções</a>` 
+                                : 
+                                `<button class="btn btn-outline-dark w-100 rounded-pill position-relative z-2 fw-bold" onclick="addToCart(${p.id}, '${p.nome}', ${p.preco_venda}, '${p.imagem_url || ''}', ${p.total_stock})"><i class="fa-solid fa-cart-plus me-2"></i>Adicionar</button>`
+                            }
                         </div>
                     </div>
                 </div>

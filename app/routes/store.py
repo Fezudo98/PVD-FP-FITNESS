@@ -117,7 +117,8 @@ def store_get_products():
         func.min(Produto.id).label('id'), 
         func.max(Produto.imagem_url).label('imagem_url'), 
         func.max(Produto.categoria).label('categoria'),
-        func.sum(Produto.quantidade).label('total_stock')
+        func.sum(Produto.quantidade).label('total_stock'),
+        func.count(Produto.id).label('variant_count')
     ).filter(Produto.online_ativo == True, Produto.quantidade > 0, Produto.deletado == False)
     
     # Filters
@@ -164,6 +165,8 @@ def store_get_products():
             'max_price': item.max_price,
             'imagem_url': item.imagem_url,
             'categoria': item.categoria,
+            'total_stock': item.total_stock,
+            'tem_variacoes': item.variant_count > 1,
             'is_best_seller': item.nome in best_seller_names
         } for item in items],
         'total_paginas': math.ceil(total / per_page),
