@@ -55,6 +55,7 @@ if exist patches\*.py (
 :: --- ETAPA 3: INICIANDO O SISTEMA ---
 ECHO.
 ECHO --- Iniciando o servidor... ---
+python scripts\retro_deletado_null.py
 python standardize_inventory.py --auto
 python run.py
 pause
