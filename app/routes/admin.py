@@ -5,7 +5,7 @@ admin_bp = Blueprint('admin', __name__)
 
 @admin_bp.route('/')
 def index():
-    return redirect('/login')
+    return redirect('/store')
 
 @admin_bp.route('/login')
 def login_page():
