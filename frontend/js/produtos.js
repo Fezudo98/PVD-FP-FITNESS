@@ -278,11 +278,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('closeBulkBtn').addEventListener('click', () => {
+    const closeBulk = () => {
         const checkboxes = document.querySelectorAll('.row-checkbox');
         checkboxes.forEach(cb => cb.checked = false);
         updateBulkActionBar();
-    });
+    };
+    document.getElementById('closeBulkBtn').addEventListener('click', closeBulk);
+    if(document.getElementById('closeBulkBtnMobile')) {
+        document.getElementById('closeBulkBtnMobile').addEventListener('click', closeBulk);
+    }
 
     // Inline Edit Logic
     async function quickUpdate(id, field, value, originalValue, inputEl) {
