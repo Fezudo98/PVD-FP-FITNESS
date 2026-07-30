@@ -286,11 +286,18 @@ def store_product_reviews(produto_id):
             except Exception as e:
                 print(f"Token Decode Error: {e}")
             
+        # Precompute which clients actually bought this product
+        vendas_produto = db.session.query(Venda.id_cliente).join(ItemVenda).filter(
+            Venda.status.in_(['Concluída', 'Concluida']),
+            ItemVenda.id_produto == produto_id
+        ).all()
+        clientes_compradores = {v[0] for v in vendas_produto}
+
         results = []
         for r in reviews:
             d = r.to_dict()
             d['is_own'] = (current_client_id and r.id_cliente == current_client_id)
-            print(f"Review {r.id}: Client {r.id_cliente} vs Current {current_client_id} -> Own? {d['is_own']}")
+            d['compra_verificada'] = (r.id_cliente in clientes_compradores)
             results.append(d)
         return jsonify(results)
     
@@ -917,3 +924,31 @@ def get_public_profile(cliente_id):
         'total_avaliacoes': total_reviews,
         'ultimas_avaliacoes': recent_reviews
     }), 200
+
+@store_bp.route('/api/client/minhas_avaliacoes', methods=['GET'])
+@client_token_required
+def get_my_reviews(current_client):
+    reviews = Avaliacao.query.filter_by(id_cliente=current_client.id).order_by(Avaliacao.data_criacao.desc()).all()
+    
+    results = []
+    for r in reviews:
+        # Precompute compra_verificada if needed, or simply return the data
+        img = r.produto.imagem_url if r.produto else None
+        if img and not img.startswith('http') and not img.startswith('/'):
+             img = f"/uploads/{img}"
+             
+        # include midias
+        midias = [{'tipo': m.tipo, 'url': m.url} for m in r.midias]
+        
+        results.append({
+            'id': r.id,
+            'produto_id': r.produto.id if r.produto else None,
+            'produto_nome': r.produto.nome if r.produto else 'Produto Removido',
+            'produto_img': img,
+            'nota': r.nota,
+            'comentario': r.comentario,
+            'data': r.data_criacao.strftime('%d/%m/%Y'),
+            'midias': midias
+        })
+        
+    return jsonify(results), 200

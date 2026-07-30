@@ -976,7 +976,10 @@
                                          width="50" height="50" style="object-fit: cover; cursor: pointer;"
                                          onclick="openPublicProfile(${r.id_cliente})">
                                     <div>
-                                        <h6 class="fw-bold mb-0 text-dark" style="cursor: pointer;" onclick="openPublicProfile(${r.id_cliente})">${r.cliente_nome}</h6>
+                                        <h6 class="fw-bold mb-0 text-dark" style="cursor: pointer;" onclick="openPublicProfile(${r.id_cliente})">
+                                            ${r.cliente_nome}
+                                            ${r.compra_verificada ? `<span class="badge bg-success bg-opacity-10 text-success ms-2 border border-success border-opacity-25" style="font-size: 0.7rem;"><i class="fas fa-shield-check me-1"></i>Compra Verificada</span>` : ''}
+                                        </h6>
                                         <small class="text-muted">${r.data_criacao}</small>
                                     </div>
                                 </div>
@@ -998,10 +1001,10 @@
                             </div>
                             <p class="card-text text-muted">${r.comentario || ''}</p>
                             ${r.midias.length > 0 ? `
-                                <div class="d-flex gap-2 mt-2 overflow-auto">
+                                <div class="d-flex gap-2 mt-3 overflow-auto pb-2" style="scrollbar-width: thin;">
                                     ${r.midias.map((m, idx) => m.tipo === 'foto'
-                    ? `<img src="/static/uploads/reviews/${m.url}" class="review-media-preview" onclick="openLightbox(${idx}, '${mediaJson}')">`
-                    : `<video src="/static/uploads/reviews/${m.url}" class="review-media-preview" onclick="openLightbox(${idx}, '${mediaJson}')"></video>` // Video thumbnail click logic
+                    ? `<img src="/static/uploads/reviews/${m.url}" class="review-media-preview rounded shadow-sm flex-shrink-0" style="width: 80px; height: 80px; object-fit: cover; cursor: pointer; border: 1px solid #ddd;" onclick="openLightbox(${idx}, '${mediaJson}')">`
+                    : `<video src="/static/uploads/reviews/${m.url}" class="review-media-preview rounded shadow-sm flex-shrink-0" style="width: 80px; height: 80px; object-fit: cover; cursor: pointer; border: 1px solid #ddd;" onclick="openLightbox(${idx}, '${mediaJson}')"></video>` // Video thumbnail click logic
                 ).join('')}
                                 </div>
                             ` : ''}
