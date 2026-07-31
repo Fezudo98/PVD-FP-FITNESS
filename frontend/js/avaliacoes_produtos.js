@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (!token) {
         window.location.href = '/login.html';
         return;
