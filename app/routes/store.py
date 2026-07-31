@@ -12,7 +12,9 @@ from ..extensions import db
 from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, current_brazil_time
 from ..utils import token_required, client_token_required, validate_cpf
 from ..services.frete_service import calcular_melhor_envio
+from ..services.etiqueta_service import gerar_etiqueta_me
 import mercadopago
+import threading
 
 store_bp = Blueprint('store', __name__)
 
@@ -755,27 +757,57 @@ def mercadopago_webhook():
             
             if external_reference:
                 venda = Venda.query.get(external_reference)
-                if venda and venda.status == 'Pendente':
-                    if payment_status == 'approved':
-                        venda.status = 'Concluída'
-                        # Registrar o pagamento
-                        metodo = payment_data.get('payment_method_id', 'mercadopago')
-                        pg = Pagamento(
-                            valor=venda.total_venda,
-                            forma=metodo,
-                            id_venda=venda.id,
-                            transacao_id=str(payment_id)
-                        )
-                        db.session.add(pg)
-                    elif payment_status in ['rejected', 'cancelled']:
-                        # Devolver o estoque imediatamente
-                        venda.status = 'Cancelada'
-                        for item in venda.itens:
-                            produto = Produto.query.get(item.id_produto)
-                            if produto:
-                                produto.quantidade += item.quantidade
+                if venda:
+                    # Lógica para Venda Pendente (Aprovação ou Recusa)
+                    if venda.status == 'Pendente':
+                        if payment_status == 'approved':
+                            venda.status = 'Concluída'
+                            metodo = payment_data.get('payment_method_id', 'mercadopago')
+                            pg = Pagamento(
+                                valor=venda.total_venda,
+                                forma=metodo,
+                                id_venda=venda.id,
+                                transacao_id=str(payment_id)
+                            )
+                            db.session.add(pg)
+                            db.session.commit()
+                            
+                            # Gerar etiqueta de forma assíncrona para não travar o webhook
+                            if venda.tipo_entrega and venda.tipo_entrega.startswith('me_'):
+                                def async_gerar_etiqueta(app, v_id):
+                                    with app.app_context():
+                                        try:
+                                            v_async = Venda.query.get(v_id)
+                                            if v_async:
+                                                url_pdf, tracking_code = gerar_etiqueta_me(v_async)
+                                                if tracking_code:
+                                                    v_async.codigo_rastreio = tracking_code
+                                                db.session.commit()
+                                        except Exception as e:
+                                            print(f"Erro ao gerar etiqueta via Webhook para venda {v_id}: {e}")
+                                
+                                # Dispara a thread
+                                thread = threading.Thread(target=async_gerar_etiqueta, args=(current_app._get_current_object(), venda.id))
+                                thread.start()
+                                
+                        elif payment_status in ['rejected', 'cancelled']:
+                            venda.status = 'Cancelada'
+                            for item in venda.itens:
+                                produto = Produto.query.get(item.id_produto)
+                                if produto:
+                                    produto.quantidade += item.quantidade
+                            db.session.commit()
                     
-                    db.session.commit()
+                    # Lógica para Estorno/Chargeback de vendas já Concluídas
+                    elif venda.status == 'Concluída':
+                        if payment_status in ['refunded', 'charged_back', 'in_mediation']:
+                            venda.status = 'Cancelada' if payment_status != 'refunded' else 'Reembolsada'
+                            for item in venda.itens:
+                                produto = Produto.query.get(item.id_produto)
+                                if produto:
+                                    produto.quantidade += item.quantidade
+                            db.session.commit()
+                    
                     
     return jsonify({'status': 'sucesso'}), 200
 

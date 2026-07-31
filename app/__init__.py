@@ -33,4 +33,9 @@ def create_app(config_class):
     from .routes.resources import resources_bp
     app.register_blueprint(resources_bp)
 
+    # Iniciar Cronjobs em Background (Apenas no processo principal do Werkzeug/Gunicorn para não duplicar, mas o APScheduler lida bem com Gunicorn)
+    if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        from .scheduler import init_scheduler
+        app.scheduler = init_scheduler(app)
+
     return app
