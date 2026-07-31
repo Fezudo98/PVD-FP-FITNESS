@@ -442,3 +442,19 @@ def gerar_barcode_manual(current_user, produto_id):
         import traceback
         traceback.print_exc()
         return jsonify({'erro': str(e)}), 500
+
+@api_bp.route('/api/admin/avaliacoes-produtos', methods=['GET'])
+@token_required
+def get_admin_avaliacoes_produtos(current_user):
+    if current_user.role != 'admin':
+        return jsonify({'message': 'Acesso negado.'}), 403
+    try:
+        from app.models import Avaliacao, Produto, Cliente
+        # Querying evaluations joined with products and clients to ensure data exists
+        avaliacoes = Avaliacao.query.order_by(Avaliacao.data_criacao.desc()).all()
+        return jsonify([a.to_dict() for a in avaliacoes])
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'erro': str(e)}), 500
+
