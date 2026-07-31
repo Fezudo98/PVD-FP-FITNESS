@@ -526,6 +526,9 @@ def store_checkout():
     if not cliente_data or not itens_data:
         return jsonify({'erro': 'Dados incompletos.'}), 400
         
+    if not dados.get('termos_aceitos', False):
+        return jsonify({'erro': 'Você deve aceitar os Termos de Uso.'}), 400
+        
     # 1. Identificar ou Criar Cliente
     cliente = Cliente.query.filter_by(email=cliente_data.get('email')).first()
     if not cliente:
@@ -641,7 +644,7 @@ def store_checkout():
         id_cliente=cliente.id,
         id_vendedor=None,
         status='Pendente',
-        termos_aceitos=True,
+        termos_aceitos=dados.get('termos_aceitos', False),
         ip_comprador=client_ip,
         entrega_rua=end_data.get('rua') or cliente.endereco_rua,
         entrega_numero=end_data.get('numero') or cliente.endereco_numero,

@@ -408,7 +408,8 @@ async function submitOrder() {
         salvar_endereco: document.getElementById('salvarEndereco') ? document.getElementById('salvarEndereco').checked : false,
         tipo_entrega: tipoEntrega,
         transportadora: transportadora,
-        taxa_entrega: taxaEntrega
+        taxa_entrega: taxaEntrega,
+        termos_aceitos: document.getElementById('termsCheckbox') ? document.getElementById('termsCheckbox').checked : true
     };
 
     // --- FORCED REGISTRATION FLOW ---
