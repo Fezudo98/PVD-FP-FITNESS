@@ -401,10 +401,11 @@ def update_venda_status(current_user, venda_id):
         db.session.rollback()
         return jsonify({'erro': 'Erro ao atualizar status.', 'detalhes': str(e)}), 500
 
- 
- @ a p i _ b p . r o u t e ( ' / a p i / a d m i n / f e e d b a c k s ' ,   m e t h o d s = [ ' G E T ' ] ) 
- 
- @ t o k e n _ r e q u i r e d 
- 
- d e f   g e t _ a d m i n _ f e e d b a c k s ( c u r r e n t _ u s e r ) : 
- 
+@api_bp.route('/api/admin/feedbacks', methods=['GET'])
+@token_required
+def get_admin_feedbacks(current_user):
+    if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
+    
+    from app.models import FeedbackCompra
+    feedbacks = FeedbackCompra.query.order_by(FeedbackCompra.data_criacao.desc()).all()
+    return jsonify([f.to_dict() for f in feedbacks])
