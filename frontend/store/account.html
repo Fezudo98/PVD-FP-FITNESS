@@ -530,7 +530,7 @@
                             
                             <a href="/store/produto/${fav.id_produto}" class="text-decoration-none text-dark d-block">
                                 <div class="position-relative bg-light product-img-wrapper" style="padding-top: 133%;">
-                                    <img src="${fav.imagem_url ? fav.imagem_url : '/static/img/no-image.png'}" 
+                                    <img src="${fav.imagem_url ? '/uploads/' + fav.imagem_url : '/static/img/no-image.png'}" 
                                          class="position-absolute top-0 start-0 w-100 h-100 object-fit-cover ${fav.online_ativo ? '' : 'opacity-50'}" 
                                          alt="${fav.nome}">
                                     ${!fav.online_ativo ? '<div class="position-absolute top-50 start-50 translate-middle badge bg-dark opacity-75 fs-6 w-75 text-center rounded-pill">Indisponível</div>' : ''}
