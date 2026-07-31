@@ -520,7 +520,7 @@
 
                 container.innerHTML = favorites.map(fav => `
                     <div class="col-6 col-md-4 col-lg-3">
-                        <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden rounded-4">
+                        <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden rounded-4 product-card">
                             <!-- Botão remover absoluto -->
                             <button class="btn btn-light btn-sm text-danger position-absolute top-0 end-0 m-2 rounded-circle shadow" 
                                     style="z-index: 10; width: 32px; height: 32px; padding: 0;"
@@ -529,10 +529,11 @@
                             </button>
                             
                             <a href="/store/produto/${fav.id_produto}" class="text-decoration-none text-dark d-block">
-                                <div class="position-relative bg-light" style="padding-top: 133%;">
+                                <div class="position-relative bg-light product-img-wrapper" style="padding-top: 133%;">
                                     <img src="${fav.imagem_url ? fav.imagem_url : '/static/img/no-image.png'}" 
-                                         class="position-absolute top-0 start-0 w-100 h-100 object-fit-cover" 
+                                         class="position-absolute top-0 start-0 w-100 h-100 object-fit-cover ${fav.online_ativo ? '' : 'opacity-50'}" 
                                          alt="${fav.nome}">
+                                    ${!fav.online_ativo ? '<div class="position-absolute top-50 start-50 translate-middle badge bg-dark opacity-75 fs-6 w-75 text-center rounded-pill">Indisponível</div>' : ''}
                                 </div>
                                 <div class="card-body p-3">
                                     <h6 class="card-title fw-bold text-truncate mb-1" style="font-size: 0.95rem;">${fav.nome}</h6>

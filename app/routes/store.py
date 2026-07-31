@@ -921,12 +921,13 @@ def get_client_favoritos(current_client):
     favoritos = Favorito.query.filter_by(cliente_id=current_client.id).order_by(Favorito.data_adicao.desc()).all()
     fav_data = []
     for fav in favoritos:
-        if fav.produto:
+        if fav.produto and not fav.produto.deletado:
             fav_data.append({
                 'id_produto': fav.produto.id,
                 'nome': fav.produto.nome,
                 'preco_venda': fav.produto.preco_venda,
                 'imagem_url': fav.produto.imagem_url,
+                'online_ativo': fav.produto.online_ativo,
                 'data_adicao': fav.data_adicao.strftime('%d/%m/%Y') if fav.data_adicao else None
             })
     return jsonify(fav_data)
@@ -935,6 +936,9 @@ def get_client_favoritos(current_client):
 @client_token_required
 def toggle_favorito(current_client, produto_id):
     produto = Produto.query.get_or_404(produto_id)
+    
+    if produto.deletado:
+        return jsonify({'erro': 'Produto não encontrado ou removido.'}), 404
     
     # Verifica se já está favoritado
     favorito_existente = Favorito.query.filter_by(cliente_id=current_client.id, produto_id=produto.id).first()
