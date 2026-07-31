@@ -846,9 +846,39 @@ def get_client_orders(current_client):
             'endereco_entrega': endereco_full,
             'tipo_entrega': venda.tipo_entrega,
             'codigo_rastreio': venda.codigo_rastreio,
-            'transportadora': venda.transportadora
+            'transportadora': venda.transportadora,
+            'has_feedback': venda.feedback is not None
         })
     return jsonify(orders_data)
+
+@store_bp.route('/api/store/feedbacks', methods=['POST'])
+@client_token_required
+def submit_post_purchase_feedback(current_client):
+    dados = request.get_json()
+    id_venda = dados.get('id_venda')
+    nota = dados.get('nota')
+    comentario = dados.get('comentario')
+    
+    if not id_venda or not nota:
+        return jsonify({'erro': 'Pedido e Nota são obrigatórios.'}), 400
+        
+    venda = Venda.query.filter_by(id=id_venda, id_cliente=current_client.id).first()
+    if not venda:
+        return jsonify({'erro': 'Pedido não encontrado ou não pertence a este cliente.'}), 404
+        
+    if venda.feedback:
+        return jsonify({'erro': 'Este pedido já foi avaliado.'}), 400
+        
+    feedback = FeedbackCompra(
+        id_venda=venda.id,
+        id_cliente=current_client.id,
+        nota=int(nota),
+        comentario=comentario
+    )
+    db.session.add(feedback)
+    db.session.commit()
+    
+    return jsonify({'mensagem': 'Feedback enviado com sucesso! Muito obrigado.'})
 
 @store_bp.route('/api/client/coupons', methods=['GET'])
 @client_token_required

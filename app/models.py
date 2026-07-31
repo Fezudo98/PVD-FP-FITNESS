@@ -199,6 +199,28 @@ class Configuracao(db.Model):
     chave = db.Column(db.String(50), unique=True, nullable=False)
     valor = db.Column(db.String(255), nullable=True)
 
+class FeedbackCompra(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    id_venda = db.Column(db.Integer, db.ForeignKey('venda.id'), nullable=False, unique=True)
+    id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    nota = db.Column(db.Integer, nullable=False)
+    comentario = db.Column(db.Text, nullable=True)
+    data_criacao = db.Column(db.DateTime, nullable=False, default=current_brazil_time)
+    
+    venda = db.relationship('Venda', backref=db.backref('feedback', uselist=False))
+    cliente = db.relationship('Cliente')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'id_venda': self.id_venda,
+            'id_cliente': self.id_cliente,
+            'cliente_nome': self.cliente.nome if self.cliente else 'Desconhecido',
+            'nota': self.nota,
+            'comentario': self.comentario,
+            'data_criacao': self.data_criacao.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
 class Avaliacao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     id_produto = db.Column(db.Integer, db.ForeignKey('produto.id'), nullable=False)

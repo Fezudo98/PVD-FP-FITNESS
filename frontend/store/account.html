@@ -179,6 +179,42 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Post-Purchase Feedback -->
+    <div class="modal fade" id="feedbackCompraModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 text-center">
+                <div class="modal-header border-0 pb-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 pt-0">
+                    <i class="fas fa-check-circle text-success mb-3" style="font-size: 4rem;"></i>
+                    <h4 class="fw-bold mb-2">Muito Obrigado pela sua Compra!</h4>
+                    <p class="text-muted mb-4">Como foi a sua experiência navegando e comprando no nosso site hoje?</p>
+                    
+                    <div class="d-flex justify-content-center gap-2 mb-4" id="feedbackStars">
+                        <i class="far fa-star fa-2x text-warning" data-rating="1" style="cursor: pointer;"></i>
+                        <i class="far fa-star fa-2x text-warning" data-rating="2" style="cursor: pointer;"></i>
+                        <i class="far fa-star fa-2x text-warning" data-rating="3" style="cursor: pointer;"></i>
+                        <i class="far fa-star fa-2x text-warning" data-rating="4" style="cursor: pointer;"></i>
+                        <i class="far fa-star fa-2x text-warning" data-rating="5" style="cursor: pointer;"></i>
+                    </div>
+                    
+                    <input type="hidden" id="feedbackNota" value="0">
+                    <input type="hidden" id="feedbackVendaId" value="">
+                    
+                    <div class="form-floating mb-4">
+                        <textarea class="form-control" placeholder="Deixe um comentário" id="feedbackComentario" style="height: 100px"></textarea>
+                        <label for="feedbackComentario">Deixe uma sugestão ou comentário (Opcional)</label>
+                    </div>
+                    
+                    <button type="button" class="btn btn-warning rounded-pill fw-bold w-100 py-2" id="btnSubmitFeedback" onclick="submitFeedbackCompra()">
+                        Enviar Feedback <i class="fas fa-paper-plane ms-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 {% endblock %}
 
@@ -286,6 +322,17 @@
                 }
 
                 window.allOrders = orders; // Store for modal access
+
+                // Auto-trigger Feedback if latest order is pending feedback
+                const latestOrder = orders[0];
+                if (latestOrder && !latestOrder.has_feedback && latestOrder.status !== 'Cancelado') {
+                    if (!localStorage.getItem('feedback_prompted_' + latestOrder.id)) {
+                        setTimeout(() => {
+                            window.openFeedbackModal(latestOrder.id);
+                        }, 1500);
+                        localStorage.setItem('feedback_prompted_' + latestOrder.id, 'true');
+                    }
+                }
 
                 container.innerHTML = orders.map((order, index) => `
                         <div class="card border-0 shadow-sm mb-4">
@@ -572,6 +619,81 @@
 
             const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
             modal.show();
+        };
+
+        // --- FEEDBACK COMPRA LOGIC ---
+        window.openFeedbackModal = (vendaId) => {
+            document.getElementById('feedbackVendaId').value = vendaId;
+            document.getElementById('feedbackNota').value = 0;
+            document.getElementById('feedbackComentario').value = '';
+            
+            // Reset stars
+            document.querySelectorAll('#feedbackStars i').forEach(star => {
+                star.classList.remove('fas');
+                star.classList.add('far');
+            });
+
+            const modal = new bootstrap.Modal(document.getElementById('feedbackCompraModal'));
+            modal.show();
+        };
+
+        document.querySelectorAll('#feedbackStars i').forEach(star => {
+            star.addEventListener('click', (e) => {
+                const rating = e.target.getAttribute('data-rating');
+                document.getElementById('feedbackNota').value = rating;
+                
+                document.querySelectorAll('#feedbackStars i').forEach(s => {
+                    if (s.getAttribute('data-rating') <= rating) {
+                        s.classList.remove('far');
+                        s.classList.add('fas');
+                    } else {
+                        s.classList.remove('fas');
+                        s.classList.add('far');
+                    }
+                });
+            });
+        });
+
+        window.submitFeedbackCompra = async () => {
+            const vendaId = document.getElementById('feedbackVendaId').value;
+            const nota = document.getElementById('feedbackNota').value;
+            const comentario = document.getElementById('feedbackComentario').value;
+
+            if (nota == 0) {
+                Swal.fire('Atenção', 'Por favor, selecione uma nota nas estrelas.', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitFeedback');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
+
+            try {
+                const response = await fetch('/api/store/feedbacks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-client-token': token
+                    },
+                    body: JSON.stringify({ id_venda: vendaId, nota: nota, comentario: comentario })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('feedbackCompraModal')).hide();
+                    Swal.fire('Sucesso!', 'Seu feedback foi enviado. Muito obrigado!', 'success');
+                    loadOrders(); // Reload to update button states if needed
+                } else {
+                    Swal.fire('Erro', data.erro || 'Erro ao enviar feedback.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Erro', 'Ocorreu um erro ao enviar seu feedback.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Enviar Feedback <i class="fas fa-paper-plane ms-1"></i>';
+            }
         };
 
     }); // End DOMContentLoaded
