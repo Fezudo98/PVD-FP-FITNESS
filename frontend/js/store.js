@@ -327,6 +327,16 @@ async function performCheckout(payload) {
 }
 
 async function submitOrder() {
+    const termsCheckbox = document.getElementById('termsCheckbox');
+    if (termsCheckbox && !termsCheckbox.checked) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Termos de Uso',
+            text: 'Para prosseguir com o pagamento, você deve ler e concordar com os Termos de Uso e Políticas da loja.'
+        });
+        return;
+    }
+
     const form = document.getElementById('checkoutForm');
     if (!form.checkValidity()) {
         form.reportValidity();
