@@ -344,7 +344,7 @@ def store_product_reviews(produto_id):
     # Handle Media
     files = request.files.getlist('midia')
     # Save to static/uploads/reviews (Standard static folder)
-    upload_folder = os.path.join(current_app.static_folder, 'uploads', 'reviews')
+    upload_folder = os.path.join(str(current_app.static_folder), 'uploads', 'reviews')
     os.makedirs(upload_folder, exist_ok=True)
 
     for file in files:
@@ -354,7 +354,8 @@ def store_product_reviews(produto_id):
             if ext not in ALLOWED_EXTENSIONS:
                 continue # Skip invalid files (or could return error, but skipping avoids partial success issues for now)
             
-            filename = secure_filename(f"review_{nova_avaliacao.id}_{int(datetime.utcnow().timestamp())}_{file.filename}")
+            import datetime as dt
+            filename = secure_filename(f"review_{nova_avaliacao.id}_{int(dt.datetime.now(dt.timezone.utc).timestamp())}_{file.filename}")
             file.save(os.path.join(upload_folder, filename))
             tipo = 'video' if filename.lower().endswith(('.mp4', '.mov', '.avi')) else 'foto'
             midia = AvaliacaoMidia(id_avaliacao=nova_avaliacao.id, tipo=tipo, url=filename)
@@ -412,7 +413,7 @@ def update_review(current_client, review_id):
     if review.id_cliente != current_client.id:
         return jsonify({'erro': 'Acesso negado.'}), 403
         
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     if 'nota' in data:
         try:
              n = int(data['nota'])
@@ -484,7 +485,7 @@ def public_profile(cliente_id):
 
 @store_bp.route('/api/public/frete/calcular', methods=['POST'])
 def calcular_frete():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     cep_destino = data.get('cep')
     if not cep_destino: return jsonify({'erro': 'CEP é obrigatório'}), 400
 
@@ -517,7 +518,7 @@ def get_store_config():
 @store_bp.route('/api/store/checkout', methods=['POST'])
 def store_checkout():
     limpar_vendas_abandonadas()
-    dados = request.get_json()
+    dados = request.get_json(silent=True) or {}
     cliente_data = dados.get('cliente')
     itens_data = dados.get('itens')
     cupom_id = dados.get('cupom_id')
@@ -776,7 +777,7 @@ def manage_client_me(current_client):
     if request.method == 'GET':
         return jsonify(current_client.to_dict())
     
-    dados = request.get_json()
+    dados = request.get_json(silent=True) or {}
     if 'nome' in dados: current_client.nome = dados['nome']
     if 'telefone' in dados: current_client.telefone = dados['telefone']
     if 'cpf' in dados: 
@@ -866,7 +867,7 @@ def upload_profile_photo(current_cliente):
             new_filename = f"profile_{current_cliente.id}_{uuid.uuid4().hex[:8]}.{ext}"
             
             # Ensure directory exists
-            upload_folder = os.path.join(current_app.static_folder, 'uploads', 'profiles')
+            upload_folder = os.path.join(str(current_app.static_folder), 'uploads', 'profiles')
             print(f"DEBUG: Upload dir: {upload_folder}")
             os.makedirs(upload_folder, exist_ok=True)
             
