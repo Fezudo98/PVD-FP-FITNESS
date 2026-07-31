@@ -88,8 +88,8 @@
                     <button id="btnBuyNow" class="btn btn-warning btn-lg rounded-pill py-3 fw-bold shadow-sm transition-scale" onclick="buyNow()" style="letter-spacing: 1px;">
                         <i class="fa-solid fa-bolt me-2"></i> Comprar Agora
                     </button>
-                    <button class="btn btn-outline-dark btn-lg rounded-pill py-3 fw-bold transition-scale" style="letter-spacing: 1px;">
-                        <i class="fa-regular fa-heart me-2"></i> Adicionar aos Favoritos
+                    <button id="btnFavorite" class="btn btn-outline-dark btn-lg rounded-pill py-3 fw-bold transition-scale" style="letter-spacing: 1px;" onclick="toggleFavorite()">
+                        <i id="favoriteIcon" class="fa-regular fa-heart me-2"></i> <span id="favoriteText">Adicionar aos Favoritos</span>
                     </button>
                 </div>
 
@@ -416,11 +416,87 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         loadProductDetails();
+        checkFavoriteStatus();
         loadReviews();
         checkReviewEligibility();
         setupRatingInteractions();
     });
 
+    async function checkFavoriteStatus() {
+        if (!clientPageToken) return;
+        try {
+            const res = await fetch('/api/client/favoritos', { headers: { 'x-client-token': clientPageToken } });
+            if (res.ok) {
+                const favorites = await res.json();
+                const isFavorited = favorites.some(fav => fav.id_produto == productId);
+                if (isFavorited) {
+                    updateFavoriteUI(true);
+                }
+            }
+        } catch (e) {
+            console.error('Error checking favorites', e);
+        }
+    }
+
+    async function toggleFavorite() {
+        if (!clientPageToken) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Login Necessário',
+                text: 'Faça login para adicionar produtos aos favoritos.',
+                background: '#1e1e1e', color: '#fff',
+                showCancelButton: true,
+                confirmButtonText: 'Fazer Login',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = '/store/login?redirect=/store/produto/' + productId;
+                }
+            });
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/client/favoritos/${productId}`, {
+                method: 'POST',
+                headers: { 'x-client-token': clientPageToken }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const isNowFavorited = data.status === 'adicionado';
+                updateFavoriteUI(isNowFavorited);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: isNowFavorited ? 'Favoritado!' : 'Removido dos favoritos',
+                    toast: true,
+                    position: 'top-end',
+                    background: '#1e1e1e',
+                    color: '#fff',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            }
+        } catch (e) {
+            console.error('Error toggling favorite', e);
+        }
+    }
+
+    function updateFavoriteUI(isFavorited) {
+        const btn = document.getElementById('btnFavorite');
+        const icon = document.getElementById('favoriteIcon');
+        const text = document.getElementById('favoriteText');
+        
+        if (isFavorited) {
+            icon.classList.remove('fa-regular');
+            icon.classList.add('fa-solid', 'text-danger');
+            text.textContent = 'Salvo nos Favoritos';
+        } else {
+            icon.classList.remove('fa-solid', 'text-danger');
+            icon.classList.add('fa-regular');
+            text.textContent = 'Adicionar aos Favoritos';
+        }
+    }
 
     function setupRatingInteractions() {
         const labels = {

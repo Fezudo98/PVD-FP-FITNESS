@@ -30,6 +30,10 @@
                                 <button class="nav-link rounded-pill fw-bold" id="reviews-tab" data-bs-toggle="tab"
                                     data-bs-target="#reviews" type="button" role="tab">Minhas Avaliações</button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill fw-bold" id="favorites-tab" data-bs-toggle="tab"
+                                    data-bs-target="#favorites" type="button" role="tab"><i class="fa-solid fa-heart me-1 text-danger"></i> Favoritos</button>
+                            </li>
                         </ul>
 
                         <div class="tab-content" id="accountTabsContent">
@@ -151,6 +155,17 @@
                                     <div class="text-center py-5 text-muted col-12">
                                         <i class="fas fa-star text-warning display-4 mb-3"></i>
                                         <p>Carregando suas avaliações...</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Favorites Tab -->
+                            <div class="tab-pane fade" id="favorites" role="tabpanel">
+                                <div id="favoritesList" class="row g-4">
+                                    <!-- Favorites will be loaded here -->
+                                    <div class="text-center py-5 text-muted col-12">
+                                        <i class="fas fa-heart text-danger display-4 mb-3"></i>
+                                        <p>Carregando seus favoritos...</p>
                                     </div>
                                 </div>
                             </div>
@@ -440,7 +455,6 @@
             });
         };
 
-        // Load My Reviews
         const loadMyReviews = async () => {
             try {
                 const res = await fetch('/api/client/minhas_avaliacoes', { headers: { 'x-client-token': token } });
@@ -450,26 +464,25 @@
                 if (reviews.length === 0) {
                     container.innerHTML = `
                             <div class="text-center py-5 text-muted col-12">
-                                <i class="fas fa-star text-muted display-4 mb-3" style="opacity: 0.5;"></i>
+                                <i class="fas fa-star text-warning display-4 mb-3"></i>
                                 <p>Você ainda não avaliou nenhum produto.</p>
-                            </div>
-                        `;
+                                <p class="small">Suas avaliações ajudam outras pessoas a escolherem melhor!</p>
+                            </div>`;
                     return;
                 }
 
                 container.innerHTML = reviews.map(r => `
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center mb-3">
-                                    <img src="${r.produto_img || '/placeholder.jpg'}" class="rounded shadow-sm me-3" width="60" height="60" style="object-fit: cover;">
-                                    <div>
-                                        <h6 class="fw-bold mb-1"><a href="/store/product/${r.produto_id}" class="text-dark text-decoration-none">${r.produto_nome}</a></h6>
-                                        <div class="text-warning small mb-1">
-                                            ${'<i class="fas fa-star"></i>'.repeat(r.nota)}${'<i class="far fa-star"></i>'.repeat(5 - r.nota)}
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <img src="${r.produto_img || '/static/img/no-image.png'}" alt="${r.produto_nome}" class="rounded me-3 border" width="60" height="60" style="object-fit: cover;">
+                                        <div>
+                                            <h6 class="fw-bold mb-1">${r.produto_nome}</h6>
+                                            <div class="text-warning small">
+                                                ${Array.from({length: 5}, (_, i) => `<i class="${i < r.nota ? 'fas' : 'far'} fa-star"></i>`).join('')}
+                                            </div>
                                         </div>
-                                        <small class="text-muted">${r.data}</small>
-                                    </div>
                                 </div>
                                 <p class="card-text text-muted mb-0">"${r.comentario || ''}"</p>
                                 ${r.midias && r.midias.length > 0 ? `
@@ -489,10 +502,81 @@
             }
         };
 
+        const loadFavorites = async () => {
+            try {
+                const res = await fetch('/api/client/favoritos', { headers: { 'x-client-token': token } });
+                const favorites = await res.json();
+                const container = document.getElementById('favoritesList');
+
+                if (favorites.length === 0) {
+                    container.innerHTML = `
+                            <div class="text-center py-5 text-muted col-12">
+                                <i class="fa-regular fa-heart display-1 mb-3"></i>
+                                <p>Você ainda não adicionou nenhum produto aos favoritos.</p>
+                                <a href="/store" class="btn btn-warning rounded-pill fw-bold mt-2">Explorar Loja</a>
+                            </div>`;
+                    return;
+                }
+
+                container.innerHTML = favorites.map(fav => `
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden rounded-4">
+                            <!-- Botão remover absoluto -->
+                            <button class="btn btn-light btn-sm text-danger position-absolute top-0 end-0 m-2 rounded-circle shadow" 
+                                    style="z-index: 10; width: 32px; height: 32px; padding: 0;"
+                                    onclick="removeFavorite(${fav.id_produto})" title="Remover dos favoritos">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            
+                            <a href="/store/produto/${fav.id_produto}" class="text-decoration-none text-dark d-block">
+                                <div class="position-relative bg-light" style="padding-top: 133%;">
+                                    <img src="${fav.imagem_url ? fav.imagem_url : '/static/img/no-image.png'}" 
+                                         class="position-absolute top-0 start-0 w-100 h-100 object-fit-cover" 
+                                         alt="${fav.nome}">
+                                </div>
+                                <div class="card-body p-3">
+                                    <h6 class="card-title fw-bold text-truncate mb-1" style="font-size: 0.95rem;">${fav.nome}</h6>
+                                    <p class="card-text fw-bold text-warning mb-0 fs-5">R$ ${fav.preco_venda.toFixed(2)}</p>
+                                    <p class="text-muted small mt-1 mb-0"><i class="far fa-calendar-alt me-1"></i> Adicionado em ${fav.data_adicao}</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Erro ao carregar favoritos:', error);
+            }
+        };
+
+        window.removeFavorite = async (produtoId) => {
+            try {
+                const res = await fetch(`/api/client/favoritos/${produtoId}`, {
+                    method: 'POST',
+                    headers: { 'x-client-token': token }
+                });
+                if (res.ok) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Removido dos favoritos',
+                        toast: true,
+                        position: 'top-end',
+                        background: '#1e1e1e',
+                        color: '#fff',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                    loadFavorites(); // Reload the list
+                }
+            } catch (error) {
+                console.error('Erro ao remover favorito:', error);
+            }
+        };
+
         // Initialize
         loadProfile();
         loadOrders();
         loadMyReviews();
+        loadFavorites();
 
         // Save Profile
         document.getElementById('accountForm').addEventListener('submit', async (e) => {

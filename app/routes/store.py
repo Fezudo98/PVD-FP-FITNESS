@@ -9,7 +9,7 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import uuid
 from ..extensions import db
-from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, current_brazil_time
+from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, current_brazil_time
 from ..utils import token_required, client_token_required, validate_cpf
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
@@ -914,6 +914,42 @@ def submit_post_purchase_feedback(current_client):
     db.session.commit()
     
     return jsonify({'mensagem': 'Feedback enviado com sucesso! Muito obrigado.'})
+
+@store_bp.route('/api/client/favoritos', methods=['GET'])
+@client_token_required
+def get_client_favoritos(current_client):
+    favoritos = Favorito.query.filter_by(cliente_id=current_client.id).order_by(Favorito.data_adicao.desc()).all()
+    fav_data = []
+    for fav in favoritos:
+        if fav.produto:
+            fav_data.append({
+                'id_produto': fav.produto.id,
+                'nome': fav.produto.nome,
+                'preco_venda': fav.produto.preco_venda,
+                'imagem_url': fav.produto.imagem_url,
+                'data_adicao': fav.data_adicao.strftime('%d/%m/%Y') if fav.data_adicao else None
+            })
+    return jsonify(fav_data)
+
+@store_bp.route('/api/client/favoritos/<int:produto_id>', methods=['POST'])
+@client_token_required
+def toggle_favorito(current_client, produto_id):
+    produto = Produto.query.get_or_404(produto_id)
+    
+    # Verifica se já está favoritado
+    favorito_existente = Favorito.query.filter_by(cliente_id=current_client.id, produto_id=produto.id).first()
+    
+    if favorito_existente:
+        # Desfavoritar
+        db.session.delete(favorito_existente)
+        db.session.commit()
+        return jsonify({'mensagem': 'Produto removido dos favoritos.', 'status': 'removido'})
+    else:
+        # Favoritar
+        novo_favorito = Favorito(cliente_id=current_client.id, produto_id=produto.id)
+        db.session.add(novo_favorito)
+        db.session.commit()
+        return jsonify({'mensagem': 'Produto adicionado aos favoritos!', 'status': 'adicionado'})
 
 @store_bp.route('/api/client/coupons', methods=['GET'])
 @client_token_required

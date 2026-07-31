@@ -57,6 +57,15 @@ class ProdutoImagem(db.Model):
     def to_dict(self):
         return {'id': self.id, 'imagem_url': self.imagem_url, 'ordem': self.ordem}
 
+class Favorito(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    produto_id = db.Column(db.Integer, db.ForeignKey('produto.id'), nullable=False)
+    data_adicao = db.Column(db.DateTime, default=current_brazil_time)
+
+    cliente = db.relationship('Cliente', backref=db.backref('favoritos', lazy=True, cascade="all, delete-orphan"))
+    produto = db.relationship('Produto', backref=db.backref('favoritados', lazy=True, cascade="all, delete-orphan"))
+
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
