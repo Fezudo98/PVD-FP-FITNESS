@@ -11,19 +11,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const clienteModal = new bootstrap.Modal(document.getElementById('clienteModal'));
     const clienteForm = document.getElementById('clienteForm');
     const modalTitle = document.getElementById('modalTitle');
+    const searchInput = document.getElementById('searchInput');
+
+    let allClientes = [];
 
     async function fetchClientes() {
         try {
             const response = await fetch(`${API_URL}/api/clientes`, {
                 headers: { 'x-access-token': token }
             });
-            const clientes = await response.json();
-            renderClientes(clientes);
+            allClientes = await response.json();
+            renderClientes(allClientes);
         } catch (error) { console.error('Erro ao buscar clientes:', error); }
     }
 
     function renderClientes(clientes) {
         clientesTableBody.innerHTML = '';
+        if (clientes.length === 0) {
+            clientesTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Nenhum cliente encontrado.</td></tr>';
+            return;
+        }
         clientes.forEach(cliente => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -37,6 +44,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
             `;
             clientesTableBody.appendChild(tr);
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allClientes.filter(c => 
+                c.nome.toLowerCase().includes(term) || 
+                (c.cpf && c.cpf.includes(term)) || 
+                (c.telefone && c.telefone.includes(term))
+            );
+            renderClientes(filtered);
         });
     }
     

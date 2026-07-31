@@ -43,9 +43,12 @@
     </nav>
 
     <main class="container main-content mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <h2>Gerenciar Clientes</h2>
-            <button class="btn btn-custom" id="addClienteBtn">Adicionar Novo Cliente</button>
+            <div class="d-flex gap-2 align-items-center">
+                <input type="text" id="searchInput" class="form-control bg-dark text-white border-secondary" placeholder="Buscar por nome, CPF ou tel..." style="width: 250px;">
+                <button class="btn btn-custom" id="addClienteBtn">Adicionar Novo Cliente</button>
+            </div>
         </div>
         <div class="table-responsive">
             <table class="table table-dark table-hover">
