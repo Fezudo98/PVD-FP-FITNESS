@@ -1,185 +1,101 @@
-# Sistema FP Moda Fitness
+# Sistema FP Moda Fitness (PDV & E-Commerce)
 
-![Logo FP Moda Fitness](frontend/logo.jpg)
+![Logo FP Moda Fitness](frontend/static/img/logo.png)
 
-Um sistema completo de Ponto de Venda (PDV) e Gestão de Estoque desenvolvido para atender às necessidades de pequenos negócios de varejo. A aplicação é construída com uma API RESTful em Flask (Python) e um frontend dinâmico em Vanilla JavaScript.
+Um ecossistema completo de gestão para lojas de varejo focado em Moda Fitness. A aplicação engloba um **Ponto de Venda (PDV) físico**, um completo **Painel de Gestão Administrativa** e uma **Loja Virtual (E-Commerce)** integrada. 
 
----
-
-##  статус do Projeto
-
-**Concluído e Funcional.** O sistema está pronto para ser implantado em um ambiente de produção local.
+Desenvolvido com uma arquitetura moderna em **Flask (Python)** orientada a App Factory, integração com Banco de Dados **PostgreSQL**, e um frontend responsivo (Mobile-First) em **Vanilla JavaScript** e **Bootstrap 5**.
 
 ---
 
-## 📸 Screenshots
+## 🚀 Status do Projeto
 
-
-| Tela de Login                                      | Painel Principal (Admin)                           |
-| -------------------------------------------------- | -------------------------------------------------- |
-| ![Tela de Login](frontend/login.png) | ![Painel Principal](frontend/painel.png) |
-
-| Ponto de Venda (PDV)                               | Relatórios e Dashboards                            |
-| -------------------------------------------------- | -------------------------------------------------- |
-| ![Tela do PDV](frontend/pvd.png)   | ![Tela de Relatórios](frontend/relatorios.png) |
+**Em Produção (Deploy em VPS).** O sistema está ativo, recebendo atualizações modulares e rodando em ambiente Linux (Debian 12).
 
 ---
 
 ## ✨ Funcionalidades Principais
 
-O sistema é rico em funcionalidades para otimizar a gestão de uma loja:
+O sistema foi desenhado para centralizar todas as operações de uma loja moderna:
 
-*   **Autenticação Segura:** Sistema de login com JWT (JSON Web Tokens) e hashing de senhas (Bcrypt).
-*   **Controle de Acesso por Cargos:** Dois níveis de acesso predefinidos: **Administrador** (acesso total) e **Vendedor** (acesso limitado ao PDV, estoque e clientes).
-*   **Gestão de Produtos Completa:**
-    *   CRUD (Criar, Ler, Atualizar, Deletar) de produtos.
-    *   Upload de imagem para cada produto.
-    *   Controle de estoque automático (baixa na venda, retorno no reembolso).
-*   **Leitor de Código de Barras:**
-    *   Uso de leitor USB para adicionar produtos rapidamente no PDV.
-    *   Cadastro de produtos via leitor de código de barras.
-    *   **Gerador de código de barras** integrado para produtos sem etiqueta, com salvamento da imagem.
-*   **Ponto de Venda (PDV) Intuitivo:**
-    *   Busca de produtos por nome ou SKU.
-    *   Carrinho de compras dinâmico.
-    *   Aplicação de cupons de desconto (percentual ou fixo).
-    *   Cálculo de taxas de entrega.
-    *   Suporte a múltiplas formas de pagamento, incluindo parcelamento no cartão.
-    *   Geração de recibo em HTML e opção de impressão.
-*   **Gestão de Clientes:** Cadastro e manutenção de uma base de clientes.
-*   **Relatórios e Análises:**
-    *   Dashboard administrativo com KPIs (Receita Total, Lucro Bruto, Ticket Médio).
-    *   Gráficos interativos (Chart.js) para análise de vendas ao longo do tempo, formas de pagamento, e ranking de produtos/vendedores.
-*   **Diário de Bordo (Logs de Atividade):**
-    *   Registro detalhado de ações importantes no sistema (vendas, reembolsos, criação de produtos, logins, etc.) para auditoria e segurança.
-*   **Backups Automáticos:** Script que executa backups diários do banco de dados e limpa arquivos antigos para garantir a segurança dos dados.
-*   **Instalação Simplificada:** Scripts (`.bat`) que automatizam a criação do ambiente virtual e a inicialização do servidor, facilitando o uso por pessoas não-técnicas.
+### Gestão e PDV Físico
+* **Autenticação Segura:** Autenticação via JWT (JSON Web Tokens) e hashing seguro (Bcrypt).
+* **Controles de Acesso (RBAC):** Níveis granulares de permissão para Administradores e Vendedores.
+* **Frente de Caixa Avançado:** Leitor de código de barras USB, busca instantânea (SKU/Nome), carrinho de compras dinâmico e aplicação de cupons promocionais.
+* **Emissão de Recibos:** Geração de recibos HTML e impressão térmica térmica direta.
+* **Controle de Estoque Inteligente:** Baixa automática nas vendas, reposição via reembolsos, e *Soft Delete* (desativação) de produtos sem perder histórico contábil.
+* **Log de Auditoria:** Registro detalhado de todas as operações sensíveis para rastreabilidade de caixas e administradores.
+
+### E-Commerce & Loja Virtual
+* **Catálogo Online:** Vitrine virtual 100% sincronizada com o estoque físico em tempo real.
+* **Processamento de Pagamentos:** Integração direta com a API do **Mercado Pago** para Pix, Cartão de Crédito e Boleto.
+* **Cálculo de Frete Inteligente:** Integração com a API do **Melhor Envio** para cálculo de frete dinâmico via CEP, geração de etiquetas automatizadas e rastreamento.
+* **Carrinho e Checkout Dinâmicos:** Fluxo de compra fluido sem recarregamento da página, salvando o progresso da compra no `localStorage`.
+* **Termos de Uso e LGPD:** Respaldo jurídico integrado no checkout (aceite obrigatório com coleta de CPF).
+
+### Pós-Venda e CRM
+* **Sistema de Feedback (NPS):** Captura automática de satisfação pós-compra do cliente, com dashboards interativos gerenciais.
+* **Avaliações de Produtos (Reviews):** Clientes podem avaliar os produtos comprados e anexar fotos/vídeos. As avaliações possuem moderação total via Painel Admin com visualizações de mídia.
+* **Painel Administrativo:** Dashboards em tempo real com estatísticas de vendas, ticket médio, distribuição de avaliações (Chart.js) e controle gerencial.
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## 🛠️ Tecnologias e Arquitetura
+
+O sistema adota o padrão de projeto *App Factory* no Backend, separando responsabilidades em Módulos (Blueprints).
 
 ### Backend
-*   **Python 3**
-*   **Flask:** Microframework web para a construção da API.
-*   **Flask-SQLAlchemy:** ORM para interação com o banco de dados.
-*   **Flask-Bcrypt:** Para hashing seguro de senhas.
-*   **PyJWT:** Para geração e validação de tokens de autenticação.
-*   **Python-Barcode:** Para a geração de imagens de código de barras.
+* **Python 3.10+** (Framework Web Flask)
+* **Flask-SQLAlchemy & Alembic:** ORM e versionamento contínuo de banco de dados (Migrações).
+* **PostgreSQL:** Banco de dados relacional oficial de produção.
+* **Mercado Pago SDK:** Para pagamentos online.
+* **PyJWT & Flask-Bcrypt:** Segurança criptográfica.
 
 ### Frontend
-*   **HTML5**
-*   **CSS3**
-*   **JavaScript (Vanilla):** Para toda a interatividade, lógica de negócio e comunicação com a API.
-*   **Bootstrap 5:** Framework CSS para criação de uma interface responsiva e moderna.
-*   **Chart.js:** Para a visualização de dados e gráficos nos relatórios.
+* **Mobile-First & Responsividade:** Interfaces projetadas para operar perfeitamente em telas de celulares (Bootstrap 5).
+* **Vanilla JavaScript:** Toda a reatividade da Loja, do PDV e dos Paineis construída nativamente para máxima performance (Fetch API).
+* **Theme Manager:** Sistema de alternância entre Modo Escuro (Dark Mode) e Modo Claro.
+* **Chart.js:** Análise e visualização de KPIs no dashboard gerencial.
 
-### Banco de Dados
-*   **SQLite:** Banco de dados relacional leve e baseado em arquivo, ideal para aplicações locais.
-
----
-
-## 🚀 Como Executar o Projeto
-
-Siga os passos abaixo para configurar e rodar o sistema em sua máquina local.
-
-### Pré-requisitos
-*   **Python 3.10+** instalado. (Lembre-se de marcar "Add Python to PATH" durante a instalação).
-*   **Git** instalado.
-
-### Passos para Instalação
-
-1.  **Clone o repositório:**
-    ```bash
-    git clone https://github.com/SEU-USUARIO/NOME-DO-REPOSITORIO.git "Sistema FP Fitness"
-    ```
-    *(Substitua `SEU-USUARIO/NOME-DO-REPOSITORIO` pelo link do seu projeto no GitHub)*
-
-2.  **Navegue até a pasta do projeto:**
-    ```bash
-    cd "Sistema FP Fitness"
-    ```
-
-3.  **Crie o ambiente virtual:**
-    ```bash
-    python -m venv venv
-    ```
-
-4.  **Ative o ambiente virtual:**
-    *   No Windows:
-        ```bash
-        venv\Scripts\activate
-        ```
-    *   No macOS/Linux:
-        ```bash
-        source venv/bin/activate
-        ```
-
-5.  **Instale as dependências:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-6.  **Execute o script de inicialização:**
-    ```bash
-    python run.py
-    ```
-    *(Este script irá executar a rotina de backup e iniciar o servidor Flask)*
-
-### Primeiro Acesso
-
-1.  Após iniciar o servidor, abra seu navegador e acesse `http://localhost:5000/registrar-admin.html`.
-2.  Preencha o formulário para criar a conta principal de administrador.
-3.  Após a criação, você será redirecionado para a tela de login. Acesse `http://localhost:5000` e entre com as credenciais que você acabou de criar.
-
-O sistema está pronto para ser utilizado!
+### Infraestrutura e Deploy
+* **Servidor VPS (Debian 12)** com Gunicorn e Nginx atuando como proxy reverso.
+* Script de implantação automatizada (`update_vps_deploy.py`) que roda a rotina de pull, ativa o ambiente e atualiza a aplicação em tempo real.
 
 ---
 
 ## 📂 Estrutura do Projeto
+
+```text
 /Sistema FP Fitness
-|
-├── frontend/ # Contém todos os arquivos de interface (HTML, CSS, JS, imagens)
-| ├── css/
-| ├── js/
-| └── ... (outros arquivos .html)
-|
-├── backups/ # (Gerado) Armazena os backups do banco de dados.
-├── barcodes/ # (Gerado) Armazena as imagens de códigos de barras.
-├── recibos/ # (Gerado) Armazena os recibos de venda em HTML.
-├── uploads/ # (Gerado) Armazena as imagens dos produtos.
-├── venv/ # (Gerado) Pasta do ambiente virtual Python.
-|
-├── app.py # O coração da aplicação: servidor Flask, API e lógica de negócio.
-├── run.py # Script principal para iniciar o sistema (setup, backup, server).
-├── backup_manager.py # Lógica para criar e limpar backups do banco de dados.
-├── estoque.db # (Gerado) O arquivo do banco de dados SQLite.
-├── requirements.txt # Lista de dependências Python para o projeto.
-├── manual.txt # Guia de instalação para o usuário final.
-└── README.md # Este arquivo.
-
+├── app/                  # Núcleo da Aplicação (App Factory)
+│   ├── routes/           # Blueprints: api/, store.py, views.py
+│   ├── services/         # Integrações Externas (mercadopago_service.py, frete_service.py)
+│   ├── __init__.py       # Inicialização do Flask
+│   ├── models.py         # Modelos de Banco de Dados
+│   └── utils.py          # Decorators (token_required), utilitários gerais
+├── frontend/             # Código Frontend estático servido pela aplicação
+│   ├── css/
+│   ├── js/
+│   ├── static/           # Imagens, uploads, assets
+│   └── *.html            # Telas da loja e painel admin
+├── migrations/           # Versionamento do Banco de Dados via Alembic
+├── update_vps_deploy.py  # Script de Deploy Contínuo (CD) na VPS
+├── app.py                # Ponto de entrada local
+└── requirements.txt      # Dependências Python
+```
 
 ---
 
-## 🗺️ Roadmap (Possíveis Melhorias Futuras)
+## 👨‍💻 Autoria e Manutenção
 
-Embora o sistema esteja completo, existem ideias para expansões futuras:
+Desenvolvido, expandido e mantido por **Fernando Sérgio**.
 
-*   **Permissões Granulares:** Evoluir o sistema de cargos (Admin/Vendedor) para um sistema de permissões individuais, permitindo que um admin delegue tarefas específicas (como ver relatórios) para outros usuários.
-*   **Filtros Avançados:** Adicionar filtros por data e por usuário na tela de Logs de Atividade.
-*   **Controle de Caixa:** Implementar funcionalidades de abertura e fechamento de caixa.
+*   GitHub: [Fezudo98](https://github.com/Fezudo98?tab=repositories)
+*   LinkedIn: [Fernando Sérgio](https://www.linkedin.com/in/fernando-s%C3%A9rgio-786560373/)
+*   Instagram: [@sergioo_1918](https://www.instagram.com/sergioo_1918/) 
 
----
-
-## 👨‍💻 Autor
-
-Feito por **Fernando Sérgio**.
-
-*   GitHub: `https://github.com/Fezudo98?tab=repositories`
-*   LinkedIn: `https://www.linkedin.com/in/fernando-s%C3%A9rgio-786560373/`
-*   Instagram: `https://www.instagram.com/sergioo_1918/` 
 ---
 
 ## 📄 Licença
 
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+Este projeto é protegido pela licença MIT. Consulte o arquivo `LICENSE` para mais detalhes e restrições legais.
