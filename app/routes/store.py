@@ -798,14 +798,17 @@ def mercadopago_webhook():
                                     produto.quantidade += item.quantidade
                             db.session.commit()
                     
-                    # Lógica para Estorno/Chargeback de vendas já Concluídas
-                    elif venda.status == 'Concluída':
+                    # Lógica para Estorno/Chargeback de vendas já Pagas
+                    elif venda.status in ['Concluída', 'Em Transporte', 'Entregue']:
                         if payment_status in ['refunded', 'charged_back', 'in_mediation']:
+                            status_antigo = venda.status
                             venda.status = 'Cancelada' if payment_status != 'refunded' else 'Reembolsada'
-                            for item in venda.itens:
-                                produto = Produto.query.get(item.id_produto)
-                                if produto:
-                                    produto.quantidade += item.quantidade
+                            # Só devolve o estoque se a mercadoria ainda não saiu da loja fisicamente
+                            if status_antigo == 'Concluída':
+                                for item in venda.itens:
+                                    produto = Produto.query.get(item.id_produto)
+                                    if produto:
+                                        produto.quantidade += item.quantidade
                             db.session.commit()
                     
                     
