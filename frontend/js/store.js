@@ -539,11 +539,14 @@ function updateAuthUI() {
                 <button class="btn btn-warning btn-sm rounded-pill px-3 dropdown-toggle fw-bold" type="button" data-bs-toggle="dropdown">
                     <i class="fa-regular fa-user me-2"></i>Minha Conta
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
-                    <li><a class="dropdown-item" href="/store/conta">Perfil</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="#" onclick="logoutClient()">Sair</a></li>
-                </ul>
+                  <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                      <li><a class="dropdown-item" href="/store/conta#profile">Meu Perfil</a></li>
+                      <li><a class="dropdown-item" href="/store/conta#orders">Meus Pedidos</a></li>
+                      <li><a class="dropdown-item" href="/store/conta#reviews">Minhas Avaliações</a></li>
+                      <li><a class="dropdown-item" href="/store/conta#favorites">Favoritos</a></li>
+                      <li><hr class="dropdown-divider"></li>
+                      <li><a class="dropdown-item text-danger" href="#" onclick="logoutClient()">Sair</a></li>
+                  </ul>
             </div>
         `;
     } else {

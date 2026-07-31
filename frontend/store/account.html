@@ -774,13 +774,22 @@
                 }
             } catch (err) {
                 console.error(err);
-                Swal.fire('Erro', 'Ocorreu um erro ao enviar seu feedback.', 'error');
+                Swal.fire('Erro', 'Erro de conexão.', 'error');
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = 'Enviar Feedback <i class="fas fa-paper-plane ms-1"></i>';
+                btn.innerHTML = 'Enviar Avaliação';
             }
         };
 
+        // Initialize tabs based on hash
+        const hash = window.location.hash;
+        if (hash) {
+            const triggerEl = document.querySelector(`button[data-bs-target="${hash}"]`);
+            if (triggerEl) {
+                const tab = new bootstrap.Tab(triggerEl);
+                tab.show();
+            }
+        }
     }); // End DOMContentLoaded
 
 
