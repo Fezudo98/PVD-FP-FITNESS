@@ -631,12 +631,18 @@ def store_checkout():
     total_final = total_venda - desconto_total
 
     # 3. Criar Venda
+    client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if client_ip and ',' in client_ip:
+        client_ip = client_ip.split(',')[0].strip()
+
     nova_venda = Venda(
         total_venda=total_final,
         desconto_total=desconto_total,
         id_cliente=cliente.id,
         id_vendedor=None,
         status='Pendente',
+        termos_aceitos=True,
+        ip_comprador=client_ip,
         entrega_rua=end_data.get('rua') or cliente.endereco_rua,
         entrega_numero=end_data.get('numero') or cliente.endereco_numero,
         entrega_bairro=end_data.get('bairro') or cliente.endereco_bairro,

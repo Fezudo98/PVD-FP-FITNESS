@@ -212,11 +212,20 @@
                     <!-- Client Details -->
                     <div class="card bg-secondary bg-opacity-10 border-0 mb-4">
                         <div class="card-body">
-                            <h6 class="card-title text-warning mb-3"><i class="fas fa-user me-2"></i>Dados do Cliente
-                            </h6>
+                            <h6 class="card-title text-warning mb-3"><i class="fas fa-user me-2"></i>Dados do Cliente</h6>
                             <div class="row g-3" id="modalClientInfo">
                                 <!-- Populated via JS -->
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Legal Compliance -->
+                    <div class="card bg-success bg-opacity-10 border-success mb-4 d-none" id="legalComplianceCard">
+                        <div class="card-body">
+                            <h6 class="card-title text-success mb-2 fw-bold"><i class="fas fa-balance-scale me-2"></i>Comprovante de Consentimento Legal</h6>
+                            <p class="small text-white-50 mb-0" style="line-height: 1.6;" id="legalComplianceText">
+                                <!-- Preenchido via JS -->
+                            </p>
                         </div>
                     </div>
 

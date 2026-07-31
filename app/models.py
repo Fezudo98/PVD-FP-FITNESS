@@ -157,6 +157,11 @@ class Venda(db.Model):
     transportadora = db.Column(db.String(50), nullable=True)
     id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     id_vendedor = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True) # Nullable para vendas online
+    
+    # Registro Jurídico / Antifraude
+    termos_aceitos = db.Column(db.Boolean, nullable=True, default=False)
+    ip_comprador = db.Column(db.String(50), nullable=True)
+
     cliente = db.relationship('Cliente')
     vendedor = db.relationship('Usuario')
     itens = db.relationship('ItemVenda', backref='venda', cascade="all, delete-orphan")

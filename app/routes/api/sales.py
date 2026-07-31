@@ -211,7 +211,9 @@ def get_venda_details(current_user, venda_id):
         'entrega_complemento': venda.entrega_complemento,
         'tipo_entrega': venda.tipo_entrega,
         'codigo_rastreio': venda.codigo_rastreio,
-        'transportadora': venda.transportadora
+        'transportadora': venda.transportadora,
+        'termos_aceitos': venda.termos_aceitos,
+        'ip_comprador': venda.ip_comprador
     })
 
 @api_bp.route('/api/vendas/novas_notificacoes', methods=['GET'])

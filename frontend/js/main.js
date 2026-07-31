@@ -628,6 +628,20 @@ async function viewOrderDetails(id) {
             </div>
         `;
 
+        // Legal Compliance Box
+        const legalCard = document.getElementById('legalComplianceCard');
+        const legalText = document.getElementById('legalComplianceText');
+        if (venda.termos_aceitos && venda.ip_comprador) {
+            legalCard.classList.remove('d-none');
+            const dataAceite = venda.data_hora; 
+            legalText.innerHTML = `O cliente <strong>${venda.cliente_nome || 'Não informado'}</strong>, portador do CPF <strong>${venda.cliente_cpf || 'Não informado'}</strong>, declarou explicitamente ter lido e concordado com as Políticas de Troca, Prazos e Termos de Uso.<br><br>
+            <strong>Registrado em:</strong> ${dataAceite}<br>
+            <strong>Assinatura Digital (IP):</strong> ${venda.ip_comprador}`;
+        } else {
+            legalCard.classList.add('d-none');
+            legalText.innerHTML = '';
+        }
+
         document.getElementById('modalOrderDate').textContent = venda.data_hora;
         // NOTE: modalOrderTotal element was removed from header section in HTML update, 
         // using modalOrderTotal in footer section now.
