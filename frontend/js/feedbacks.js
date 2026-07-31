@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         const response = await fetch('/api/admin/feedbacks', {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'x-access-token': token }
         });
 
         if (response.status === 401 || response.status === 403) {
