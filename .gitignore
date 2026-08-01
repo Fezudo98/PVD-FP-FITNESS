@@ -64,3 +64,12 @@ migrations/__pycache__/
 
 # Secrets
 .env
+
+# Scripts locais de acesso/deploy da VPS (contêm ou leem credenciais sensíveis)
+acessar_vps.bat
+instalar_vps_automatico.bat
+update_vps_deploy.py
+update_nginx.py
+install_ssl.py
+install_ssl2.py
+vps_credentials.bat

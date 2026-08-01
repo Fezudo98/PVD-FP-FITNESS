@@ -9,6 +9,7 @@ auth_bp = Blueprint('auth', __name__)
 
 # --- Autenticação Admin/Vendedor ---
 @auth_bp.route('/api/auth/register', methods=['POST'])
+@limiter.limit("10 per minute")
 def register():
     dados = request.get_json()
     is_first_user = Usuario.query.count() == 0
@@ -20,7 +21,7 @@ def register():
         try:
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = Usuario.query.get(data['id'])
-            if current_user.role != 'admin':
+            if not current_user or current_user.role != 'admin':
                 return jsonify({'erro': 'Apenas administradores podem criar usuários.'}), 403
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             return jsonify({'erro': 'Token inválido.'}), 401
@@ -75,6 +76,7 @@ def check_client_cpf(cpf):
     return jsonify({'exists': False})
 
 @auth_bp.route('/api/client/data-by-cpf/<cpf>', methods=['GET'])
+@limiter.limit("5 per minute")
 def get_client_by_cpf(cpf):
     cpf_limpo = cpf.replace('.', '').replace('-', '')
     

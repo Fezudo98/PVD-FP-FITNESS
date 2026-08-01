@@ -50,6 +50,7 @@ def token_required(f):
         try:
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = Usuario.query.get(data['id'])
+            if not current_user: raise Exception('Usuário não encontrado')
         except Exception as e:
             return jsonify({'message': 'Token é inválido!'}), 401
         return f(current_user, *args, **kwargs)

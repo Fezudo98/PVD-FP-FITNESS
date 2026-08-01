@@ -13,6 +13,11 @@ from datetime import datetime
 # pyrefly: ignore [missing-import]
 import barcode
 
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+def allowed_image_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+
 @api_bp.route('/api/produtos/nomes', methods=['GET'])
 @token_required
 def get_product_names(current_user):
@@ -139,19 +144,21 @@ def gerenciar_produtos(current_user):
         if imagens_files:
             uploads_dir = os.path.join(base_dir, 'uploads')
             os.makedirs(uploads_dir, exist_ok=True)
-            
+
             for i, file in enumerate(imagens_files):
                 if file.filename == '':
                     continue
-                
-                extensao = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+
+                if not allowed_image_file(file.filename):
+                    continue  # Ignora arquivos com extensão não permitida
+
                 filename = secure_filename(file.filename)
                 filename = f"{int(datetime.now().timestamp())}_{i}_{filename}"
                 file.save(os.path.join(uploads_dir, filename))
-                
+
                 if i == 0:
                     novo_produto.imagem_url = filename
-                
+
                 nova_img = ProdutoImagem(imagem_url=filename)
                 novo_produto.imagens.append(nova_img)
 
@@ -298,17 +305,21 @@ def gerenciar_produto_especifico(current_user, produto_id):
             if imagens_files:
                 uploads_dir = os.path.join(base_dir, 'uploads')
                 os.makedirs(uploads_dir, exist_ok=True)
-                
+
                 for i, file in enumerate(imagens_files):
                     if file.filename == '':
                         continue
+
+                    if not allowed_image_file(file.filename):
+                        continue  # Ignora arquivos com extensão não permitida
+
                     filename = secure_filename(file.filename)
                     filename = f"{int(datetime.now().timestamp())}_{i}_{filename}"
                     file.save(os.path.join(uploads_dir, filename))
-                    
+
                     if i == 0:
                         produto.imagem_url = filename
-                    
+
                     nova_img = ProdutoImagem(produto_id=produto.id, imagem_url=filename)
                     db.session.add(nova_img)
 

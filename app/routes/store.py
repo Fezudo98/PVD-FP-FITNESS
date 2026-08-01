@@ -4,6 +4,8 @@ import math
 import jwt
 import os
 import json
+import hmac
+import hashlib
 import urllib.request
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta, timezone
@@ -635,6 +637,26 @@ def store_checkout():
 
     total_final = total_venda - desconto_total
 
+    # 2.5 Validar Taxa de Entrega no Servidor
+    # O cliente envia a taxa de entrega calculada na tela, mas ela nunca é confiável por si só
+    # (pode ser adulterada antes do POST). Recalculamos as opções válidas de frete para o mesmo
+    # CEP/carrinho e só aceitamos o valor informado se ele bater com uma opção real.
+    taxa_entrega_informada = float(dados.get('taxa_entrega', 0.0) or 0.0)
+    cep_destino_frete = end_data.get('cep') or cliente.endereco_cep
+    cep_frete_clean = ''.join(filter(str.isdigit, str(cep_destino_frete or '')))
+
+    valores_frete_validos = {0.0}  # Retirada na loja e Motoboy (valor a combinar) custam 0 no checkout self-service
+    if cep_frete_clean:
+        try:
+            itens_frete = [{'id': item['id_produto'], 'quantity': item['quantidade']} for item in itens_data]
+            for opt in calcular_melhor_envio(cep_frete_clean, itens_frete):
+                valores_frete_validos.add(round(float(opt['valor']), 2))
+        except Exception as e:
+            print(f"Erro ao validar frete no checkout: {e}")
+
+    if not any(abs(taxa_entrega_informada - v) < 0.01 for v in valores_frete_validos):
+        return jsonify({'erro': 'A taxa de entrega informada não corresponde a nenhuma opção de frete válida. Atualize a página e tente novamente.'}), 400
+
     # 3. Criar Venda
     client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
     if client_ip and ',' in client_ip:
@@ -656,7 +678,7 @@ def store_checkout():
         entrega_cep=end_data.get('cep') or cliente.endereco_cep,
 
         entrega_complemento=end_data.get('complemento') or cliente.endereco_complemento,
-        taxa_entrega=dados.get('taxa_entrega', 0.0),
+        taxa_entrega=taxa_entrega_informada,
         tipo_entrega=dados.get('tipo_entrega', 'Motoboy'),
         transportadora=dados.get('transportadora')
     )
@@ -734,8 +756,40 @@ def store_checkout():
         'init_point': preference['init_point']
     })
 
+def _validar_assinatura_webhook_mp(webhook_secret):
+    """Valida o header x-signature do Mercado Pago (HMAC-SHA256), conforme documentação oficial.
+    Retorna True se válida. Se nenhum secret estiver configurado, a checagem é pulada (retorna True)."""
+    if not webhook_secret:
+        return True
+
+    x_signature = request.headers.get('x-signature', '')
+    x_request_id = request.headers.get('x-request-id', '')
+    data_id = request.args.get('data.id') or request.args.get('id') or ''
+
+    ts, v1 = None, None
+    for part in x_signature.split(','):
+        if '=' in part:
+            key, _, value = part.strip().partition('=')
+            if key == 'ts':
+                ts = value
+            elif key == 'v1':
+                v1 = value
+
+    if not ts or not v1:
+        return False
+
+    manifest = f"id:{data_id.lower()};request-id:{x_request_id};ts:{ts};"
+    assinatura_esperada = hmac.new(webhook_secret.encode('utf-8'), manifest.encode('utf-8'), hashlib.sha256).hexdigest()
+
+    return hmac.compare_digest(assinatura_esperada, v1)
+
 @store_bp.route('/api/store/webhook/mercadopago', methods=['POST'])
 def mercadopago_webhook():
+    webhook_secret = os.environ.get('MERCADOPAGO_WEBHOOK_SECRET')
+    if not _validar_assinatura_webhook_mp(webhook_secret):
+        print("WEBHOOK MERCADOPAGO: assinatura inválida, requisição rejeitada.")
+        return jsonify({'erro': 'Assinatura inválida'}), 401
+
     topic = request.args.get('topic') or request.args.get('type')
     if topic == 'payment':
         payment_id = request.args.get('id') or request.args.get('data.id')
