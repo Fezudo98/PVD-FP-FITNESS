@@ -340,7 +340,7 @@
 
                 // Auto-trigger Feedback if latest order is pending feedback
                 const latestOrder = orders[0];
-                if (latestOrder && !latestOrder.has_feedback && latestOrder.status !== 'Cancelado') {
+                if (latestOrder && !latestOrder.has_feedback && latestOrder.status !== 'Cancelada' && latestOrder.status !== 'Pendente') {
                     if (!localStorage.getItem('feedback_prompted_' + latestOrder.id)) {
                         setTimeout(() => {
                             window.openFeedbackModal(latestOrder.id);
@@ -403,11 +403,15 @@
         const getStatusBadge = (status) => {
             const badges = {
                 'Pendente': 'bg-warning text-dark',
-                'Pago': 'bg-info text-white',
+                'Concluída': 'bg-info text-white',
                 'Em separação': 'bg-primary',
-                'Enviado': 'bg-primary',
+                'Produto Postado': 'bg-primary',
+                'Saiu para entrega': 'bg-primary',
+                'Em Transporte': 'bg-primary',
+                'Pronto para retirada': 'bg-primary',
                 'Entregue': 'bg-success',
-                'Cancelado': 'bg-danger'
+                'Cancelada': 'bg-danger',
+                'Reembolsada': 'bg-dark text-white'
             };
             return badges[status] || 'bg-secondary';
         };

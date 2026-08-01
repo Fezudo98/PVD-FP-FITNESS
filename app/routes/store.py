@@ -21,10 +21,36 @@ import threading
 
 store_bp = Blueprint('store', __name__)
 
+def disparar_geracao_etiqueta_async(venda):
+    """Gera a etiqueta do Melhor Envio em background (sem travar quem chamou), se a venda usou
+    um serviço do Melhor Envio (codigo_servico_frete começando com 'me_')."""
+    if not (venda.codigo_servico_frete and venda.codigo_servico_frete.startswith('me_')):
+        return
+
+    def async_gerar_etiqueta(app, v_id):
+        with app.app_context():
+            try:
+                v_async = Venda.query.get(v_id)
+                if v_async:
+                    url_pdf, tracking_code = gerar_etiqueta_me(v_async)
+                    if tracking_code:
+                        v_async.codigo_rastreio = tracking_code
+                    db.session.commit()
+            except Exception as e:
+                print(f"Erro ao gerar etiqueta automaticamente para venda {v_id}: {e}")
+
+    thread = threading.Thread(target=async_gerar_etiqueta, args=(current_app._get_current_object(), venda.id))
+    thread.start()
+
 def limpar_vendas_abandonadas():
     """
-    Procura por vendas online Pendentes que tenham mais de 30 minutos e as cancela, 
-    devolvendo o estoque dos produtos.
+    Procura por vendas online Pendentes que tenham mais de 30 minutos.
+
+    Antes de cancelar, confirma diretamente no Mercado Pago se já existe um pagamento
+    aprovado para aquela venda. Isso evita perder pedidos legítimos cujo webhook atrasou,
+    falhou, ou que foram pagos via boleto/Pix após os 30 minutos: nesses casos a venda é
+    recuperada (marcada como Concluída) em vez de cancelada. Só cancela e devolve o
+    estoque quando o Mercado Pago confirma que não há pagamento aprovado.
     """
     try:
         limite_tempo = current_brazil_time() - timedelta(minutes=30)
@@ -34,16 +60,64 @@ def limpar_vendas_abandonadas():
             Venda.id_vendedor == None
         ).all()
 
+        if not vendas_abandonadas:
+            return
+
+        config_mp = Configuracao.query.filter_by(chave='MERCADOPAGO_ACCESS_TOKEN').first()
+        mp_access_token = config_mp.valor if config_mp else os.environ.get('MERCADOPAGO_ACCESS_TOKEN')
+        sdk = mercadopago.SDK(mp_access_token) if mp_access_token else None
+
+        total_canceladas = 0
+        total_recuperadas = 0
+        vendas_recuperadas = []
+
         for venda in vendas_abandonadas:
+            pagamento_aprovado = None
+
+            if sdk:
+                try:
+                    resultado = sdk.payment().search(filters={'external_reference': str(venda.id)})
+                    if resultado.get('status') == 200:
+                        for p in resultado.get('response', {}).get('results', []):
+                            # O external_reference é só o ID sequencial da venda: se o banco for
+                            # recriado ou o ID reaproveitado, pagamentos antigos e não relacionados
+                            # podem compartilhar o mesmo external_reference. Por isso, além do status
+                            # "approved", exigimos que o valor pago bata com o valor da venda.
+                            valor_pago = p.get('transaction_amount')
+                            if p.get('status') == 'approved' and valor_pago is not None and abs(float(valor_pago) - venda.total_venda) < 0.01:
+                                pagamento_aprovado = p
+                                break
+                except Exception as e:
+                    print(f"[Estoque] Erro ao consultar pagamento da venda {venda.id} no Mercado Pago, adiando decisão: {e}")
+                    continue  # Não decide nada sobre essa venda agora; tenta novamente no próximo ciclo
+
+            if pagamento_aprovado:
+                # Pagamento aprovado mas o webhook não chegou/falhou: recupera a venda em vez de cancelar
+                venda.status = 'Concluída'
+                transacao_id = str(pagamento_aprovado.get('id'))
+                if not any(p.transacao_id == transacao_id for p in venda.pagamentos):
+                    db.session.add(Pagamento(
+                        valor=venda.total_venda,
+                        forma=pagamento_aprovado.get('payment_method_id', 'mercadopago'),
+                        id_venda=venda.id,
+                        transacao_id=transacao_id
+                    ))
+                total_recuperadas += 1
+                vendas_recuperadas.append(venda)
+                continue
+
             for item in venda.itens:
                 produto = Produto.query.get(item.id_produto)
                 if produto:
                     produto.quantidade += item.quantidade
             venda.status = 'Cancelada'
-            
-        if vendas_abandonadas:
+            total_canceladas += 1
+
+        if total_canceladas or total_recuperadas:
             db.session.commit()
-            print(f"[Estoque] {len(vendas_abandonadas)} vendas abandonadas canceladas.")
+            for venda_recuperada in vendas_recuperadas:
+                disparar_geracao_etiqueta_async(venda_recuperada)
+            print(f"[Estoque] {total_canceladas} vendas abandonadas canceladas, {total_recuperadas} recuperadas (pagamento aprovado sem webhook processado).")
     except Exception as e:
         db.session.rollback()
         print(f"[Estoque] Erro ao limpar vendas abandonadas: {e}")
@@ -637,25 +711,37 @@ def store_checkout():
 
     total_final = total_venda - desconto_total
 
-    # 2.5 Validar Taxa de Entrega no Servidor
+    # 2.5 Validar Taxa de Entrega e Serviço de Frete no Servidor
     # O cliente envia a taxa de entrega calculada na tela, mas ela nunca é confiável por si só
     # (pode ser adulterada antes do POST). Recalculamos as opções válidas de frete para o mesmo
     # CEP/carrinho e só aceitamos o valor informado se ele bater com uma opção real.
+    # Também guardamos o ID técnico da opção escolhida (retirada, motoboy ou me_<service_id> do
+    # Melhor Envio) em codigo_servico_frete: é o que permite gerar a etiqueta depois, diferente de
+    # tipo_entrega/transportadora que só guardam o rótulo amigável exibido ao cliente.
     taxa_entrega_informada = float(dados.get('taxa_entrega', 0.0) or 0.0)
     cep_destino_frete = end_data.get('cep') or cliente.endereco_cep
     cep_frete_clean = ''.join(filter(str.isdigit, str(cep_destino_frete or '')))
 
-    valores_frete_validos = {0.0}  # Retirada na loja e Motoboy (valor a combinar) custam 0 no checkout self-service
+    opcoes_frete_validas = {'retirada': 0.0, 'motoboy': 0.0}  # Sempre 0 no checkout self-service
     if cep_frete_clean:
         try:
             itens_frete = [{'id': item['id_produto'], 'quantity': item['quantidade']} for item in itens_data]
             for opt in calcular_melhor_envio(cep_frete_clean, itens_frete):
-                valores_frete_validos.add(round(float(opt['valor']), 2))
+                opcoes_frete_validas[opt['id']] = round(float(opt['valor']), 2)
         except Exception as e:
             print(f"Erro ao validar frete no checkout: {e}")
 
-    if not any(abs(taxa_entrega_informada - v) < 0.01 for v in valores_frete_validos):
-        return jsonify({'erro': 'A taxa de entrega informada não corresponde a nenhuma opção de frete válida. Atualize a página e tente novamente.'}), 400
+    servico_frete_informado = dados.get('servico_frete')
+    if servico_frete_informado and servico_frete_informado in opcoes_frete_validas:
+        # Temos o ID da opção: valida que o valor informado bate exatamente com essa opção
+        if abs(taxa_entrega_informada - opcoes_frete_validas[servico_frete_informado]) >= 0.01:
+            return jsonify({'erro': 'A taxa de entrega informada não corresponde à opção de frete selecionada. Atualize a página e tente novamente.'}), 400
+        codigo_servico_frete = servico_frete_informado
+    else:
+        # ID não informado/reconhecido (cliente com cache antigo): valida só pelo valor, por segurança
+        if not any(abs(taxa_entrega_informada - v) < 0.01 for v in opcoes_frete_validas.values()):
+            return jsonify({'erro': 'A taxa de entrega informada não corresponde a nenhuma opção de frete válida. Atualize a página e tente novamente.'}), 400
+        codigo_servico_frete = None
 
     # 3. Criar Venda
     client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
@@ -680,7 +766,8 @@ def store_checkout():
         entrega_complemento=end_data.get('complemento') or cliente.endereco_complemento,
         taxa_entrega=taxa_entrega_informada,
         tipo_entrega=dados.get('tipo_entrega', 'Motoboy'),
-        transportadora=dados.get('transportadora')
+        transportadora=dados.get('transportadora'),
+        codigo_servico_frete=codigo_servico_frete
     )
 
     if cupom_aplicado and not getattr(cupom_aplicado, '_is_primeiracompra', False):
@@ -825,25 +912,9 @@ def mercadopago_webhook():
                             )
                             db.session.add(pg)
                             db.session.commit()
-                            
-                            # Gerar etiqueta de forma assíncrona para não travar o webhook
-                            if venda.tipo_entrega and venda.tipo_entrega.startswith('me_'):
-                                def async_gerar_etiqueta(app, v_id):
-                                    with app.app_context():
-                                        try:
-                                            v_async = Venda.query.get(v_id)
-                                            if v_async:
-                                                url_pdf, tracking_code = gerar_etiqueta_me(v_async)
-                                                if tracking_code:
-                                                    v_async.codigo_rastreio = tracking_code
-                                                db.session.commit()
-                                        except Exception as e:
-                                            print(f"Erro ao gerar etiqueta via Webhook para venda {v_id}: {e}")
-                                
-                                # Dispara a thread
-                                thread = threading.Thread(target=async_gerar_etiqueta, args=(current_app._get_current_object(), venda.id))
-                                thread.start()
-                                
+
+                            disparar_geracao_etiqueta_async(venda)
+
                         elif payment_status in ['rejected', 'cancelled']:
                             venda.status = 'Cancelada'
                             for item in venda.itens:

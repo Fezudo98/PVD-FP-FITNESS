@@ -726,7 +726,7 @@ CEP: ${venda.entrega_cep}`;
 
         const tipoEntrega = venda.tipo_entrega || 'Motoboy';
 
-        if (venda.status !== 'Cancelada' && venda.status !== 'Entregue' && venda.status !== 'Concluída') {
+        if (venda.status !== 'Cancelada' && venda.status !== 'Entregue') {
             const nextStatus = getNextStatus(venda.status, tipoEntrega);
             if (nextStatus) {
                 actionsDiv.innerHTML += `<button class="btn btn-success flex-grow-1" onclick="updateOrderStatus(${venda.id}, '${nextStatus}')">Avançar para: ${nextStatus}</button>`;
@@ -810,11 +810,17 @@ function getNextStatus(current, tipo) {
     let flow = [];
 
     if (tipo === 'Retirada') {
-        flow = ['Pendente', 'Em separação', 'Pronto para retirada', 'Entregue'];
+        flow = ['Em separação', 'Pronto para retirada', 'Entregue'];
     } else if (tipo === 'Correios') {
-        flow = ['Pendente', 'Em separação', 'Produto Postado', 'Entregue'];
+        flow = ['Em separação', 'Produto Postado', 'Entregue'];
     } else {
-        flow = ['Pendente', 'Em separação', 'Saiu para entrega', 'Entregue'];
+        flow = ['Em separação', 'Saiu para entrega', 'Entregue'];
+    }
+
+    // Pendente (ainda não confirmado) e Concluída (pago, aguardando separação)
+    // ainda não entraram no fluxo de preparação: o próximo passo para ambos é "Em separação".
+    if (current === 'Pendente' || current === 'Concluída') {
+        return flow[0];
     }
 
     const idx = flow.indexOf(current);

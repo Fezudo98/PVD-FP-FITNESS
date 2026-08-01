@@ -9,10 +9,10 @@ def gerar_etiqueta_me(venda):
     if not token:
         raise Exception("Token do Melhor Envio não configurado.")
 
-    if not venda.tipo_entrega or not venda.tipo_entrega.startswith('me_'):
+    if not venda.codigo_servico_frete or not venda.codigo_servico_frete.startswith('me_'):
         raise Exception("Esta venda não foi feita usando o Melhor Envio.")
 
-    service_id = venda.tipo_entrega.replace('me_', '')
+    service_id = venda.codigo_servico_frete.replace('me_', '')
 
     headers = {
         'Accept': 'application/json',

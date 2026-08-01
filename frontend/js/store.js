@@ -375,10 +375,12 @@ async function submitOrder() {
     let tipoEntrega = 'Motoboy'; // Default fallback
     let transportadora = null;
     let taxaEntrega = 0;
+    let servicoFrete = null; // ID técnico da opção (retirada, motoboy ou me_<id> do Melhor Envio)
 
     if (selectedShipping) {
         const name = selectedShipping.dataset.name || '';
         const nameLower = name.toLowerCase();
+        servicoFrete = selectedShipping.dataset.optionId || null;
 
         if (nameLower.includes('retirada')) {
             tipoEntrega = 'Retirada';
@@ -409,6 +411,7 @@ async function submitOrder() {
         tipo_entrega: tipoEntrega,
         transportadora: transportadora,
         taxa_entrega: taxaEntrega,
+        servico_frete: servicoFrete,
         termos_aceitos: document.getElementById('termsCheckbox') ? document.getElementById('termsCheckbox').checked : true
     };
 

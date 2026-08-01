@@ -161,9 +161,13 @@ class Venda(db.Model):
     entrega_estado = db.Column(db.String(2), nullable=True)
     entrega_cep = db.Column(db.String(10), nullable=True)
     entrega_complemento = db.Column(db.String(100), nullable=True)
-    tipo_entrega = db.Column(db.String(50), nullable=True, default='Motoboy') # Motoboy, Retirada, Correios
+    tipo_entrega = db.Column(db.String(50), nullable=True, default='Motoboy') # Rótulo amigável: Motoboy, Retirada, Correios, Transportadora
     codigo_rastreio = db.Column(db.String(50), nullable=True)
     transportadora = db.Column(db.String(50), nullable=True)
+    # ID técnico da opção de frete escolhida (retirada, motoboy ou me_<service_id> do Melhor Envio).
+    # Usado para saber se a venda pode gerar etiqueta via Melhor Envio (tipo_entrega/transportadora
+    # guardam só o rótulo amigável exibido ao usuário, não servem para isso).
+    codigo_servico_frete = db.Column(db.String(30), nullable=True)
     id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     id_vendedor = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True) # Nullable para vendas online
     

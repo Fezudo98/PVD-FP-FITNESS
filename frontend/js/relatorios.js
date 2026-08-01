@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ? `<button class="btn btn-sm btn-warning reembolsar-btn" data-id="${venda.id}">Reembolsar</button>`
                     : `<span class="badge bg-danger">${venda.status}</span>`
                     }
-                    ${(venda.status === 'Concluída' && venda.tipo_entrega && venda.tipo_entrega.startsWith('me_') && !venda.codigo_rastreio)
+                    ${(venda.status === 'Concluída' && venda.codigo_servico_frete && venda.codigo_servico_frete.startsWith('me_') && !venda.codigo_rastreio)
                     ? `<button class="btn btn-sm btn-success gerar-etiqueta-btn ms-1" data-id="${venda.id}">Gerar Etiqueta</button>`
                     : ''
                     }

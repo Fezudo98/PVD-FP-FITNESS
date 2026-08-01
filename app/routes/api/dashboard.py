@@ -41,7 +41,7 @@ def get_dashboard_data(current_user):
     ranking_vendedores_list = [{'vendedor': r.nome, 'total': r.total_valor} for r in ranking_vendedores]
     
     vendas_periodo_total = vendas_query.order_by(Venda.data_hora.desc()).all()
-    lista_vendas = [{'id': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Final', 'vendedor': v.vendedor.nome if v.vendedor else 'Online', 'total': v.total_venda, 'pagamento': ", ".join([p.forma for p in v.pagamentos]), 'status': v.status, 'tipo_entrega': v.tipo_entrega, 'codigo_rastreio': v.codigo_rastreio} for v in vendas_periodo_total]
+    lista_vendas = [{'id': v.id, 'data_hora': v.data_hora.strftime('%d/%m/%Y %H:%M'), 'cliente': v.cliente.nome if v.cliente else 'Final', 'vendedor': v.vendedor.nome if v.vendedor else 'Online', 'total': v.total_venda, 'pagamento': ", ".join([p.forma for p in v.pagamentos]), 'status': v.status, 'tipo_entrega': v.tipo_entrega, 'codigo_servico_frete': v.codigo_servico_frete, 'codigo_rastreio': v.codigo_rastreio} for v in vendas_periodo_total]
 
     # Breakdown by Channel (Online vs Physical)
     # Online = id_vendedor IS NULL, Physical = id_vendedor IS NOT NULL
