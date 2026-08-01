@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
 from ..extensions import db, bcrypt, limiter
 from ..models import Usuario, Cliente
@@ -56,7 +56,7 @@ def login():
     registrar_log(user, "Login Realizado")
     db.session.commit()
     
-    token = jwt.encode({'id': user.id, 'exp' : datetime.utcnow() + timedelta(hours=24)}, current_app.config['SECRET_KEY'], algorithm="HS256")
+    token = jwt.encode({'id': user.id, 'exp': datetime.now(timezone.utc) + timedelta(hours=24)}, current_app.config['SECRET_KEY'], algorithm="HS256")
     
     return jsonify({'token': token, 'user': user.to_dict()})
 
@@ -102,6 +102,7 @@ def get_client_by_cpf(cpf):
     return jsonify({'erro': 'Cliente não encontrado'}), 404
 
 @auth_bp.route('/api/client/register', methods=['POST'])
+@limiter.limit("5 per minute")
 def register_client():
     dados = request.get_json()
     if Cliente.query.filter_by(email=dados['email']).first():
@@ -134,7 +135,7 @@ def register_client():
     db.session.add(novo_cliente)
     db.session.commit()
     
-    token = jwt.encode({'id': novo_cliente.id, 'exp': datetime.utcnow() + timedelta(days=7)}, current_app.config['SECRET_KEY'], algorithm="HS256")
+    token = jwt.encode({'id': novo_cliente.id, 'exp': datetime.now(timezone.utc) + timedelta(days=7)}, current_app.config['SECRET_KEY'], algorithm="HS256")
     return jsonify({'token': token, 'cliente': novo_cliente.to_dict()}), 201
 
 @auth_bp.route('/api/client/login', methods=['POST'])
@@ -148,5 +149,5 @@ def login_client():
     if not cliente or not cliente.senha_hash or not bcrypt.check_password_hash(cliente.senha_hash, auth['senha']):
         return jsonify({'message': 'Credenciais inválidas!'}), 401
         
-    token = jwt.encode({'id': cliente.id, 'exp': datetime.utcnow() + timedelta(days=7)}, current_app.config['SECRET_KEY'], algorithm="HS256")
+    token = jwt.encode({'id': cliente.id, 'exp': datetime.now(timezone.utc) + timedelta(days=7)}, current_app.config['SECRET_KEY'], algorithm="HS256")
     return jsonify({'token': token, 'cliente': cliente.to_dict()})

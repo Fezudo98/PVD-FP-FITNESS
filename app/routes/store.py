@@ -6,8 +6,9 @@ import os
 import json
 import urllib.request
 from werkzeug.utils import secure_filename
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
+import types
 from ..extensions import db
 from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, current_brazil_time
 from ..utils import token_required, client_token_required, validate_cpf
@@ -284,8 +285,8 @@ def store_product_reviews(produto_id):
             try:
                 data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
                 current_client_id = data.get('id')
-            except Exception as e:
-                print(f"Token Decode Error: {e}")
+            except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+                pass  # Token ausente ou expirado — trata como cliente anônimo
             
         # Precompute which clients actually bought this product
         vendas_produto = db.session.query(Venda.id_cliente).join(ItemVenda).filter(
@@ -310,7 +311,10 @@ def store_product_reviews(produto_id):
         c_id = data.get('id') or data.get('id_cliente')
         current_client = Cliente.query.get(c_id)
         if not current_client: raise Exception('Cliente não encontrado')
-    except: return jsonify({'erro': 'Token inválido.'}), 401
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return jsonify({'erro': 'Token expirado. Por favor, faça login novamente.'}), 401
+    except Exception:
+        return jsonify({'erro': 'Token inválido.'}), 401
     
     # Check eligibility
     has_purchased = db.session.query(Venda).join(ItemVenda).filter(
@@ -355,8 +359,7 @@ def store_product_reviews(produto_id):
             if ext not in ALLOWED_EXTENSIONS:
                 continue # Skip invalid files (or could return error, but skipping avoids partial success issues for now)
             
-            import datetime as dt
-            filename = secure_filename(f"review_{nova_avaliacao.id}_{int(dt.datetime.now(dt.timezone.utc).timestamp())}_{file.filename}")
+            filename = secure_filename(f"review_{nova_avaliacao.id}_{int(datetime.now(timezone.utc).timestamp())}_{file.filename}")
             file.save(os.path.join(upload_folder, filename))
             tipo = 'video' if filename.lower().endswith(('.mp4', '.mov', '.avi')) else 'foto'
             midia = AvaliacaoMidia(id_avaliacao=nova_avaliacao.id, tipo=tipo, url=filename)
@@ -371,7 +374,6 @@ def store_product_reviews(produto_id):
                 percent_config = Configuracao.query.filter_by(chave='promo_primeira_avaliacao_percent').first()
                 percent = float(percent_config.valor) if percent_config else 10.0
                 
-                import uuid
                 code = f"REVIEW-{uuid.uuid4().hex[:6].upper()}"
                 novo_cupom = Cupom(
                     codigo=code,
@@ -590,15 +592,15 @@ def store_checkout():
         if str(cupom_id) == '0':
             percent_config = Configuracao.query.filter_by(chave='promo_primeira_compra_percent').first()
             percent = float(percent_config.valor) if percent_config else 10.0
-            class MockCupom:
-                pass
-            cupom = MockCupom()
-            cupom.codigo = 'PRIMEIRACOMPRA'
-            cupom.ativo = True
-            cupom.aplicacao = 'total'
-            cupom.tipo_desconto = 'percentual'
-            cupom.valor_desconto = percent
-            cupom.produtos = []
+            cupom = types.SimpleNamespace(
+                codigo='PRIMEIRACOMPRA',
+                ativo=True,
+                aplicacao='total',
+                tipo_desconto='percentual',
+                valor_desconto=percent,
+                produtos=[],
+                _is_primeiracompra=True
+            )
         else:
             cupom = Cupom.query.get(cupom_id)
 
@@ -659,7 +661,7 @@ def store_checkout():
         transportadora=dados.get('transportadora')
     )
 
-    if cupom_aplicado and type(cupom_aplicado).__name__ != 'MockCupom':
+    if cupom_aplicado and not getattr(cupom_aplicado, '_is_primeiracompra', False):
         nova_venda.cupons.append(cupom_aplicado)
         
     db.session.add(nova_venda)
@@ -956,7 +958,11 @@ def toggle_favorito(current_client, produto_id):
 @store_bp.route('/api/client/coupons', methods=['GET'])
 @client_token_required
 def get_client_coupons(current_client):
-    cupons = Cupom.query.filter_by(ativo=True).all()
+    # Retorna apenas cupons ativos do tipo 'total' (ex: cupons de review ganhos pelo cliente)
+    # Não expomos cupons de produto_especifico ou cupons internos administrativos
+    cupons = Cupom.query.filter_by(ativo=True).filter(
+        Cupom.aplicacao.in_(['total'])
+    ).all()
     cupons_data = [c.to_dict() for c in cupons]
     return jsonify(cupons_data)
 
