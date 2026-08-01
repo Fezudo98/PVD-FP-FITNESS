@@ -10,27 +10,6 @@ window.ThemeManager = {
             css: [],
             js: [],
             cleanup: () => { }
-        },
-        'natal': {
-            name: 'Natal',
-            css: ['/css/christmas.css'],
-            js: ['/js/christmas.js'],
-            cleanup: () => {
-                document.querySelectorAll('link[href*="christmas.css"]').forEach(el => el.remove());
-                document.querySelectorAll('script[src*="christmas.js"]').forEach(el => el.remove());
-            }
-        },
-        'ano_novo': {
-            name: 'Feliz Ano Novo',
-            css: ['/css/new_year.css'],
-            js: ['/js/new_year.js'],
-            cleanup: () => {
-                document.querySelectorAll('link[href*="new_year.css"]').forEach(el => el.remove());
-                document.querySelectorAll('script[src*="new_year.js"]').forEach(el => el.remove());
-                if (typeof window.stopFireworks === 'function') {
-                    window.stopFireworks();
-                }
-            }
         }
     },
 
@@ -48,6 +27,10 @@ window.ThemeManager = {
             if (response.ok) {
                 const data = await response.json();
                 this.currentTheme = data.theme || 'original'; // Endpoint returns {theme: '...'}
+                // Se o servidor ainda tiver salvo um tema descontinuado (ex: natal/ano_novo removidos), usa o padrão
+                if (!this.themes[this.currentTheme]) {
+                    this.currentTheme = 'original';
+                }
             }
         } catch (error) {
             console.error('Erro ao carregar tema:', error);
