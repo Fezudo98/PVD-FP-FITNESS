@@ -1,5 +1,10 @@
 // Store Logic
 
+// Formata valores monetários no padrão brasileiro (vírgula decimal, ponto de milhar)
+function formatBRL(value) {
+    return (Number(value) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 let cart = JSON.parse(localStorage.getItem('fp_fitness_cart')) || [];
 let currentCoupon = null; // Store applied coupon
 
@@ -83,7 +88,7 @@ function renderCartPage() {
                         </div>
                     </div>
                 </td>
-                <td class="text-dark fw-semibold">R$ ${price.toFixed(2)}</td>
+                <td class="text-dark fw-semibold">R$ ${formatBRL(price)}</td>
                 <td>
                     <div class="input-group input-group-sm rounded-pill border overflow-hidden" style="width: 110px; background-color: #f8f9fa;">
                         <button class="btn btn-light border-0 text-dark fw-bold px-3" onclick="updateQuantity(${item.id}, -1)">-</button>
@@ -91,7 +96,7 @@ function renderCartPage() {
                         <button class="btn btn-light border-0 text-dark fw-bold px-3" onclick="updateQuantity(${item.id}, 1)">+</button>
                     </div>
                 </td>
-                <td class="text-dark fw-bold h6 mb-0">R$ ${subtotal.toFixed(2)}</td>
+                <td class="text-dark fw-bold h6 mb-0">R$ ${formatBRL(subtotal)}</td>
                 <td class="text-end">
                     <button class="btn btn-link text-muted p-0 transition-scale" onclick="removeFromCart(${item.id})" onmouseover="this.classList.remove('text-muted'); this.classList.add('text-danger');" onmouseout="this.classList.remove('text-danger'); this.classList.add('text-muted');">
                         <i class="fa-regular fa-trash-can fs-5"></i>
@@ -101,8 +106,8 @@ function renderCartPage() {
         `;
     }).join('');
 
-    if (subtotalEl) subtotalEl.textContent = `R$ ${total.toFixed(2)}`;
-    if (totalEl) totalEl.textContent = `R$ ${total.toFixed(2)}`;
+    if (subtotalEl) subtotalEl.textContent = `R$ ${formatBRL(total)}`;
+    if (totalEl) totalEl.textContent = `R$ ${formatBRL(total)}`;
 }
 
 function updateQuantity(id, change) {
@@ -225,7 +230,7 @@ function renderCheckoutPage() {
                         <small class="text-light text-opacity-75" style="font-size: 0.8rem;">Qtd: ${item.quantity} ${item.size ? ' | Tam: ' + item.size : ''}</small>
                     </div>
                 </div>
-                <span class="text-warning fw-bold" style="font-size: 1rem;">R$ ${itemTotal.toFixed(2)}</span>
+                <span class="text-warning fw-bold" style="font-size: 1rem;">R$ ${formatBRL(itemTotal)}</span>
             </li>
         `;
     }).join('');
@@ -257,18 +262,22 @@ function renderCheckoutPage() {
     // Ensure discount doesn't exceed subtotal
     if (discount > subtotal) discount = subtotal;
 
+    // Expõe o valor numérico (não formatado) para outras funções (ex: recalculateTotal
+    // ao trocar o frete) usarem diretamente, em vez de tentar reler o texto já formatado da tela
+    window.currentDiscountValue = discount;
+
     const total = subtotal - discount;
 
-    if (subtotalEl) subtotalEl.textContent = `R$ ${subtotal.toFixed(2)}`;
+    if (subtotalEl) subtotalEl.textContent = `R$ ${formatBRL(subtotal)}`;
 
     if (discount > 0) {
         discountRow.classList.remove('d-none');
-        discountEl.textContent = `- R$ ${discount.toFixed(2)}`;
+        discountEl.textContent = `- R$ ${formatBRL(discount)}`;
     } else {
         discountRow.classList.add('d-none');
     }
 
-    if (totalEl) totalEl.textContent = `R$ ${total.toFixed(2)}`;
+    if (totalEl) totalEl.textContent = `R$ ${formatBRL(total)}`;
 }
 
 

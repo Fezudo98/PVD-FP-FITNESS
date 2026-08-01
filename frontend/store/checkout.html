@@ -360,7 +360,7 @@
         }
 
         container.innerHTML = options.map((opt, index) => {
-            let valorFormatado = `R$ ${opt.valor.toFixed(2)}`;
+            let valorFormatado = `R$ ${formatBRL(opt.valor)}`;
             if (opt.id === 'motoboy') {
                 valorFormatado = `<span class="text-warning">A combinar</span>`;
             } else if (opt.valor === 0) {
@@ -388,7 +388,7 @@
 
     function updateShippingCost(cost) {
         window.shippingCost = cost;
-        document.getElementById('checkoutShipping').textContent = `R$ ${cost.toFixed(2)}`;
+        document.getElementById('checkoutShipping').textContent = `R$ ${formatBRL(cost)}`;
 
         // Trigger generic total update (assuming functionality exists or likely needs to be added here)
         // Since store.js handles logic, we need to ensure it sees this cost.
@@ -402,19 +402,16 @@
         const cart = JSON.parse(localStorage.getItem('fp_fitness_cart')) || [];
         const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-        let discount = 0;
-        // Check if global discount variable exists from store.js logic
-        // Assuming store.js might expose appliedCoupon or we read UI text?
-        // Let's try to read the discount text
-        const discountText = document.getElementById('checkoutDiscount').textContent.replace(/[^\d.,]/g, '').replace(',', '.');
-        discount = parseFloat(discountText) || 0;
+        // Lido diretamente do valor numérico exposto por renderCheckoutPage() (store.js),
+        // em vez de reler o texto já formatado da tela (frágil e depende do formato de exibição)
+        const discount = window.currentDiscountValue || 0;
 
         const shipping = window.shippingCost || 0;
         const total = subtotal - discount + shipping;
 
         // Update UI
-        document.getElementById('checkoutSubtotal').textContent = `R$ ${subtotal.toFixed(2)}`;
-        document.getElementById('checkoutTotal').textContent = `R$ ${total.toFixed(2)}`;
+        document.getElementById('checkoutSubtotal').textContent = `R$ ${formatBRL(subtotal)}`;
+        document.getElementById('checkoutTotal').textContent = `R$ ${formatBRL(total)}`;
     }
 </script>
 {% endblock %}

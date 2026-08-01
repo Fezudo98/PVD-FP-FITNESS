@@ -1,5 +1,6 @@
 from flask import Flask
 from .extensions import db, migrate, bcrypt, cors
+from datetime import datetime
 import os
 
 def create_app(config_class):
@@ -35,6 +36,10 @@ def create_app(config_class):
 
     from .routes.resources import resources_bp
     app.register_blueprint(resources_bp)
+
+    @app.context_processor
+    def inject_current_year():
+        return {'current_year': datetime.now().year}
 
     # Iniciar Cronjobs em Background (Apenas no processo principal do Werkzeug/Gunicorn para não duplicar, mas o APScheduler lida bem com Gunicorn)
     if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':

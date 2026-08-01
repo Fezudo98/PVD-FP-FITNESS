@@ -129,9 +129,9 @@ async function loadProducts() {
 
         if (data.produtos && data.produtos.length > 0) {
             const html = data.produtos.map(p => {
-                let priceDisplay = `R$ ${p.preco_venda.toFixed(2)}`;
+                let priceDisplay = `R$ ${formatBRL(p.preco_venda)}`;
                 if (p.max_price && p.max_price > p.preco_venda) {
-                    priceDisplay = `A partir de R$ ${p.preco_venda.toFixed(2)}`;
+                    priceDisplay = `A partir de R$ ${formatBRL(p.preco_venda)}`;
                 }
 
                 const bestSellerBadge = p.is_best_seller ?

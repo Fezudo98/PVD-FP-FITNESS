@@ -579,7 +579,7 @@
     function renderProductInfo(product) {
         document.title = `${product.nome} | FP Moda Fitness`;
         document.getElementById('productName').textContent = product.nome;
-        document.getElementById('productPrice').textContent = `R$ ${product.preco_venda.toFixed(2)}`;
+        document.getElementById('productPrice').textContent = `R$ ${formatBRL(product.preco_venda)}`;
         document.getElementById('productDescription').textContent = product.descricao || 'Sem descrição disponível.';
         document.getElementById('productCategory').textContent = product.categoria || 'Geral';
 
