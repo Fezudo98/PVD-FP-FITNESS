@@ -121,6 +121,64 @@
             position: relative;
         }
 
+        /* ===== SweetAlert2 com a identidade visual da loja ===== */
+        .swal2-popup {
+            border-radius: var(--radius-lg);
+            font-family: 'Inter', sans-serif;
+            padding-bottom: 1.75rem;
+        }
+
+        .swal2-title {
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-primary);
+            font-size: 1.4rem;
+        }
+
+        .swal2-html-container {
+            color: #6c757d;
+        }
+
+        .swal2-styled.swal2-confirm {
+            background-color: var(--primary-gold) !important;
+            color: #000 !important;
+            font-weight: 600;
+            border-radius: 50px;
+            padding: 0.6rem 1.75rem;
+            box-shadow: none !important;
+        }
+
+        .swal2-styled.swal2-confirm:hover {
+            background-color: var(--secondary-gold) !important;
+        }
+
+        .swal2-styled.swal2-confirm:focus {
+            box-shadow: 0 0 0 3px rgba(224, 180, 49, 0.35) !important;
+        }
+
+        .swal2-styled.swal2-cancel {
+            border-radius: 50px;
+            padding: 0.6rem 1.75rem;
+            font-weight: 600;
+        }
+
+        .swal2-icon.swal2-warning {
+            border-color: var(--primary-gold);
+            color: var(--primary-gold);
+        }
+
+        .swal2-icon.swal2-info {
+            border-color: var(--secondary-gold);
+            color: var(--secondary-gold);
+        }
+
+        .swal2-timer-progress-bar {
+            background: var(--primary-gold);
+        }
+
+        .swal2-toast .swal2-title {
+            font-size: 1rem;
+        }
+
         /* Mobile Optimizations */
         @media (max-width: 768px) {
             .display-4 {
