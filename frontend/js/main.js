@@ -633,10 +633,12 @@ async function viewOrderDetails(id) {
         const legalText = document.getElementById('legalComplianceText');
         if (venda.termos_aceitos && venda.ip_comprador) {
             legalCard.classList.remove('d-none');
-            const dataAceite = venda.data_hora; 
+            const dataAceite = venda.data_hora;
             legalText.innerHTML = `O cliente <strong>${venda.cliente_nome || 'Não informado'}</strong>, portador do CPF <strong>${venda.cliente_cpf || 'Não informado'}</strong>, declarou explicitamente ter lido e concordado com as Políticas de Troca, Prazos e Termos de Uso.<br><br>
             <strong>Registrado em:</strong> ${dataAceite}<br>
-            <strong>Assinatura Digital (IP):</strong> ${venda.ip_comprador}`;
+            <strong>Versão dos Termos aceita:</strong> ${venda.versao_termos || 'Não registrada'}<br>
+            <strong>Assinatura Digital (IP):</strong> ${venda.ip_comprador}<br>
+            <strong>Dispositivo/Navegador:</strong> ${venda.user_agent_comprador || 'Não registrado'}`;
         } else {
             legalCard.classList.add('d-none');
             legalText.innerHTML = '';

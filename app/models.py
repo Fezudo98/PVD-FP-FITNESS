@@ -174,6 +174,11 @@ class Venda(db.Model):
     # Registro Jurídico / Antifraude
     termos_aceitos = db.Column(db.Boolean, nullable=True, default=False)
     ip_comprador = db.Column(db.String(50), nullable=True)
+    # Versão dos Termos/Políticas vigente no momento da compra (ver Config.TERMOS_VERSAO).
+    # Garante que, mesmo se a página de políticas for alterada depois, dá pra saber exatamente
+    # qual versão o cliente aceitou naquele pedido.
+    versao_termos = db.Column(db.String(20), nullable=True)
+    user_agent_comprador = db.Column(db.String(255), nullable=True)
 
     cliente = db.relationship('Cliente')
     vendedor = db.relationship('Usuario')

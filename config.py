@@ -22,3 +22,9 @@ class Config:
     ENTREGA_TAXA_MINIMA = 5.00
     GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024 # 16MB Limit
+
+    # Versão vigente dos Termos de Uso e Políticas (formato AAAA-MM-DD).
+    # Atualize esta data sempre que o conteúdo de store/policies.html for alterado de forma
+    # relevante. Cada venda online guarda a versão aceita no momento da compra (Venda.versao_termos),
+    # então pedidos antigos continuam vinculados à versão que estava vigente quando foram feitos.
+    TERMOS_VERSAO = "2026-08-01"

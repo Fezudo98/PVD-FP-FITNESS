@@ -755,7 +755,11 @@ def store_checkout():
         id_vendedor=None,
         status='Pendente',
         termos_aceitos=dados.get('termos_aceitos', False),
+        # Versão gravada a partir da config do servidor no momento da compra (não confiamos em
+        # valor vindo do cliente aqui: é a mesma versão que estava servida na página de checkout).
+        versao_termos=current_app.config.get('TERMOS_VERSAO'),
         ip_comprador=client_ip,
+        user_agent_comprador=(request.headers.get('User-Agent') or '')[:255],
         entrega_rua=end_data.get('rua') or cliente.endereco_rua,
         entrega_numero=end_data.get('numero') or cliente.endereco_numero,
         entrega_bairro=end_data.get('bairro') or cliente.endereco_bairro,
