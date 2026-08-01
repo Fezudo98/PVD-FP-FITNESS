@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime, timedelta
 import jwt
-from ..extensions import db, bcrypt
+from ..extensions import db, bcrypt, limiter
 from ..models import Usuario, Cliente
 from ..utils import registrar_log, validate_cpf
 
@@ -22,7 +22,7 @@ def register():
             current_user = Usuario.query.get(data['id'])
             if current_user.role != 'admin':
                 return jsonify({'erro': 'Apenas administradores podem criar usuários.'}), 403
-        except:
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             return jsonify({'erro': 'Token inválido.'}), 401
     
     hashed_password = bcrypt.generate_password_hash(dados['senha']).decode('utf-8')
@@ -40,6 +40,7 @@ def register():
     return jsonify(novo_usuario.to_dict()), 201
 
 @auth_bp.route('/api/auth/login', methods=['POST'])
+@limiter.limit("10 per minute")
 def login():
     auth = request.get_json()
     if not auth or not auth.get('email') or not auth.get('senha'):
@@ -61,6 +62,7 @@ def login():
 
 # --- Autenticação Cliente ---
 @auth_bp.route('/api/client/check-cpf/<cpf>', methods=['GET'])
+@limiter.limit("10 per minute")
 def check_client_cpf(cpf):
     # Remove formatações caso venham
     cpf_limpo = cpf.replace('.', '').replace('-', '')
@@ -136,6 +138,7 @@ def register_client():
     return jsonify({'token': token, 'cliente': novo_cliente.to_dict()}), 201
 
 @auth_bp.route('/api/client/login', methods=['POST'])
+@limiter.limit("10 per minute")
 def login_client():
     auth = request.get_json()
     if not auth or not auth.get('email') or not auth.get('senha'):

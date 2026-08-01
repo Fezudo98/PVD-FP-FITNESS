@@ -9,7 +9,7 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import uuid
 from ..extensions import db
-from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, current_brazil_time
+from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, current_brazil_time
 from ..utils import token_required, client_token_required, validate_cpf
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
@@ -92,7 +92,6 @@ def get_public_theme():
 
 @store_bp.route('/api/store/products', methods=['GET'])
 def store_get_products():
-    limpar_vendas_abandonadas()
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 12, type=int)
     categoria = request.args.get('categoria')
@@ -214,7 +213,7 @@ def store_validate_coupon(codigo):
             try:
                 data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
                 c_id = data.get('id') or data.get('id_cliente')
-            except:
+            except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
                 pass
                 
         cliente = None
@@ -420,7 +419,7 @@ def update_review(current_client, review_id):
         try:
              n = int(data['nota'])
              if 1 <= n <= 5: review.nota = n
-        except: pass
+        except ValueError: pass
         
     if 'comentario' in data: review.comentario = data['comentario']
     
@@ -519,7 +518,6 @@ def get_store_config():
 
 @store_bp.route('/api/store/checkout', methods=['POST'])
 def store_checkout():
-    limpar_vendas_abandonadas()
     dados = request.get_json(silent=True) or {}
     cliente_data = dados.get('cliente')
     itens_data = dados.get('itens')
@@ -965,12 +963,10 @@ def get_client_coupons(current_client):
 @store_bp.route('/api/cliente/perfil/foto', methods=['POST'])
 @client_token_required
 def upload_profile_photo(current_cliente):
-    print(f"DEBUG: Recebendo upload de foto. Files: {request.files}")
     if 'foto' not in request.files:
         return jsonify({'erro': 'Nenhuma imagem enviada'}), 400
         
     file = request.files['foto']
-    print(f"DEBUG: Filename: {file.filename}")
     if file.filename == '':
         return jsonify({'erro': 'Nome de arquivo inválido'}), 400
         
@@ -982,16 +978,13 @@ def upload_profile_photo(current_cliente):
             
             # Ensure directory exists
             upload_folder = os.path.join(str(current_app.static_folder), 'uploads', 'profiles')
-            print(f"DEBUG: Upload dir: {upload_folder}")
             os.makedirs(upload_folder, exist_ok=True)
             
             save_path = os.path.join(upload_folder, new_filename)
-            print(f"DEBUG: Saving to: {save_path}")
             file.save(save_path)
             
             # Update DB
             current_cliente.foto_perfil = f"/static/uploads/profiles/{new_filename}"
-            print(f"DEBUG: DB Updated. URL: {current_cliente.foto_perfil}")
             db.session.commit()
             
             return jsonify({'mensagem': 'Foto atualizada com sucesso', 'url': current_cliente.foto_perfil}), 200
@@ -1003,42 +996,7 @@ def upload_profile_photo(current_cliente):
         
     return jsonify({'erro': 'Tipo de arquivo não permitido'}), 400
 
-@store_bp.route('/api/public/perfil/<int:cliente_id>', methods=['GET'])
-def get_public_profile(cliente_id):
-    cliente = Cliente.query.get(cliente_id)
-    if not cliente:
-        return jsonify({'erro': 'Perfil não encontrado'}), 404
-    
-    # Basic Stats
-    total_reviews = Avaliacao.query.filter_by(id_cliente=cliente.id).count()
-    # Format date: "Janeiro 2024" (requires locale or custom mapping, using simple mapping for now)
-    meses = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'}
-    
-    if cliente.data_cadastro:
-        member_since = f"{meses[cliente.data_cadastro.month]} de {cliente.data_cadastro.year}"
-    else:
-        member_since = "Membro antigo"
-    
-    # Recent Reviews (Public visibility)
-    recent_reviews = []
-    reviews = Avaliacao.query.filter_by(id_cliente=cliente.id).order_by(Avaliacao.data_criacao.desc()).limit(5).all()
-    
-    for r in reviews:
-        recent_reviews.append({
-            'produto_nome': r.produto.nome if r.produto else 'Produto removido',
-            'produto_img': r.produto.imagem_url if r.produto else None,
-            'nota': r.nota,
-            'comentario': r.comentario,
-            'data': r.data_criacao.strftime('%d/%m/%Y')
-        })
-        
-    return jsonify({
-        'nome': cliente.nome, 
-        'foto_perfil': cliente.foto_perfil or '/static/img/default_avatar.png',
-        'membro_desde': member_since,
-        'total_avaliacoes': total_reviews,
-        'ultimas_avaliacoes': recent_reviews
-    }), 200
+
 
 @store_bp.route('/api/client/minhas_avaliacoes', methods=['GET'])
 @client_token_required

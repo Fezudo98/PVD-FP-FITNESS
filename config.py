@@ -7,7 +7,12 @@ load_dotenv(os.path.join(basedir, '.env'))
 class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'estoque.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'chave_super_secreta_mudeme'
+    
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        raise RuntimeError("CRITICAL: SECRET_KEY is not set in environment variables!")
+        
+    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'https://www.lojafpfitness.com.br,https://lojafpfitness.com.br,http://localhost:5000,http://127.0.0.1:5000').split(',')
     
     # Logistics Config
     LOJA_LAT = -3.884346
