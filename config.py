@@ -28,3 +28,12 @@ class Config:
     # relevante. Cada venda online guarda a versão aceita no momento da compra (Venda.versao_termos),
     # então pedidos antigos continuam vinculados à versão que estava vigente quando foram feitos.
     TERMOS_VERSAO = "2026-08-01"
+
+    # E-mail transacional (confirmação de pedido, pagamento aprovado, pedido enviado).
+    # Se MAIL_USERNAME/MAIL_PASSWORD não estiverem configurados, o envio é pulado silenciosamente
+    # (não quebra o checkout nem nenhum outro fluxo) — ver app/services/email_service.py.
+    MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or os.environ.get('MAIL_USERNAME')

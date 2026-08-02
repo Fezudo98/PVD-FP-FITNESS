@@ -16,6 +16,7 @@ from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, Avali
 from ..utils import token_required, client_token_required, validate_cpf
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
+from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado
 import mercadopago
 import threading
 
@@ -117,6 +118,10 @@ def limpar_vendas_abandonadas():
             db.session.commit()
             for venda_recuperada in vendas_recuperadas:
                 disparar_geracao_etiqueta_async(venda_recuperada)
+                try:
+                    enviar_pagamento_aprovado(venda_recuperada)
+                except Exception as e:
+                    print(f"Erro ao enviar e-mail de pagamento aprovado (reconciliação) da venda {venda_recuperada.id}: {e}")
             print(f"[Estoque] {total_canceladas} vendas abandonadas canceladas, {total_recuperadas} recuperadas (pagamento aprovado sem webhook processado).")
     except Exception as e:
         db.session.rollback()
@@ -839,7 +844,12 @@ def store_checkout():
         return jsonify({'erro': f'Erro MP: {detalhes_str}'}), 500
 
     db.session.commit()
-    
+
+    try:
+        enviar_confirmacao_pedido(nova_venda)
+    except Exception as e:
+        print(f"Erro ao enviar e-mail de confirmação do pedido {nova_venda.id}: {e}")
+
     return jsonify({
         'mensagem': 'Redirecionando para o pagamento...',
         'id_pedido': nova_venda.id,
@@ -918,6 +928,10 @@ def mercadopago_webhook():
                             db.session.commit()
 
                             disparar_geracao_etiqueta_async(venda)
+                            try:
+                                enviar_pagamento_aprovado(venda)
+                            except Exception as e:
+                                print(f"Erro ao enviar e-mail de pagamento aprovado da venda {venda.id}: {e}")
 
                         elif payment_status in ['rejected', 'cancelled']:
                             venda.status = 'Cancelada'

@@ -46,6 +46,7 @@ def init_scheduler(app):
                 tracking_data = resp.json()
                 if not isinstance(tracking_data, dict): return
                 
+                vendas_recem_enviadas = []
                 for venda in vendas:
                     t_info = tracking_data.get(venda.codigo_rastreio)
                     if t_info and isinstance(t_info, dict):
@@ -54,10 +55,19 @@ def init_scheduler(app):
                         if status_str in ['posted', 'routed', 'in_transit']:
                             if venda.status != 'Em Transporte':
                                 venda.status = 'Em Transporte'
+                                vendas_recem_enviadas.append(venda)
                         elif status_str == 'delivered':
                             venda.status = 'Entregue'
-                
+
                 db.session.commit()
+
+                if vendas_recem_enviadas:
+                    from .services.email_service import enviar_pedido_enviado
+                    for venda in vendas_recem_enviadas:
+                        try:
+                            enviar_pedido_enviado(venda)
+                        except Exception as e:
+                            print(f"[Scheduler] Erro ao enviar e-mail de pedido enviado da venda {venda.id}: {e}")
             except Exception as e:
                 print(f"[Scheduler] Erro ao atualizar rastreios: {e}")
 

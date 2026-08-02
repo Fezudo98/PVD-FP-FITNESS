@@ -387,16 +387,28 @@ def update_venda_status(current_user, venda_id):
     if venda.status == 'Cancelada' and novo_status != 'Cancelada':
         return jsonify({'erro': 'Não é possível reativar uma venda cancelada.'}), 400
 
+    ESTADOS_ENVIADO = ('Saiu para entrega', 'Produto Postado', 'Pronto para retirada', 'Em Transporte')
+    status_anterior = venda.status
+    avisar_enviado = novo_status in ESTADOS_ENVIADO and status_anterior not in ESTADOS_ENVIADO
+
     try:
         if novo_status == 'Cancelada' and venda.status != 'Cancelada':
             for item in venda.itens:
                 if item.produto:
                     item.produto.quantidade += item.quantidade
             registrar_log(current_user, "Venda Cancelada (Online)", f"ID: {venda.id} - Estoque estornado.")
-            
+
         venda.status = novo_status
         registrar_log(current_user, "Status Venda Atualizado", f"ID: {venda.id} -> {novo_status}")
         db.session.commit()
+
+        if avisar_enviado:
+            try:
+                from ...services.email_service import enviar_pedido_enviado
+                enviar_pedido_enviado(venda)
+            except Exception as e:
+                print(f"Erro ao enviar e-mail de pedido enviado da venda {venda.id}: {e}")
+
         return jsonify({'mensagem': f'Status atualizado para {novo_status}'})
         
     except Exception as e:
