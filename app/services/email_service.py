@@ -4,6 +4,16 @@ from email.mime.text import MIMEText
 from flask import current_app
 
 
+def _log(mensagem):
+    """Print seguro contra consoles que não suportam UTF-8 (ex: cp1252 no Windows).
+    Sem isso, um emoji no assunto do e-mail derruba o próprio log de sucesso/erro,
+    fazendo o envio parecer que falhou mesmo quando deu certo."""
+    try:
+        print(mensagem)
+    except UnicodeEncodeError:
+        print(mensagem.encode('ascii', errors='replace').decode('ascii'))
+
+
 def _enviar_email(destinatario, assunto, corpo_html):
     """Envia um e-mail via SMTP. Se as credenciais não estiverem configuradas (MAIL_USERNAME/
     MAIL_PASSWORD) ou não houver destinatário, apenas registra no log e não faz nada — o envio
@@ -15,11 +25,11 @@ def _enviar_email(destinatario, assunto, corpo_html):
     remetente = current_app.config.get('MAIL_DEFAULT_SENDER') or mail_user
 
     if not mail_user or not mail_pass:
-        print(f"[Email] Envio pulado (MAIL_USERNAME/MAIL_PASSWORD não configurados): {assunto} -> {destinatario}")
+        _log(f"[Email] Envio pulado (MAIL_USERNAME/MAIL_PASSWORD não configurados): {assunto} -> {destinatario}")
         return False
 
     if not destinatario:
-        print(f"[Email] Envio pulado (sem destinatário): {assunto}")
+        _log(f"[Email] Envio pulado (sem destinatário): {assunto}")
         return False
 
     try:
@@ -34,14 +44,14 @@ def _enviar_email(destinatario, assunto, corpo_html):
             server.login(mail_user, mail_pass)
             server.sendmail(remetente, destinatario, msg.as_string())
 
-        print(f"[Email] Enviado com sucesso: {assunto} -> {destinatario}")
+        _log(f"[Email] Enviado com sucesso: {assunto} -> {destinatario}")
         return True
     except Exception as e:
-        print(f"[Email] Erro ao enviar e-mail '{assunto}' para {destinatario}: {e}")
+        _log(f"[Email] Erro ao enviar e-mail '{assunto}' para {destinatario}: {e}")
         return False
 
 
-def _template_base(titulo, corpo_html):
+def _template_base(titulo, corpo_html, rodape_link='https://www.lojafpfitness.com.br/store/conta', rodape_texto='Ver meus pedidos'):
     return f'''<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background-color:#f4f4f4;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
@@ -55,7 +65,7 @@ def _template_base(titulo, corpo_html):
     </div>
     <div style="background:#f8f9fa;padding:20px;text-align:center;color:#888888;font-size:12px;">
         <p style="margin:0;">FP Moda Fitness &middot; R. Oitenta, 166, Sen. Carlos Jereissati, Pacatuba - CE</p>
-        <p style="margin:5px 0 0;"><a href="https://www.lojafpfitness.com.br/store/conta" style="color:#c9a22b;">Ver meus pedidos</a></p>
+        <p style="margin:5px 0 0;"><a href="{rodape_link}" style="color:#c9a22b;">{rodape_texto}</a></p>
     </div>
 </div>
 </body></html>'''
@@ -123,3 +133,31 @@ def enviar_pedido_enviado(venda):
 
     html = _template_base(f'Pedido #{venda.id} a caminho!', corpo)
     return _enviar_email(venda.cliente.email, f'Seu pedido #{venda.id} foi enviado! - FP Moda Fitness', html)
+
+
+def enviar_aviso_novo_pedido_admin(venda):
+    """Avisa a lojista por e-mail que um novo pedido online chegou (independente do cliente ter
+    e-mail cadastrado ou não). Vai para ADMIN_NOTIFICATION_EMAIL, ou MAIL_USERNAME se não
+    houver um endereço específico configurado."""
+    destinatario = current_app.config.get('ADMIN_NOTIFICATION_EMAIL') or current_app.config.get('MAIL_USERNAME')
+    if not destinatario:
+        return False
+
+    cliente_nome = venda.cliente.nome if venda.cliente else 'Cliente não identificado'
+    cliente_contato = (venda.cliente.telefone if venda.cliente and venda.cliente.telefone else '') or (venda.cliente.email if venda.cliente else '')
+
+    corpo = f'''
+        <p>Novo pedido recebido na loja! 🛍️</p>
+        <p><strong>Pedido:</strong> #{venda.id}</p>
+        <p><strong>Cliente:</strong> {cliente_nome} {f'({cliente_contato})' if cliente_contato else ''}</p>
+        {_lista_itens_html(venda)}
+        <p style="font-size:18px;font-weight:bold;color:#c9a22b;">Total: R$ {_fmt_brl(venda.total_venda)}</p>
+        <p>Assim que o pagamento for aprovado, você recebe outro aviso por aqui. Acompanhe o pedido no painel administrativo.</p>
+    '''
+
+    html = _template_base(
+        f'Novo pedido #{venda.id}!', corpo,
+        rodape_link='https://www.lojafpfitness.com.br/loja_online.html',
+        rodape_texto='Ver no painel administrativo'
+    )
+    return _enviar_email(destinatario, f'🛍️ Novo pedido #{venda.id} recebido - FP Moda Fitness', html)

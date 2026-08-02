@@ -386,12 +386,13 @@
                                     </button>
                                     
                                     ${getTrackingContent(order)}
-                                    
-                                    <a href="https://wa.me/558597293349?text=Ol%C3%A1%2C%20gostaria%20de%20cancelar%20o%20pedido%20%23${order.id}" 
-                                       target="_blank" 
+
+                                    ${['Entregue', 'Cancelada', 'Reembolsada'].includes(order.status) ? '' : `
+                                    <a href="https://wa.me/558597293349?text=Ol%C3%A1%2C%20gostaria%20de%20cancelar%20o%20pedido%20%23${order.id}"
+                                       target="_blank"
                                        class="btn btn-outline-danger btn-sm rounded-pill px-4">
                                         <i class="fab fa-whatsapp me-1"></i> Cancelar Pedido
-                                    </a>
+                                    </a>`}
                                 </div>
                             </div>
                         </div>`).join('');

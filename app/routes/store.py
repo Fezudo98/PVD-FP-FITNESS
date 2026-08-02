@@ -16,7 +16,7 @@ from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, Avali
 from ..utils import token_required, client_token_required, validate_cpf
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
-from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado
+from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin
 import mercadopago
 import threading
 
@@ -849,6 +849,11 @@ def store_checkout():
         enviar_confirmacao_pedido(nova_venda)
     except Exception as e:
         print(f"Erro ao enviar e-mail de confirmação do pedido {nova_venda.id}: {e}")
+
+    try:
+        enviar_aviso_novo_pedido_admin(nova_venda)
+    except Exception as e:
+        print(f"Erro ao enviar aviso de novo pedido para a lojista (venda {nova_venda.id}): {e}")
 
     return jsonify({
         'mensagem': 'Redirecionando para o pagamento...',
