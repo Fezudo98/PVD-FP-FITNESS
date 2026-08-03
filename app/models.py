@@ -142,6 +142,7 @@ class Cliente(db.Model):
             'recompensa_avaliacao_disponivel': self.recompensa_avaliacao_disponivel(),
             'desconto_avaliacao_percentual': self.desconto_avaliacao_percentual,
             'desconto_avaliacao_tipo': self.desconto_avaliacao_tipo,
+            'desconto_avaliacao_expira_em': self.desconto_avaliacao_expira_em.strftime('%d/%m/%Y') if self.desconto_avaliacao_expira_em else None,
             'data_cadastro': self.data_cadastro.strftime('%d/%m/%Y') if self.data_cadastro else None,
             'endereco_rua': self.endereco_rua, 'endereco_numero': self.endereco_numero,
             'endereco_bairro': self.endereco_bairro, 'endereco_cidade': self.endereco_cidade,

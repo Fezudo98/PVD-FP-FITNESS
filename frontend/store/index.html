@@ -134,6 +134,34 @@
     </div>
 </div>
 
+<!-- Recompensa de Avaliação (cliente logado com desconto disponível) -->
+<div class="modal fade" id="recompensaModal" tabindex="-1" aria-labelledby="recompensaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden position-relative" style="background-color: #121212;">
+            <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at top right, rgba(255, 193, 7, 0.15) 0%, transparent 50%), radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.05) 0%, transparent 50%); pointer-events: none;"></div>
+
+            <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 z-3" data-bs-dismiss="modal" aria-label="Close" onclick="closeRecompensaModal()"></button>
+
+            <div class="modal-body text-center p-5 position-relative z-2">
+                <div class="d-inline-flex align-items-center gap-2 mb-2 animate__animated animate__fadeInDown">
+                    <i class="fa-solid fa-gift text-warning"></i>
+                    <span class="text-warning text-uppercase fw-bold small" style="letter-spacing: 2px;">Você tem um desconto</span>
+                </div>
+
+                <h1 class="fw-bold mb-1 animate__animated animate__fadeInDown" id="recompensaPercentHero"
+                    style="font-family: 'Outfit', sans-serif; font-size: 3.5rem; line-height: 1; background: linear-gradient(135deg, #ffd54f, #e0b431); -webkit-background-clip: text; background-clip: text; color: transparent;"></h1>
+                <p class="text-light mb-4" style="font-weight: 300;">por ter avaliado sua compra — aplicado automaticamente, sem precisar de código!</p>
+
+                <p class="text-warning fw-bold mb-4"><i class="fa-regular fa-clock me-2"></i>Válido até <span id="recompensaValidade"></span></p>
+
+                <a href="/store/produtos" class="btn btn-warning btn-lg rounded-pill w-100 fw-bold shadow-lg welcome-cta py-3 text-uppercase" style="letter-spacing: 1px;" data-bs-dismiss="modal" onclick="closeRecompensaModal()">
+                    Ver Produtos
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     /* Welcome modal: cupom em formato de ticket com recorte lateral e friso picotado */
     .welcome-ticket {
@@ -212,7 +240,10 @@
     document.addEventListener('DOMContentLoaded', async function () {
         loadFeaturedProducts();
         await checkPromos();
-        checkWelcomeModal();
+        const mostrouRecompensa = await checkRecompensaModal();
+        if (!mostrouRecompensa) {
+            checkWelcomeModal();
+        }
     });
 
     function checkWelcomeModal() {
@@ -233,6 +264,45 @@
 
     function closeWelcomeModal() {
         localStorage.setItem('welcome_shown_v1', 'true');
+    }
+
+    // Avisa o cliente logado que tem um desconto de avaliação disponível, antes que expire.
+    // A chave do localStorage inclui a data de validade: se uma recompensa nova for concedida
+    // depois, o modal volta a aparecer (não fica preso ao "já vi" de uma recompensa antiga).
+    async function checkRecompensaModal() {
+        const token = localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken');
+        if (!token) return false;
+
+        try {
+            const res = await fetch('/api/client/me', { headers: { 'x-client-token': token } });
+            if (!res.ok) return false;
+            const data = await res.json();
+
+            if (!data.recompensa_avaliacao_disponivel) return false;
+
+            const chave = `recompensa_avaliacao_shown_${data.desconto_avaliacao_expira_em}`;
+            if (localStorage.getItem(chave)) return false;
+
+            const desconto = data.desconto_avaliacao_tipo === 'percentual'
+                ? `${data.desconto_avaliacao_percentual}%`
+                : `R$ ${data.desconto_avaliacao_percentual.toFixed(2)}`;
+            document.getElementById('recompensaPercentHero').textContent = `${desconto} OFF`;
+            document.getElementById('recompensaValidade').textContent = data.desconto_avaliacao_expira_em;
+
+            setTimeout(() => {
+                const recompensaModal = new bootstrap.Modal(document.getElementById('recompensaModal'));
+                recompensaModal.show();
+            }, 1000);
+            return true;
+        } catch (e) {
+            console.error('Erro ao carregar recompensa do cliente:', e);
+            return false;
+        }
+    }
+
+    function closeRecompensaModal() {
+        const heroText = document.getElementById('recompensaValidade').textContent;
+        if (heroText) localStorage.setItem(`recompensa_avaliacao_shown_${heroText}`, 'true');
     }
 
     function copyCoupon(code) {
