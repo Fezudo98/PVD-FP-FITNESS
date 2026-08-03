@@ -421,7 +421,10 @@ async function submitOrder() {
         transportadora: transportadora,
         taxa_entrega: taxaEntrega,
         servico_frete: servicoFrete,
-        termos_aceitos: document.getElementById('termsCheckbox') ? document.getElementById('termsCheckbox').checked : true
+        termos_aceitos: document.getElementById('termsCheckbox') ? document.getElementById('termsCheckbox').checked : true,
+        // Device ID do Mercado Pago (script security.js): ajuda o antifraude deles a diferenciar
+        // cliente legítimo de fraude, reduzindo rejeições por falso positivo.
+        device_id: window.MP_DEVICE_SESSION_ID || null
     };
 
     // --- FORCED REGISTRATION FLOW ---

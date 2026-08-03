@@ -822,6 +822,14 @@ def store_checkout():
 
     sdk = mercadopago.SDK(mp_access_token)
 
+    # Device ID gerado pelo script security.js do Mercado Pago no checkout (ver base.html):
+    # ajuda o antifraude deles a diferenciar cliente legítimo de fraude, reduzindo rejeições
+    # por falso positivo (ex: cliente que desiste e tenta de novo em seguida).
+    device_id = dados.get('device_id')
+    request_options = None
+    if device_id:
+        request_options = mercadopago.config.RequestOptions(custom_headers={'X-meli-session-id': device_id})
+
     # Para evitar erros de arredondamento de centavos ou rejeição por descontos negativos
     # no Mercado Pago, passamos o totalizador consolidado.
     mp_items = [{
@@ -850,7 +858,7 @@ def store_checkout():
         "auto_return": "approved",
     }
     
-    preference_response = sdk.preference().create(preference_data)
+    preference_response = sdk.preference().create(preference_data, request_options=request_options)
     preference = preference_response["response"]
     
     if "init_point" not in preference:
