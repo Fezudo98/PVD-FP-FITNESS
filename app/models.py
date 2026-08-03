@@ -96,11 +96,52 @@ class Cliente(db.Model):
     endereco_cep = db.Column(db.String(10), nullable=True)
     endereco_complemento = db.Column(db.String(100), nullable=True)
 
+    # Recompensa automática de "primeira avaliação" (substitui o antigo cupom REVIEW-xxxxxx):
+    # concedida uma única vez na vida do cliente (concedida nunca volta a False, mesmo que a
+    # avaliação seja apagada depois - evita fabricar recompensas excluindo e reavaliando),
+    # aplicada automaticamente e consumida (uso único) no checkout, seja online ou no PDV.
+    recompensa_avaliacao_concedida = db.Column(db.Boolean, nullable=False, default=False)
+    desconto_avaliacao_percentual = db.Column(db.Float, nullable=True)
+    desconto_avaliacao_tipo = db.Column(db.String(20), nullable=True)
+    desconto_avaliacao_expira_em = db.Column(db.DateTime, nullable=True)
+
+    def conceder_recompensa_avaliacao(self, promocao, validade_dias=30):
+        self.recompensa_avaliacao_concedida = True
+        self.desconto_avaliacao_percentual = promocao.valor_desconto
+        self.desconto_avaliacao_tipo = promocao.tipo_desconto
+        self.desconto_avaliacao_expira_em = current_brazil_time() + timedelta(days=validade_dias)
+
+    def recompensa_avaliacao_disponivel(self):
+        """True se há um desconto de primeira avaliação concedido, ainda não usado e dentro da
+        validade. Não consome - só para exibir ao cliente antes do checkout."""
+        if not self.desconto_avaliacao_percentual or not self.desconto_avaliacao_expira_em:
+            return False
+        return current_brazil_time() <= self.desconto_avaliacao_expira_em
+
+    def consumir_recompensa_avaliacao(self, subtotal):
+        """Aplica e consome (uso único, válido em qualquer canal - online ou PDV) o desconto
+        automático de primeira avaliação, se houver um disponível e dentro da validade.
+        Retorna o valor do desconto (0.0 se não houver nenhum disponível/válido)."""
+        if not self.desconto_avaliacao_percentual or not self.desconto_avaliacao_expira_em:
+            return 0.0
+        expirado = current_brazil_time() > self.desconto_avaliacao_expira_em
+        if self.desconto_avaliacao_tipo == 'percentual':
+            desconto = subtotal * (self.desconto_avaliacao_percentual / 100)
+        else:
+            desconto = min(self.desconto_avaliacao_percentual, subtotal)
+        self.desconto_avaliacao_percentual = None
+        self.desconto_avaliacao_tipo = None
+        self.desconto_avaliacao_expira_em = None
+        return 0.0 if expirado else desconto
+
     def to_dict(self):
         return {
             'id': self.id, 'nome': self.nome, 'telefone': self.telefone, 'cpf': self.cpf,
-            'email': self.email, 
-            'foto_perfil': self.foto_perfil, 
+            'email': self.email,
+            'foto_perfil': self.foto_perfil,
+            'recompensa_avaliacao_disponivel': self.recompensa_avaliacao_disponivel(),
+            'desconto_avaliacao_percentual': self.desconto_avaliacao_percentual,
+            'desconto_avaliacao_tipo': self.desconto_avaliacao_tipo,
             'data_cadastro': self.data_cadastro.strftime('%d/%m/%Y') if self.data_cadastro else None,
             'endereco_rua': self.endereco_rua, 'endereco_numero': self.endereco_numero,
             'endereco_bairro': self.endereco_bairro, 'endereco_cidade': self.endereco_cidade,

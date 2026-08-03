@@ -7,6 +7,7 @@ function formatBRL(value) {
 
 let cart = JSON.parse(localStorage.getItem('fp_fitness_cart')) || [];
 let currentCoupon = null; // Store applied coupon
+let clienteRecompensaAvaliacaoCheckout = null; // Desconto automático de "primeira avaliação" do cliente logado
 
 function updateCartCount() {
     const count = cart.reduce((acc, item) => acc + item.quantity, 0);
@@ -256,6 +257,17 @@ function renderCheckoutPage() {
             // BUT, for simplicity and robustness, let's apply to total if 'aplicacao' is total,
             // and maybe just warn/skip if specific (or implement if data is there).
             // Let's assume 'total' for the main use case (First Purchase/Review).
+        }
+    }
+
+    // Recompensa automática de primeira avaliação: aplicada por cima do cupom manual, sobre o
+    // que sobrar do subtotal.
+    if (clienteRecompensaAvaliacaoCheckout) {
+        const restante = subtotal - discount;
+        if (clienteRecompensaAvaliacaoCheckout.tipo === 'percentual') {
+            discount += restante * (clienteRecompensaAvaliacaoCheckout.percentual / 100);
+        } else {
+            discount += Math.min(clienteRecompensaAvaliacaoCheckout.percentual, restante);
         }
     }
 
@@ -593,6 +605,18 @@ async function autoFillCheckout() {
             // Critical Fix: Clear stale draft data if we have fresh profile data
             localStorage.removeItem('checkout_data');
             fillForm(data);
+
+            const rewardBanner = document.getElementById('avaliacaoRewardBanner');
+            if (rewardBanner && data.recompensa_avaliacao_disponivel) {
+                clienteRecompensaAvaliacaoCheckout = { percentual: data.desconto_avaliacao_percentual, tipo: data.desconto_avaliacao_tipo };
+                const desconto = data.desconto_avaliacao_tipo === 'percentual'
+                    ? `${data.desconto_avaliacao_percentual}%`
+                    : `R$ ${data.desconto_avaliacao_percentual.toFixed(2)}`;
+                document.getElementById('avaliacaoRewardText').textContent =
+                    `Você tem ${desconto} de desconto por avaliar sua compra — será aplicado automaticamente neste pedido!`;
+                rewardBanner.classList.remove('d-none');
+                if (typeof renderCheckoutPage === 'function') renderCheckoutPage();
+            }
         } else {
             // Fallback to stored user data
             const storedUser = JSON.parse(localStorage.getItem('clientUser') || sessionStorage.getItem('clientUser'));

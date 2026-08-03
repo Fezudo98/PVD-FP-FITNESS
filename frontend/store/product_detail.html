@@ -1284,7 +1284,11 @@
 
             if (res.ok) {
                 bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
-                Swal.fire({ icon: 'success', title: 'Sucesso!', text: 'Sua avaliação foi enviada.' });
+                if (result.recompensa_ganha) {
+                    Swal.fire({ icon: 'success', title: '🎉 Parabéns!', text: result.recompensa_ganha.mensagem });
+                } else {
+                    Swal.fire({ icon: 'success', title: 'Sucesso!', text: 'Sua avaliação foi enviada.' });
+                }
                 loadReviews();
                 document.getElementById('writeReviewBtn').style.display = 'none'; // Hide button after review
             } else {

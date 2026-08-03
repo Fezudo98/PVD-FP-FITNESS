@@ -12,6 +12,7 @@ let allProducts = [];
 let cart = [];
 let allClients = [];
 let appliedCoupons = []; // Array para armazenar os múltiplos cupons aplicados
+let clienteRecompensaAvaliacao = null; // Desconto automático de "primeira avaliação" do cliente selecionado
 let payments = [];
 let totalSaleValue = 0;
 
@@ -276,6 +277,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        if (clienteRecompensaAvaliacao) {
+            let descontoAvaliacao = 0;
+            if (clienteRecompensaAvaliacao.tipo === 'percentual') {
+                descontoAvaliacao = subtotalParaCalculo * (clienteRecompensaAvaliacao.percentual / 100);
+            } else {
+                descontoAvaliacao = Math.min(clienteRecompensaAvaliacao.percentual, subtotalParaCalculo);
+            }
+            totalDiscountAmount += descontoAvaliacao;
+        }
+
         totalDiscountAmount = Math.min(totalDiscountAmount, subtotal);
 
         if (totalDiscountAmount > 0) {
@@ -452,6 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cart = [];
             payments = [];
             appliedCoupons = [];
+            clienteRecompensaAvaliacao = null;
             renderAppliedCoupons();
 
             taxaEntregaInput.value = 0;
@@ -549,18 +561,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const client = allClients.find(c => c.id === parseInt(clientId));
         if (client) {
             selectedClientId.value = client.id;
-            selectedClientName.textContent = client.nome;
+            let nomeExibido = client.nome;
+            if (client.recompensa_avaliacao_disponivel) {
+                clienteRecompensaAvaliacao = { percentual: client.desconto_avaliacao_percentual, tipo: client.desconto_avaliacao_tipo };
+                const desconto = client.desconto_avaliacao_tipo === 'percentual' ? `${client.desconto_avaliacao_percentual}%` : `R$ ${client.desconto_avaliacao_percentual.toFixed(2)}`;
+                nomeExibido += ` <span class="badge bg-warning text-dark ms-1">🎁 ${desconto} de avaliação</span>`;
+            } else {
+                clienteRecompensaAvaliacao = null;
+            }
+            selectedClientName.innerHTML = nomeExibido;
             selectedClientDisplay.classList.remove('d-none');
             clientSearchWrapper.classList.add('d-none');
             clientSearchInput.value = '';
             clientSearchResults.innerHTML = '';
+            updateTotals();
         }
     }
 
     function removeClient() {
         selectedClientId.value = '';
+        clienteRecompensaAvaliacao = null;
         selectedClientDisplay.classList.add('d-none');
         clientSearchWrapper.classList.remove('d-none');
+        updateTotals();
     }
 
     function printReceipt(format) {

@@ -68,6 +68,13 @@ def registrar_venda(current_user):
         
         desconto_total_calculado = min(desconto_total_calculado, subtotal_produtos)
 
+        # Recompensa automática de primeira avaliação: aplicada e consumida (uso único) por
+        # cima dos cupons manuais, se o cliente tiver uma disponível e ainda válida.
+        id_cliente_venda = dados.get('id_cliente')
+        cliente_pdv = Cliente.query.get(id_cliente_venda) if id_cliente_venda else None
+        if cliente_pdv:
+            desconto_total_calculado += cliente_pdv.consumir_recompensa_avaliacao(subtotal_produtos - desconto_total_calculado)
+
         if dados.get('entrega_gratuita', False):
             # Mantém a taxa de entrega para controle de custo (pagamento motoboy), 
             # mas o total_venda_final não somará esse valor.

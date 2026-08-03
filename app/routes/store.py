@@ -448,36 +448,28 @@ def store_product_reviews(produto_id):
             midia = AvaliacaoMidia(id_avaliacao=nova_avaliacao.id, tipo=tipo, url=filename)
             db.session.add(midia)
 
-    # First Review Promo
+    # Recompensa automática de primeira avaliação: concedida uma única vez na vida do cliente
+    # (recompensa_avaliacao_concedida é permanente - não volta a False se a avaliação for
+    # apagada depois, então excluir e reavaliar não gera uma nova recompensa). Aplicada
+    # automaticamente no checkout, sem precisar de código de cupom.
     try:
         promo_primeira_avaliacao = PromocaoAutomatica.query.filter_by(gatilho='primeira_avaliacao', ativo=True).first()
-        if promo_primeira_avaliacao:
-            count_reviews = Avaliacao.query.filter_by(id_cliente=current_client.id).count()
-            if count_reviews == 1:
-                percent = promo_primeira_avaliacao.valor_desconto
-                prefixo = promo_primeira_avaliacao.prefixo_codigo or 'REVIEW-'
-
-                code = f"{prefixo}{uuid.uuid4().hex[:6].upper()}"
-                novo_cupom = Cupom(
-                    codigo=code,
-                    tipo_desconto=promo_primeira_avaliacao.tipo_desconto,
-                    valor_desconto=percent,
-                    ativo=True,
-                    aplicacao='total'
-                )
-                db.session.add(novo_cupom)
-                db.session.commit()
-                desconto_texto = f'{percent}%' if promo_primeira_avaliacao.tipo_desconto == 'percentual' else f'R$ {percent:.2f}'.replace('.', ',')
-                return jsonify({
-                    'mensagem': 'Avaliação enviada com sucesso!',
-                    'cupom_ganho': {
-                        'codigo': code,
-                        'desconto': percent,
-                        'mensagem': f'Parabéns! Pela sua primeira avaliação, você ganhou {desconto_texto} de desconto na próxima compra!'
-                    }
-                }), 201
+        if promo_primeira_avaliacao and not current_client.recompensa_avaliacao_concedida:
+            current_client.conceder_recompensa_avaliacao(promo_primeira_avaliacao)
+            db.session.commit()
+            percent = promo_primeira_avaliacao.valor_desconto
+            desconto_texto = f'{percent}%' if promo_primeira_avaliacao.tipo_desconto == 'percentual' else f'R$ {percent:.2f}'.replace('.', ',')
+            return jsonify({
+                'mensagem': 'Avaliação enviada com sucesso!',
+                'recompensa_ganha': {
+                    'desconto': percent,
+                    'tipo': promo_primeira_avaliacao.tipo_desconto,
+                    'validade_dias': 30,
+                    'mensagem': f'Parabéns! Você ganhou {desconto_texto} de desconto, aplicado automaticamente na sua próxima compra (válido por 30 dias)!'
+                }
+            }), 201
     except Exception as e:
-        print(f"Erro promo review: {e}")
+        print(f"Erro recompensa avaliação: {e}")
 
     db.session.commit()
     return jsonify({'mensagem': 'Avaliação enviada!'}), 201
@@ -722,15 +714,13 @@ def store_checkout():
             
             if desconto_total > total_venda:
                 desconto_total = total_venda
-            
+
             cupom_aplicado = cupom
 
-            # Cupons gerados pela promoção de "primeira avaliação" são de uso único: desativa após aplicar
-            promo_avaliacao_ref = PromocaoAutomatica.query.filter_by(gatilho='primeira_avaliacao').first()
-            prefixo_avaliacao = (promo_avaliacao_ref.prefixo_codigo if promo_avaliacao_ref and promo_avaliacao_ref.prefixo_codigo else 'REVIEW-')
-            if cupom.codigo.startswith(prefixo_avaliacao):
-                cupom.ativo = False
-                db.session.add(cupom)
+    # Recompensa automática de primeira avaliação: aplicada e consumida (uso único) por cima do
+    # cupom manual, se o cliente tiver uma disponível e ainda válida.
+    desconto_avaliacao = cliente.consumir_recompensa_avaliacao(total_venda - desconto_total)
+    desconto_total += desconto_avaliacao
 
     total_final = total_venda - desconto_total
 
