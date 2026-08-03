@@ -36,6 +36,12 @@ def create_app(config_class):
 
     from .routes.resources import resources_bp
     app.register_blueprint(resources_bp)
+    # Arquivos estáticos (imagens de produto, JS, CSS, código de barras) não são superfície
+    # sensível a ataque e são acessados em volume alto durante o uso normal do site (cada
+    # produto numa listagem = 1 requisição de imagem). Ficar sob o limite padrão da API
+    # (pensado para login/checkout) fazia as imagens pararem de carregar (HTTP 429) em uma
+    # navegação normal.
+    limiter.exempt(resources_bp)
 
     @app.context_processor
     def inject_template_globals():
