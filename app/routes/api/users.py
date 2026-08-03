@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from . import api_bp
 from ...extensions import db
-from ...models import Usuario, Cliente
+from ...models import Usuario, Cliente, Venda
 from ...utils import token_required, registrar_log
 
 @api_bp.route('/api/usuarios', methods=['GET'])
@@ -58,6 +58,34 @@ def gerenciar_cliente_especifico(current_user, cliente_id):
         db.session.commit()
         return jsonify(cliente.to_dict())
     elif request.method == 'DELETE':
+        if current_user.role != 'admin':
+            return jsonify({'message': 'Acesso negado.'}), 403
+
+        tem_vendas = Venda.query.filter_by(id_cliente=cliente.id).first() is not None
+
+        if tem_vendas:
+            # LGPD (direito ao esquecimento) tem limite: obrigações legais/fiscais exigem manter
+            # o histórico de vendas. Por isso não apagamos o registro, apenas anonimizamos os
+            # dados pessoais, preservando o vínculo com as vendas já realizadas.
+            cliente.nome = 'Cliente Removido (LGPD)'
+            cliente.telefone = None
+            cliente.cpf = None
+            cliente.email = f'removido-{cliente.id}@anonimizado.local'
+            cliente.senha_hash = None
+            cliente.foto_perfil = None
+            cliente.endereco_rua = None
+            cliente.endereco_numero = None
+            cliente.endereco_bairro = None
+            cliente.endereco_cidade = None
+            cliente.endereco_estado = None
+            cliente.endereco_cep = None
+            cliente.endereco_complemento = None
+            registrar_log(current_user, "Cliente Anonimizado (LGPD)", f"ID: {cliente_id} - Histórico de vendas preservado por obrigação legal.")
+            db.session.commit()
+            return jsonify({'mensagem': 'Dados pessoais do cliente removidos. Histórico de vendas preservado por obrigação legal.'})
+
+        nome_removido = cliente.nome
+        registrar_log(current_user, "Cliente Excluído", f"ID: {cliente_id}, Nome: {nome_removido}")
         db.session.delete(cliente)
         db.session.commit()
         return jsonify({'mensagem': 'Cliente deletado!'})

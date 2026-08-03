@@ -219,8 +219,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const vendaId = target.dataset.id;
             const confirmMsg = `ATENÇÃO: Você tem certeza que deseja reembolsar a venda ID ${vendaId}?\n\nSe esta foi uma venda online, o dinheiro será IMEDIATAMENTE estornado via Mercado Pago. O estoque dos produtos também será devolvido.\n\nESTA AÇÃO É IRREVERSÍVEL.`;
             if (confirm(confirmMsg)) {
+                const motivo = prompt('Informe o motivo do reembolso (obrigatório):');
+                if (!motivo || !motivo.trim()) {
+                    alert('Reembolso cancelado: o motivo é obrigatório.');
+                    return;
+                }
                 try {
-                    const response = await fetch(`${API_URL}/api/vendas/${vendaId}/reembolsar`, { method: 'POST', headers: { 'x-access-token': token } });
+                    const response = await fetch(`${API_URL}/api/vendas/${vendaId}/reembolsar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-access-token': token },
+                        body: JSON.stringify({ motivo: motivo.trim() })
+                    });
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.erro || 'Erro desconhecido');
                     alert(result.mensagem);

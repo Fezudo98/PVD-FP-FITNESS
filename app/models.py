@@ -180,10 +180,43 @@ class Venda(db.Model):
     versao_termos = db.Column(db.String(20), nullable=True)
     user_agent_comprador = db.Column(db.String(255), nullable=True)
 
+    # Marcos de data para respaldo jurídico (ex: contagem do prazo de arrependimento do
+    # CDC a partir do recebimento). Sem essas datas, só existia o status atual, sem prova
+    # de quando cada transição realmente aconteceu.
+    data_pagamento = db.Column(db.DateTime, nullable=True)
+    data_envio = db.Column(db.DateTime, nullable=True)
+    data_entrega = db.Column(db.DateTime, nullable=True)
+    data_cancelamento = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.String(255), nullable=True)
+
     cliente = db.relationship('Cliente')
     vendedor = db.relationship('Usuario')
     itens = db.relationship('ItemVenda', backref='venda', cascade="all, delete-orphan")
     pagamentos = db.relationship('Pagamento', backref='venda', cascade="all, delete-orphan")
+
+    ESTADOS_ENVIADO = ('Saiu para entrega', 'Produto Postado', 'Pronto para retirada', 'Em Transporte')
+    ESTADOS_CANCELAMENTO = ('Cancelada', 'Reembolsada')
+
+    def atualizar_status(self, novo_status, motivo=None):
+        """Centraliza toda transição de status da venda, carimbando a data de cada marco
+        (pagamento, envio, entrega, cancelamento/reembolso) e, quando houver, o motivo do
+        cancelamento. Usar sempre este método em vez de atribuir `venda.status` direto,
+        para nenhuma transição escapar do registro de data/motivo."""
+        agora = current_brazil_time()
+        ja_cancelada = self.status in self.ESTADOS_CANCELAMENTO
+
+        if novo_status == 'Concluída' and not self.data_pagamento:
+            self.data_pagamento = agora
+        if novo_status in self.ESTADOS_ENVIADO and not self.data_envio:
+            self.data_envio = agora
+        if novo_status == 'Entregue' and not self.data_entrega:
+            self.data_entrega = agora
+        if novo_status in self.ESTADOS_CANCELAMENTO and not ja_cancelada:
+            self.data_cancelamento = agora
+            if motivo:
+                self.motivo_cancelamento = motivo
+
+        self.status = novo_status
 
 class ItemVenda(db.Model):
     id = db.Column(db.Integer, primary_key=True)

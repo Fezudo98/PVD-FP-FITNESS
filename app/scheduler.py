@@ -3,6 +3,7 @@ import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from .extensions import db
 from .models import Venda
+from .utils import registrar_log
 
 def init_scheduler(app):
     scheduler = BackgroundScheduler()
@@ -54,10 +55,12 @@ def init_scheduler(app):
                         # posted, routed, delivered, canceled, etc
                         if status_str in ['posted', 'routed', 'in_transit']:
                             if venda.status != 'Em Transporte':
-                                venda.status = 'Em Transporte'
+                                venda.atualizar_status('Em Transporte')
                                 vendas_recem_enviadas.append(venda)
                         elif status_str == 'delivered':
-                            venda.status = 'Entregue'
+                            if venda.status != 'Entregue':
+                                venda.atualizar_status('Entregue')
+                                registrar_log(None, "Venda Entregue (Rastreio Automático)", f"ID: {venda.id}")
 
                 db.session.commit()
 

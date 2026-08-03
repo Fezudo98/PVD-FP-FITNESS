@@ -13,7 +13,7 @@ import uuid
 import types
 from ..extensions import db
 from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, current_brazil_time
-from ..utils import token_required, client_token_required, validate_cpf
+from ..utils import token_required, client_token_required, validate_cpf, registrar_log
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
 from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin
@@ -94,7 +94,7 @@ def limpar_vendas_abandonadas():
 
             if pagamento_aprovado:
                 # Pagamento aprovado mas o webhook não chegou/falhou: recupera a venda em vez de cancelar
-                venda.status = 'Concluída'
+                venda.atualizar_status('Concluída')
                 transacao_id = str(pagamento_aprovado.get('id'))
                 if not any(p.transacao_id == transacao_id for p in venda.pagamentos):
                     db.session.add(Pagamento(
@@ -103,6 +103,7 @@ def limpar_vendas_abandonadas():
                         id_venda=venda.id,
                         transacao_id=transacao_id
                     ))
+                registrar_log(None, "Venda Recuperada (Reconciliação)", f"ID: {venda.id} - Pagamento aprovado no Mercado Pago sem webhook processado.")
                 total_recuperadas += 1
                 vendas_recuperadas.append(venda)
                 continue
@@ -111,7 +112,8 @@ def limpar_vendas_abandonadas():
                 produto = Produto.query.get(item.id_produto)
                 if produto:
                     produto.quantidade += item.quantidade
-            venda.status = 'Cancelada'
+            venda.atualizar_status('Cancelada', motivo='Pedido abandonado: sem confirmação de pagamento em até 30 minutos.')
+            registrar_log(None, "Venda Cancelada (Abandono Automático)", f"ID: {venda.id} - Estoque estornado.")
             total_canceladas += 1
 
         if total_canceladas or total_recuperadas:
@@ -936,7 +938,7 @@ def mercadopago_webhook():
                     # Lógica para Venda Pendente (Aprovação ou Recusa)
                     if venda.status == 'Pendente':
                         if payment_status == 'approved':
-                            venda.status = 'Concluída'
+                            venda.atualizar_status('Concluída')
                             metodo = payment_data.get('payment_method_id', 'mercadopago')
                             pg = Pagamento(
                                 valor=venda.total_venda,
@@ -954,24 +956,27 @@ def mercadopago_webhook():
                                 print(f"Erro ao enviar e-mail de pagamento aprovado da venda {venda.id}: {e}")
 
                         elif payment_status in ['rejected', 'cancelled']:
-                            venda.status = 'Cancelada'
+                            venda.atualizar_status('Cancelada', motivo=f'Pagamento {payment_status} pelo Mercado Pago.')
                             for item in venda.itens:
                                 produto = Produto.query.get(item.id_produto)
                                 if produto:
                                     produto.quantidade += item.quantidade
+                            registrar_log(None, "Venda Cancelada (Webhook MP)", f"ID: {venda.id} - Pagamento {payment_status}.")
                             db.session.commit()
-                    
+
                     # Lógica para Estorno/Chargeback de vendas já Pagas
                     elif venda.status in ['Concluída', 'Em Transporte', 'Entregue']:
                         if payment_status in ['refunded', 'charged_back', 'in_mediation']:
                             status_antigo = venda.status
-                            venda.status = 'Cancelada' if payment_status != 'refunded' else 'Reembolsada'
+                            novo_status = 'Cancelada' if payment_status != 'refunded' else 'Reembolsada'
+                            venda.atualizar_status(novo_status, motivo=f'Mercado Pago reportou status "{payment_status}".')
                             # Só devolve o estoque se a mercadoria ainda não saiu da loja fisicamente
                             if status_antigo == 'Concluída':
                                 for item in venda.itens:
                                     produto = Produto.query.get(item.id_produto)
                                     if produto:
                                         produto.quantidade += item.quantidade
+                            registrar_log(None, f"Venda {novo_status} (Webhook MP)", f"ID: {venda.id} - Status anterior: {status_antigo} -> {payment_status}.")
                             db.session.commit()
                     
                     

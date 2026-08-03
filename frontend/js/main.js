@@ -628,6 +628,26 @@ async function viewOrderDetails(id) {
             </div>
         `;
 
+        // Linha do Tempo (datas de cada marco, para respaldo jurídico)
+        const timelineText = document.getElementById('orderTimelineText');
+        const marcos = [
+            { label: 'Pedido criado', data: venda.data_hora },
+            { label: 'Pagamento confirmado', data: venda.data_pagamento },
+            { label: 'Enviado', data: venda.data_envio },
+            { label: 'Entregue', data: venda.data_entrega }
+        ];
+        let timelineHtml = marcos
+            .filter(m => m.data)
+            .map(m => `<strong>${m.label}:</strong> ${m.data}`)
+            .join('<br>');
+        if (venda.data_cancelamento) {
+            timelineHtml += `<br><strong class="text-danger">${venda.status === 'Reembolsada' ? 'Reembolsada' : 'Cancelada'} em:</strong> ${venda.data_cancelamento}`;
+            if (venda.motivo_cancelamento) {
+                timelineHtml += `<br><strong>Motivo:</strong> ${venda.motivo_cancelamento}`;
+            }
+        }
+        timelineText.innerHTML = timelineHtml || 'Sem marcos registrados.';
+
         // Legal Compliance Box
         const legalCard = document.getElementById('legalComplianceCard');
         const legalText = document.getElementById('legalComplianceText');
@@ -834,18 +854,23 @@ function getNextStatus(current, tipo) {
 
 async function updateOrderStatus(id, newStatus) {
     const token = localStorage.getItem('authToken');
+    let motivo = null;
 
     if (newStatus === 'Cancelada') {
         const confirm = await Swal.fire({
-            title: 'Tem certeza?',
-            text: "O estoque será estornado automaticamente.",
+            title: 'Cancelar pedido',
+            text: "O estoque será estornado automaticamente. Informe o motivo do cancelamento:",
             icon: 'warning',
+            input: 'text',
+            inputPlaceholder: 'Ex: cliente desistiu, produto em falta...',
+            inputValidator: (value) => !value.trim() ? 'O motivo é obrigatório.' : undefined,
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
             confirmButtonText: 'Sim, cancelar!'
         });
         if (!confirm.isConfirmed) return;
+        motivo = confirm.value.trim();
     }
 
     try {
@@ -855,7 +880,7 @@ async function updateOrderStatus(id, newStatus) {
                 'Content-Type': 'application/json',
                 'x-access-token': token
             },
-            body: JSON.stringify({ status: newStatus })
+            body: JSON.stringify({ status: newStatus, motivo })
         });
 
         if (!response.ok) {

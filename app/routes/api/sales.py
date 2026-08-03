@@ -113,6 +113,8 @@ def registrar_venda(current_user):
             troco=round(troco, 2)
         )
 
+        nova_venda.atualizar_status('Concluída')  # Venda de PDV exige pagamento integral no ato
+
         for pg_data in pagamentos_data:
             nova_venda.pagamentos.append(Pagamento(forma=pg_data['forma'], valor=round(float(pg_data['valor']), 2)))
 
@@ -216,7 +218,12 @@ def get_venda_details(current_user, venda_id):
         'termos_aceitos': venda.termos_aceitos,
         'ip_comprador': venda.ip_comprador,
         'versao_termos': venda.versao_termos,
-        'user_agent_comprador': venda.user_agent_comprador
+        'user_agent_comprador': venda.user_agent_comprador,
+        'data_pagamento': venda.data_pagamento.strftime('%d/%m/%Y %H:%M:%S') if venda.data_pagamento else None,
+        'data_envio': venda.data_envio.strftime('%d/%m/%Y %H:%M:%S') if venda.data_envio else None,
+        'data_entrega': venda.data_entrega.strftime('%d/%m/%Y %H:%M:%S') if venda.data_entrega else None,
+        'data_cancelamento': venda.data_cancelamento.strftime('%d/%m/%Y %H:%M:%S') if venda.data_cancelamento else None,
+        'motivo_cancelamento': venda.motivo_cancelamento
     })
 
 @api_bp.route('/api/vendas/novas_notificacoes', methods=['GET'])
@@ -258,6 +265,10 @@ def reembolsar_venda(current_user, venda_id):
     if current_user.role != 'admin': return jsonify({'erro': 'Apenas admins podem reembolsar.'}), 403
     venda = Venda.query.get_or_404(venda_id)
     if venda.status == 'Reembolsada': return jsonify({'erro': 'Venda já reembolsada.'}), 400
+    dados = request.get_json(silent=True) or {}
+    motivo = (dados.get('motivo') or '').strip()
+    if not motivo:
+        return jsonify({'erro': 'Informe o motivo do reembolso.'}), 400
     try:
         valor_reembolso_caixa = sum(
             p.valor for p in venda.pagamentos if p.forma == 'Dinheiro'
@@ -288,8 +299,8 @@ def reembolsar_venda(current_user, venda_id):
 
         for item in venda.itens:
             if item.produto: item.produto.quantidade += item.quantidade
-        venda.status = 'Reembolsada'
-        registrar_log(current_user, "Venda Reembolsada", f"ID: {venda.id}")
+        venda.atualizar_status('Reembolsada', motivo=motivo)
+        registrar_log(current_user, "Venda Reembolsada", f"ID: {venda.id} - Motivo: {motivo}")
         db.session.commit()
         return jsonify({'mensagem': f'Venda {venda_id} reembolsada e estoque atualizado.'})
     except Exception as e:
@@ -383,25 +394,28 @@ def update_venda_status(current_user, venda_id):
     venda = Venda.query.get_or_404(venda_id)
     dados = request.get_json()
     novo_status = dados.get('status')
-    
+    motivo = (dados.get('motivo') or '').strip()
+
     if not novo_status:
         return jsonify({'erro': 'Novo status não fornecido.'}), 400
-        
+
     if venda.status == 'Cancelada' and novo_status != 'Cancelada':
         return jsonify({'erro': 'Não é possível reativar uma venda cancelada.'}), 400
 
-    ESTADOS_ENVIADO = ('Saiu para entrega', 'Produto Postado', 'Pronto para retirada', 'Em Transporte')
+    if novo_status == 'Cancelada' and venda.status != 'Cancelada' and not motivo:
+        return jsonify({'erro': 'Informe o motivo do cancelamento.'}), 400
+
     status_anterior = venda.status
-    avisar_enviado = novo_status in ESTADOS_ENVIADO and status_anterior not in ESTADOS_ENVIADO
+    avisar_enviado = novo_status in Venda.ESTADOS_ENVIADO and status_anterior not in Venda.ESTADOS_ENVIADO
 
     try:
         if novo_status == 'Cancelada' and venda.status != 'Cancelada':
             for item in venda.itens:
                 if item.produto:
                     item.produto.quantidade += item.quantidade
-            registrar_log(current_user, "Venda Cancelada (Online)", f"ID: {venda.id} - Estoque estornado.")
+            registrar_log(current_user, "Venda Cancelada (Online)", f"ID: {venda.id} - Motivo: {motivo} - Estoque estornado.")
 
-        venda.status = novo_status
+        venda.atualizar_status(novo_status, motivo=motivo if novo_status == 'Cancelada' else None)
         registrar_log(current_user, "Status Venda Atualizado", f"ID: {venda.id} -> {novo_status}")
         db.session.commit()
 
