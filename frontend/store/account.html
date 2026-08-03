@@ -384,7 +384,12 @@
                                     <button class="btn btn-outline-primary btn-sm rounded-pill px-4" onclick="openDetailsModal(${index})">
                                         <i class="fas fa-info-circle me-1"></i> Detalhes
                                     </button>
-                                    
+
+                                    ${!['Pendente', 'Cancelada'].includes(order.status) ? `
+                                    <button class="btn btn-outline-warning btn-sm rounded-pill px-4" onclick="verComprovante(${order.id})">
+                                        <i class="fas fa-receipt me-1"></i> Comprovante
+                                    </button>` : ''}
+
                                     ${getTrackingContent(order)}
 
                                     ${['Entregue', 'Cancelada', 'Reembolsada'].includes(order.status) ? '' : `
@@ -398,6 +403,24 @@
                         </div>`).join('');
             } catch (error) {
                 console.error('Erro ao carregar pedidos:', error);
+            }
+        };
+
+        window.verComprovante = async (orderId) => {
+            try {
+                const res = await fetch(`/api/client/orders/${orderId}/comprovante`, {
+                    headers: { 'x-client-token': token }
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.erro || 'Não foi possível carregar o comprovante.');
+                }
+                const html = await res.text();
+                const blob = new Blob([html], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            } catch (error) {
+                Swal.fire('Erro', error.message, 'error');
             }
         };
 

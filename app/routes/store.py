@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, current_app
+from flask import Blueprint, render_template, request, jsonify, current_app, Response
 from sqlalchemy import func
 import math
 import jwt
@@ -13,7 +13,7 @@ import uuid
 import types
 from ..extensions import db
 from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, current_brazil_time
-from ..utils import token_required, client_token_required, validate_cpf, registrar_log
+from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
 from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin
@@ -119,6 +119,7 @@ def limpar_vendas_abandonadas():
         if total_canceladas or total_recuperadas:
             db.session.commit()
             for venda_recuperada in vendas_recuperadas:
+                salvar_recibo_html(venda_recuperada)
                 disparar_geracao_etiqueta_async(venda_recuperada)
                 try:
                     enviar_pagamento_aprovado(venda_recuperada)
@@ -957,6 +958,7 @@ def mercadopago_webhook():
                             db.session.add(pg)
                             db.session.commit()
 
+                            salvar_recibo_html(venda)
                             disparar_geracao_etiqueta_async(venda)
                             try:
                                 enviar_pagamento_aprovado(venda)
@@ -1061,6 +1063,21 @@ def get_client_orders(current_client):
             'has_feedback': venda.feedback is not None
         })
     return jsonify(orders_data)
+
+@store_bp.route('/api/client/orders/<int:venda_id>/comprovante', methods=['GET'])
+@client_token_required
+def get_client_order_receipt(current_client, venda_id):
+    venda = Venda.query.filter_by(id=venda_id, id_cliente=current_client.id).first()
+    if not venda:
+        return jsonify({'erro': 'Pedido não encontrado.'}), 404
+
+    if venda.status in ('Pendente', 'Cancelada'):
+        return jsonify({'erro': 'Comprovante disponível apenas após a confirmação do pagamento.'}), 400
+
+    html = gerar_recibo_html(venda)
+    return Response(html, mimetype='text/html', headers={
+        'Content-Disposition': f'inline; filename="comprovante_pedido_{venda.id}.html"'
+    })
 
 @store_bp.route('/api/store/feedbacks', methods=['POST'])
 @client_token_required

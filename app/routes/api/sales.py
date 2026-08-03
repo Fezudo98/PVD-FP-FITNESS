@@ -1,8 +1,8 @@
-from flask import request, jsonify, current_app
+from flask import request, jsonify, current_app, Response
 from . import api_bp
 from ...extensions import db
 from ...models import Venda, ItemVenda, Pagamento, Cupom, MovimentacaoCaixa, Produto, Usuario, Cliente, Configuracao
-from ...utils import token_required, registrar_log, salvar_recibo_html
+from ...utils import token_required, registrar_log, salvar_recibo_html, gerar_recibo_html
 from ...services.etiqueta_service import gerar_etiqueta_me
 from ...extensions import limiter
 import math
@@ -224,6 +224,21 @@ def get_venda_details(current_user, venda_id):
         'data_entrega': venda.data_entrega.strftime('%d/%m/%Y %H:%M:%S') if venda.data_entrega else None,
         'data_cancelamento': venda.data_cancelamento.strftime('%d/%m/%Y %H:%M:%S') if venda.data_cancelamento else None,
         'motivo_cancelamento': venda.motivo_cancelamento
+    })
+
+@api_bp.route('/api/vendas/<int:venda_id>/comprovante', methods=['GET'])
+@token_required
+def get_venda_receipt(current_user, venda_id):
+    venda = Venda.query.get_or_404(venda_id)
+    if current_user.role != 'admin' and venda.id_vendedor != current_user.id:
+        return jsonify({'message': 'Acesso não autorizado.'}), 403
+
+    if venda.status in ('Pendente', 'Cancelada'):
+        return jsonify({'erro': 'Comprovante disponível apenas após a confirmação do pagamento.'}), 400
+
+    html = gerar_recibo_html(venda)
+    return Response(html, mimetype='text/html', headers={
+        'Content-Disposition': f'inline; filename="comprovante_pedido_{venda.id}.html"'
     })
 
 @api_bp.route('/api/vendas/novas_notificacoes', methods=['GET'])

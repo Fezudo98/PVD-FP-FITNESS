@@ -1,6 +1,7 @@
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 from flask import current_app
 
 
@@ -14,10 +15,13 @@ def _log(mensagem):
         print(mensagem.encode('ascii', errors='replace').decode('ascii'))
 
 
-def _enviar_email(destinatario, assunto, corpo_html):
+def _enviar_email(destinatario, assunto, corpo_html, anexos=None):
     """Envia um e-mail via SMTP. Se as credenciais não estiverem configuradas (MAIL_USERNAME/
     MAIL_PASSWORD) ou não houver destinatário, apenas registra no log e não faz nada — o envio
-    de e-mail nunca deve travar ou quebrar o fluxo da loja (checkout, webhook, etc.)."""
+    de e-mail nunca deve travar ou quebrar o fluxo da loja (checkout, webhook, etc.).
+
+    anexos: lista opcional de tuplas (nome_arquivo, conteudo_str, mime_subtype), ex:
+    [('comprovante.html', '<html>...</html>', 'html')]."""
     mail_user = current_app.config.get('MAIL_USERNAME')
     mail_pass = current_app.config.get('MAIL_PASSWORD')
     mail_server = current_app.config.get('MAIL_SERVER')
@@ -33,11 +37,19 @@ def _enviar_email(destinatario, assunto, corpo_html):
         return False
 
     try:
-        msg = MIMEMultipart('alternative')
+        msg = MIMEMultipart('mixed')
         msg['Subject'] = assunto
         msg['From'] = f"FP Moda Fitness <{remetente}>"
         msg['To'] = destinatario
-        msg.attach(MIMEText(corpo_html, 'html', 'utf-8'))
+
+        corpo = MIMEMultipart('alternative')
+        corpo.attach(MIMEText(corpo_html, 'html', 'utf-8'))
+        msg.attach(corpo)
+
+        for nome_arquivo, conteudo, mime_subtype in (anexos or []):
+            anexo = MIMEApplication(conteudo.encode('utf-8'), _subtype=mime_subtype)
+            anexo.add_header('Content-Disposition', 'attachment', filename=nome_arquivo)
+            msg.attach(anexo)
 
         with smtplib.SMTP(mail_server, mail_port, timeout=10) as server:
             server.starttls()
@@ -110,10 +122,19 @@ def enviar_pagamento_aprovado(venda):
         <p>O pagamento do seu pedido <strong>#{venda.id}</strong> foi aprovado. 🎉</p>
         <p style="font-size:18px;font-weight:bold;color:#28a745;">Total pago: R$ {total_fmt}</p>
         <p>Já estamos preparando o seu pedido para envio. Você pode acompanhar o status a qualquer momento em "Minha Conta" no site.</p>
+        <p>Em anexo, o comprovante do seu pedido.</p>
     '''
 
     html = _template_base(f'Pagamento aprovado - Pedido #{venda.id}', corpo)
-    return _enviar_email(venda.cliente.email, f'Pagamento aprovado - Pedido #{venda.id} - FP Moda Fitness', html)
+
+    anexos = []
+    try:
+        from ..utils import gerar_recibo_html
+        anexos.append((f'comprovante_pedido_{venda.id}.html', gerar_recibo_html(venda), 'html'))
+    except Exception as e:
+        _log(f"[Email] Erro ao gerar comprovante anexo da venda {venda.id}: {e}")
+
+    return _enviar_email(venda.cliente.email, f'Pagamento aprovado - Pedido #{venda.id} - FP Moda Fitness', html, anexos=anexos)
 
 
 def enviar_pedido_enviado(venda):

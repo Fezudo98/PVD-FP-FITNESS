@@ -135,6 +135,24 @@ function existeMenuAcaoAberto() {
     return document.querySelector('#onlineOrdersTable .dropdown-menu.show') !== null;
 }
 
+async function verComprovanteAdmin(vendaId) {
+    const token = localStorage.getItem('authToken');
+    try {
+        const response = await fetch(`${API_URL}/api/vendas/${vendaId}/comprovante`, {
+            headers: { 'x-access-token': token }
+        });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.erro || 'Não foi possível carregar o comprovante.');
+        }
+        const html = await response.text();
+        const blob = new Blob([html], { type: 'text/html' });
+        window.open(URL.createObjectURL(blob), '_blank');
+    } catch (error) {
+        Swal.fire('Erro', error.message, 'error');
+    }
+}
+
 // Função para tocar um "Beep" usando AudioContext (Mais confiável que Base64/Arquivos)
 function playNotificationSound() {
     try {
@@ -682,6 +700,17 @@ async function viewOrderDetails(id) {
         const statusEl = document.getElementById('modalOrderStatus');
         statusEl.textContent = venda.status || 'Desconhecido';
         statusEl.className = `badge fs-6 ${getStatusClass(venda.status || '')} `;
+
+        // Botão "Ver Comprovante" (só aparece se o pagamento já foi confirmado)
+        const comprovanteBtn = document.getElementById('verComprovanteBtn');
+        if (comprovanteBtn) {
+            if (!['Pendente', 'Cancelada'].includes(venda.status)) {
+                comprovanteBtn.classList.remove('d-none');
+                comprovanteBtn.onclick = () => verComprovanteAdmin(venda.id);
+            } else {
+                comprovanteBtn.classList.add('d-none');
+            }
+        }
 
         // Render Itens
         const itemsList = document.getElementById('modalOrderItems');
