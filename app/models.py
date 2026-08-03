@@ -217,6 +217,35 @@ class Configuracao(db.Model):
     chave = db.Column(db.String(50), unique=True, nullable=False)
     valor = db.Column(db.String(255), nullable=True)
 
+class PromocaoAutomatica(db.Model):
+    """Regra de cupom automático (ex: primeira compra, primeira avaliação). Cada 'gatilho' tem
+    uma lógica de elegibilidade própria no backend (não é configurável via dados, só o código,
+    o valor e se está ativa) — mas o cadastro em si é genérico, sem precisar de tela/campo novo
+    no código para cada promoção."""
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    gatilho = db.Column(db.String(30), nullable=False)  # 'primeira_compra' | 'primeira_avaliacao'
+    # Usado por gatilhos de código fixo/compartilhado (ex: primeira_compra -> "FITPRO10")
+    codigo_cupom = db.Column(db.String(50), nullable=True)
+    # Usado por gatilhos que geram um código único por cliente (ex: primeira_avaliacao -> "REVIEW-")
+    prefixo_codigo = db.Column(db.String(20), nullable=True)
+    tipo_desconto = db.Column(db.String(20), nullable=False, default='percentual')
+    valor_desconto = db.Column(db.Float, nullable=False)
+    ativo = db.Column(db.Boolean, default=True)
+    data_criacao = db.Column(db.DateTime, default=current_brazil_time)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nome': self.nome,
+            'gatilho': self.gatilho,
+            'codigo_cupom': self.codigo_cupom,
+            'prefixo_codigo': self.prefixo_codigo,
+            'tipo_desconto': self.tipo_desconto,
+            'valor_desconto': self.valor_desconto,
+            'ativo': self.ativo
+        }
+
 class FeedbackCompra(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     id_venda = db.Column(db.Integer, db.ForeignKey('venda.id'), nullable=False, unique=True)

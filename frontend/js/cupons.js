@@ -238,67 +238,157 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '/login.html';
     });
 
-    // --- LÓGICA DE PROMOÇÕES AUTOMÁTICAS ---
+    // --- LÓGICA DE PROMOÇÕES AUTOMÁTICAS (genérico, N gatilhos) ---
 
-    async function fetchConfig() {
+    let allPromocoes = [];
+    const promocaoModal = new bootstrap.Modal(document.getElementById('promocaoModal'));
+    const promocaoForm = document.getElementById('promocaoForm');
+    const promocaoGatilhoSelect = document.getElementById('promocaoGatilho');
+    const promocaoCodigoWrapper = document.getElementById('promocaoCodigoWrapper');
+    const promocaoPrefixoWrapper = document.getElementById('promocaoPrefixoWrapper');
+
+    const GATILHO_LABELS = {
+        primeira_compra: 'Primeira Compra',
+        primeira_avaliacao: 'Primeira Avaliação'
+    };
+
+    function atualizarCamposPorGatilho() {
+        if (promocaoGatilhoSelect.value === 'primeira_avaliacao') {
+            promocaoCodigoWrapper.classList.add('d-none');
+            promocaoPrefixoWrapper.classList.remove('d-none');
+        } else {
+            promocaoCodigoWrapper.classList.remove('d-none');
+            promocaoPrefixoWrapper.classList.add('d-none');
+        }
+    }
+    promocaoGatilhoSelect.addEventListener('change', atualizarCamposPorGatilho);
+
+    async function fetchPromocoes() {
         try {
-            const response = await fetch(`${API_URL}/api/config`, {
+            const response = await fetch(`${API_URL}/api/promocoes-automaticas`, {
                 headers: { 'x-access-token': token }
             });
-            if (!response.ok) throw new Error('Falha ao carregar configurações.');
-            const config = await response.json();
-
-            // First Purchase
-            if (config.promo_primeira_compra_percent) {
-                document.getElementById('promo_primeira_compra_percent').value = config.promo_primeira_compra_percent;
-            }
-            document.getElementById('promo_primeira_compra_ativo').checked = String(config.promo_primeira_compra_ativo).toLowerCase() === 'true';
-
-            // First Review
-            if (config.promo_primeira_avaliacao_percent) {
-                document.getElementById('promo_primeira_avaliacao_percent').value = config.promo_primeira_avaliacao_percent;
-            }
-            document.getElementById('promo_primeira_avaliacao_ativo').checked = String(config.promo_primeira_avaliacao_ativo).toLowerCase() === 'true';
-
+            if (!response.ok) throw new Error('Falha ao carregar promoções automáticas.');
+            allPromocoes = await response.json();
+            renderPromocoes(allPromocoes);
         } catch (error) {
-            console.error('Erro ao buscar configurações:', error);
+            console.error('Erro ao buscar promoções automáticas:', error);
         }
     }
 
-    async function saveConfig(data) {
+    function renderPromocoes(promocoes) {
+        const tbody = document.getElementById('promocoesTableBody');
+        tbody.innerHTML = '';
+        if (promocoes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma promoção automática cadastrada.</td></tr>';
+            return;
+        }
+        promocoes.forEach(p => {
+            const tr = document.createElement('tr');
+            const valorTexto = p.tipo_desconto === 'percentual' ? `${p.valor_desconto}%` : `R$ ${Number(p.valor_desconto).toFixed(2)}`;
+            const codigoTexto = p.gatilho === 'primeira_avaliacao' ? (p.prefixo_codigo || '-') : (p.codigo_cupom || '-');
+            tr.innerHTML = `
+                <td>${p.nome}</td>
+                <td>${GATILHO_LABELS[p.gatilho] || p.gatilho}</td>
+                <td><strong>${codigoTexto}</strong></td>
+                <td>${valorTexto}</td>
+                <td>
+                    <span class="badge ${p.ativo ? 'bg-success' : 'bg-danger'}">${p.ativo ? 'Ativo' : 'Inativo'}</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-info promocao-edit-btn" data-id="${p.id}">Editar</button>
+                    <button class="btn btn-sm btn-warning promocao-toggle-btn" data-id="${p.id}" data-ativo="${p.ativo}">
+                        ${p.ativo ? 'Desativar' : 'Ativar'}
+                    </button>
+                    <button class="btn btn-sm btn-danger promocao-delete-btn" data-id="${p.id}">Excluir</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    document.getElementById('addPromocaoBtn').addEventListener('click', () => {
+        promocaoForm.reset();
+        document.getElementById('promocaoId').value = '';
+        document.getElementById('promocaoModalTitle').textContent = 'Nova Promoção Automática';
+        document.getElementById('promocaoAtivo').checked = true;
+        atualizarCamposPorGatilho();
+        promocaoModal.show();
+    });
+
+    promocaoForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('promocaoId').value;
+        const url = id ? `${API_URL}/api/promocoes-automaticas/${id}` : `${API_URL}/api/promocoes-automaticas`;
+        const method = id ? 'PUT' : 'POST';
+        const data = {
+            nome: document.getElementById('promocaoNome').value,
+            gatilho: promocaoGatilhoSelect.value,
+            codigo_cupom: document.getElementById('promocaoCodigoCupom').value,
+            prefixo_codigo: document.getElementById('promocaoPrefixoCodigo').value,
+            tipo_desconto: document.getElementById('promocaoTipoDesconto').value,
+            valor_desconto: document.getElementById('promocaoValorDesconto').value,
+            ativo: document.getElementById('promocaoAtivo').checked
+        };
         try {
-            const response = await fetch(`${API_URL}/api/config`, {
-                method: 'POST',
+            const response = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json', 'x-access-token': token },
                 body: JSON.stringify(data)
             });
             if (response.ok) {
-                alert('Configurações salvas com sucesso!');
+                promocaoModal.hide();
+                fetchPromocoes();
             } else {
-                alert('Erro ao salvar configurações.');
+                const error = await response.json();
+                alert(`Erro: ${error.erro || 'Ocorreu um problema.'}`);
             }
         } catch (error) {
-            console.error('Erro ao salvar config:', error);
+            console.error('Erro ao salvar promoção automática:', error);
             alert('Erro de conexão.');
         }
-    }
-
-    document.getElementById('promoFirstPurchaseForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const data = {
-            promo_primeira_compra_percent: document.getElementById('promo_primeira_compra_percent').value,
-            promo_primeira_compra_ativo: document.getElementById('promo_primeira_compra_ativo').checked
-        };
-        saveConfig(data);
     });
 
-    document.getElementById('promoFirstReviewForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const data = {
-            promo_primeira_avaliacao_percent: document.getElementById('promo_primeira_avaliacao_percent').value,
-            promo_primeira_avaliacao_ativo: document.getElementById('promo_primeira_avaliacao_ativo').checked
-        };
-        saveConfig(data);
+    document.getElementById('promocoesTableBody').addEventListener('click', async (e) => {
+        const target = e.target;
+        if (!target.dataset.id) return;
+        const id = parseInt(target.dataset.id);
+
+        if (target.classList.contains('promocao-edit-btn')) {
+            const p = allPromocoes.find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('promocaoModalTitle').textContent = `Editar: ${p.nome}`;
+            document.getElementById('promocaoId').value = p.id;
+            document.getElementById('promocaoNome').value = p.nome;
+            promocaoGatilhoSelect.value = p.gatilho;
+            document.getElementById('promocaoCodigoCupom').value = p.codigo_cupom || '';
+            document.getElementById('promocaoPrefixoCodigo').value = p.prefixo_codigo || '';
+            document.getElementById('promocaoTipoDesconto').value = p.tipo_desconto;
+            document.getElementById('promocaoValorDesconto').value = p.valor_desconto;
+            document.getElementById('promocaoAtivo').checked = p.ativo;
+            atualizarCamposPorGatilho();
+            promocaoModal.show();
+        }
+
+        if (target.classList.contains('promocao-toggle-btn')) {
+            const currentStatus = target.dataset.ativo === 'true';
+            await fetch(`${API_URL}/api/promocoes-automaticas/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'x-access-token': token },
+                body: JSON.stringify({ ativo: !currentStatus })
+            });
+            fetchPromocoes();
+        }
+
+        if (target.classList.contains('promocao-delete-btn')) {
+            if (confirm('Tem certeza que deseja excluir esta promoção automática permanentemente?')) {
+                await fetch(`${API_URL}/api/promocoes-automaticas/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'x-access-token': token }
+                });
+                fetchPromocoes();
+            }
+        }
     });
 
     // --- INICIALIZAÇÃO ---
@@ -306,6 +396,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await fetchAllProducts();
     // Depois carrega os cupons
     fetchCupons();
-    // Carrega configurações
-    fetchConfig();
+    // Carrega promoções automáticas
+    fetchPromocoes();
 });

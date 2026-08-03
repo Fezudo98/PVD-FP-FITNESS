@@ -90,70 +90,25 @@
 
             <!-- Automatic Promotions Pane -->
             <div class="tab-pane fade" id="auto-pane" role="tabpanel">
-                <div class="row g-4">
-                    <!-- First Purchase Promo -->
-                    <div class="col-md-6">
-                        <div class="card bg-dark text-white border-secondary h-100">
-                            <div class="card-header border-secondary">
-                                <h5 class="card-title mb-0"><i
-                                        class="fas fa-shopping-bag me-2 text-warning"></i>Primeira Compra</h5>
-                            </div>
-                            <div class="card-body">
-                                <p class="text-muted small">Ofereça um desconto automático para clientes que realizam a
-                                    primeira compra no site.</p>
-                                <form id="promoFirstPurchaseForm">
-                                    <div class="mb-3">
-                                        <label class="form-label">Porcentagem de Desconto (%)</label>
-                                        <input type="number" class="form-control" id="promo_primeira_compra_percent"
-                                            min="1" max="100" required>
-                                    </div>
-                                    <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox"
-                                            id="promo_primeira_compra_ativo">
-                                        <label class="form-check-label" for="promo_primeira_compra_ativo">Ativar
-                                            Promoção</label>
-                                    </div>
-                                    <div class="alert alert-info small">
-                                        <i class="fas fa-info-circle me-1"></i> O cupom <strong>PRIMEIRACOMPRA</strong>
-                                        será ativado automaticamente.
-                                    </div>
-                                    <button type="submit" class="btn btn-primary w-100">Salvar Configuração</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- First Review Promo -->
-                    <div class="col-md-6">
-                        <div class="card bg-dark text-white border-secondary h-100">
-                            <div class="card-header border-secondary">
-                                <h5 class="card-title mb-0"><i class="fas fa-star me-2 text-warning"></i>Primeira
-                                    Avaliação</h5>
-                            </div>
-                            <div class="card-body">
-                                <p class="text-muted small">Envie um cupom exclusivo para clientes após a primeira
-                                    avaliação de produto.</p>
-                                <form id="promoFirstReviewForm">
-                                    <div class="mb-3">
-                                        <label class="form-label">Porcentagem de Desconto (%)</label>
-                                        <input type="number" class="form-control" id="promo_primeira_avaliacao_percent"
-                                            min="1" max="100" required>
-                                    </div>
-                                    <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox"
-                                            id="promo_primeira_avaliacao_ativo">
-                                        <label class="form-check-label" for="promo_primeira_avaliacao_ativo">Ativar
-                                            Promoção</label>
-                                    </div>
-                                    <div class="alert alert-info small">
-                                        <i class="fas fa-info-circle me-1"></i> O cupom será gerado e enviado após a
-                                        aprovação da avaliação.
-                                    </div>
-                                    <button type="submit" class="btn btn-primary w-100">Salvar Configuração</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
+                <div class="d-flex justify-content-end mb-3">
+                    <button class="btn btn-custom" id="addPromocaoBtn">Nova Promoção Automática</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Gatilho</th>
+                                <th>Código / Prefixo</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="promocoesTableBody">
+                            <!-- Linhas inseridas via JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -214,6 +169,70 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" form="cupomForm" class="btn btn-custom">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Adicionar/Editar Promoção Automática -->
+    <div class="modal fade" id="promocaoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="promocaoModalTitle">Nova Promoção Automática</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="promocaoForm">
+                        <input type="hidden" id="promocaoId">
+                        <div class="mb-3">
+                            <label for="promocaoNome" class="form-label">Nome (só para identificação interna)</label>
+                            <input type="text" class="form-control" id="promocaoNome" placeholder="Ex: Cupom de Boas-vindas" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="promocaoGatilho" class="form-label">Gatilho</label>
+                            <select class="form-select" id="promocaoGatilho" required>
+                                <option value="primeira_compra">Primeira Compra</option>
+                                <option value="primeira_avaliacao">Primeira Avaliação</option>
+                            </select>
+                            <small class="form-text text-muted">Só pode existir uma promoção ativa por gatilho.</small>
+                        </div>
+
+                        <div class="mb-3" id="promocaoCodigoWrapper">
+                            <label for="promocaoCodigoCupom" class="form-label">Código do Cupom</label>
+                            <input type="text" class="form-control" id="promocaoCodigoCupom" style="text-transform:uppercase" placeholder="Ex: FITPRO10">
+                            <small class="form-text text-muted">O código que o cliente vai digitar no checkout.</small>
+                        </div>
+
+                        <div class="mb-3 d-none" id="promocaoPrefixoWrapper">
+                            <label for="promocaoPrefixoCodigo" class="form-label">Prefixo do Código Gerado</label>
+                            <input type="text" class="form-control" id="promocaoPrefixoCodigo" style="text-transform:uppercase" placeholder="Ex: REVIEW-">
+                            <small class="form-text text-muted">Cada cliente recebe um código único começando com esse prefixo (ex: REVIEW-A1B2C3).</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="promocaoTipoDesconto" class="form-label">Tipo de Desconto</label>
+                                <select class="form-select" id="promocaoTipoDesconto" required>
+                                    <option value="percentual">Percentual (%)</option>
+                                    <option value="fixo">Fixo (R$)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="promocaoValorDesconto" class="form-label">Valor</label>
+                                <input type="number" step="0.01" class="form-control" id="promocaoValorDesconto" required>
+                            </div>
+                        </div>
+
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="promocaoAtivo" checked>
+                            <label class="form-check-label" for="promocaoAtivo">Ativar Promoção</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" form="promocaoForm" class="btn btn-custom">Salvar</button>
                 </div>
             </div>
         </div>

@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from . import api_bp
 from ...extensions import db
-from ...models import Log, MovimentacaoCaixa, Venda, Pagamento, ItemVenda, Produto, Usuario, Configuracao, Cupom
+from ...models import Log, MovimentacaoCaixa, Venda, Pagamento, ItemVenda, Produto, Usuario, Configuracao
 from ...utils import token_required
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -183,23 +183,6 @@ def manage_config(current_user):
                 novo_config = Configuracao(chave=chave, valor=str(valor))
                 db.session.add(novo_config)
         db.session.commit()
-        
-        # --- SYNC SPECIAL COUPONS ---
-        if 'promo_primeira_compra_percent' in dados or 'promo_primeira_compra_ativo' in dados:
-            cupom = Cupom.query.filter_by(codigo='PRIMEIRACOMPRA').first()
-            if not cupom:
-                cupom = Cupom(codigo='PRIMEIRACOMPRA', tipo_desconto='percentual', aplicacao='total', valor_desconto=10.0)
-                db.session.add(cupom)
-            
-            if 'promo_primeira_compra_percent' in dados:
-                try:
-                    cupom.valor_desconto = float(dados['promo_primeira_compra_percent'])
-                except: pass
-            
-            if 'promo_primeira_compra_ativo' in dados:
-                cupom.ativo = str(dados['promo_primeira_compra_ativo']).lower() == 'true'
-            
-            db.session.commit()
 
         return jsonify({'mensagem': 'Configurações atualizadas com sucesso!'})
     

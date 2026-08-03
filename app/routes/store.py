@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 import uuid
 import types
 from ..extensions import db
-from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, current_brazil_time
+from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, current_brazil_time
 from ..utils import token_required, client_token_required, validate_cpf
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
@@ -282,12 +282,9 @@ def store_get_suggestions():
 def store_validate_coupon(codigo):
     codigo = codigo.upper()
     
-    # 1. Check PRIMEIRACOMPRA Special Logic
-    if codigo == 'PRIMEIRACOMPRA':
-        config_ativo = Configuracao.query.filter_by(chave='promo_primeira_compra_ativo').first()
-        if not config_ativo or str(config_ativo.valor).lower() != 'true':
-            return jsonify({'erro': 'Cupom inválido ou expirado.'}), 404
-            
+    # 1. Verifica se é a promoção automática de Primeira Compra (código configurável no painel)
+    promo_primeira_compra = PromocaoAutomatica.query.filter_by(gatilho='primeira_compra', ativo=True).first()
+    if promo_primeira_compra and promo_primeira_compra.codigo_cupom and codigo == promo_primeira_compra.codigo_cupom.upper():
         # Check eligibility via Token or CPF
         c_id = None
         token = request.headers.get('x-client-token')
@@ -297,7 +294,7 @@ def store_validate_coupon(codigo):
                 c_id = data.get('id') or data.get('id_cliente')
             except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
                 pass
-                
+
         cliente = None
         if c_id:
             cliente = Cliente.query.get(c_id)
@@ -315,13 +312,11 @@ def store_validate_coupon(codigo):
             ).first()
             if has_orders:
                 return jsonify({'erro': 'Este cupom é válido apenas para a primeira compra.'}), 400
-        percent_config = Configuracao.query.filter_by(chave='promo_primeira_compra_percent').first()
-        percent = float(percent_config.valor) if percent_config else 10.0
-        
+
         return jsonify({
-            'codigo': 'PRIMEIRACOMPRA',
-            'tipo_desconto': 'percentual',
-            'valor_desconto': percent,
+            'codigo': promo_primeira_compra.codigo_cupom,
+            'tipo_desconto': promo_primeira_compra.tipo_desconto,
+            'valor_desconto': promo_primeira_compra.valor_desconto,
             'ativo': True,
             'aplicacao': 'total',
             'id': 0 # Mock ID
@@ -448,29 +443,30 @@ def store_product_reviews(produto_id):
 
     # First Review Promo
     try:
-        config_ativo = Configuracao.query.filter_by(chave='promo_primeira_avaliacao_ativo').first()
-        if config_ativo and str(config_ativo.valor).lower() == 'true':
+        promo_primeira_avaliacao = PromocaoAutomatica.query.filter_by(gatilho='primeira_avaliacao', ativo=True).first()
+        if promo_primeira_avaliacao:
             count_reviews = Avaliacao.query.filter_by(id_cliente=current_client.id).count()
-            if count_reviews == 1: 
-                percent_config = Configuracao.query.filter_by(chave='promo_primeira_avaliacao_percent').first()
-                percent = float(percent_config.valor) if percent_config else 10.0
-                
-                code = f"REVIEW-{uuid.uuid4().hex[:6].upper()}"
+            if count_reviews == 1:
+                percent = promo_primeira_avaliacao.valor_desconto
+                prefixo = promo_primeira_avaliacao.prefixo_codigo or 'REVIEW-'
+
+                code = f"{prefixo}{uuid.uuid4().hex[:6].upper()}"
                 novo_cupom = Cupom(
                     codigo=code,
-                    tipo_desconto='percentual',
+                    tipo_desconto=promo_primeira_avaliacao.tipo_desconto,
                     valor_desconto=percent,
                     ativo=True,
                     aplicacao='total'
                 )
                 db.session.add(novo_cupom)
                 db.session.commit()
+                desconto_texto = f'{percent}%' if promo_primeira_avaliacao.tipo_desconto == 'percentual' else f'R$ {percent:.2f}'.replace('.', ',')
                 return jsonify({
                     'mensagem': 'Avaliação enviada com sucesso!',
                     'cupom_ganho': {
                         'codigo': code,
                         'desconto': percent,
-                        'mensagem': f'Parabéns! Pela sua primeira avaliação, você ganhou {percent}% de desconto na próxima compra!'
+                        'mensagem': f'Parabéns! Pela sua primeira avaliação, você ganhou {desconto_texto} de desconto na próxima compra!'
                     }
                 }), 201
     except Exception as e:
@@ -595,9 +591,20 @@ def calcular_frete():
 
 @store_bp.route('/api/store/config', methods=['GET'])
 def get_store_config():
-    keys = ['promo_primeira_compra_ativo', 'promo_primeira_compra_percent', 'promo_primeira_avaliacao_ativo', 'promo_primeira_avaliacao_percent']
-    configs = Configuracao.query.filter(Configuracao.chave.in_(keys)).all()
-    return jsonify({c.chave: c.valor for c in configs})
+    promo_primeira_compra = PromocaoAutomatica.query.filter_by(gatilho='primeira_compra').first()
+    promo_primeira_avaliacao = PromocaoAutomatica.query.filter_by(gatilho='primeira_avaliacao').first()
+
+    return jsonify({
+        'primeira_compra': {
+            'ativo': bool(promo_primeira_compra and promo_primeira_compra.ativo),
+            'percent': promo_primeira_compra.valor_desconto if promo_primeira_compra else None,
+            'codigo': promo_primeira_compra.codigo_cupom if promo_primeira_compra else None
+        },
+        'primeira_avaliacao': {
+            'ativo': bool(promo_primeira_avaliacao and promo_primeira_avaliacao.ativo),
+            'percent': promo_primeira_avaliacao.valor_desconto if promo_primeira_avaliacao else None
+        }
+    })
 
 @store_bp.route('/api/store/checkout', methods=['POST'])
 def store_checkout():
@@ -671,10 +678,11 @@ def store_checkout():
     
     if cupom_id is not None:
         if str(cupom_id) == '0':
-            percent_config = Configuracao.query.filter_by(chave='promo_primeira_compra_percent').first()
-            percent = float(percent_config.valor) if percent_config else 10.0
+            promo_primeira_compra = PromocaoAutomatica.query.filter_by(gatilho='primeira_compra', ativo=True).first()
+            codigo_promo = promo_primeira_compra.codigo_cupom if promo_primeira_compra else 'FITPRO10'
+            percent = promo_primeira_compra.valor_desconto if promo_primeira_compra else 10.0
             cupom = types.SimpleNamespace(
-                codigo='PRIMEIRACOMPRA',
+                codigo=codigo_promo,
                 ativo=True,
                 aplicacao='total',
                 tipo_desconto='percentual',
@@ -686,10 +694,10 @@ def store_checkout():
             cupom = Cupom.query.get(cupom_id)
 
         if cupom and cupom.ativo:
-            if cupom.codigo == 'PRIMEIRACOMPRA':
+            if getattr(cupom, '_is_primeiracompra', False):
                 has_orders = Venda.query.filter_by(id_cliente=cliente.id).filter(Venda.status != 'Cancelada').count()
                 if has_orders > 0:
-                    return jsonify({'erro': 'Cupom PRIMEIRACOMPRA inválido para este cliente.'}), 400
+                    return jsonify({'erro': f'Cupom {cupom.codigo} inválido para este cliente.'}), 400
             
             if cupom.aplicacao == 'total':
                 if cupom.tipo_desconto == 'percentual':
@@ -709,8 +717,11 @@ def store_checkout():
                 desconto_total = total_venda
             
             cupom_aplicado = cupom
-            
-            if cupom.codigo.startswith('REVIEW-'):
+
+            # Cupons gerados pela promoção de "primeira avaliação" são de uso único: desativa após aplicar
+            promo_avaliacao_ref = PromocaoAutomatica.query.filter_by(gatilho='primeira_avaliacao').first()
+            prefixo_avaliacao = (promo_avaliacao_ref.prefixo_codigo if promo_avaliacao_ref and promo_avaliacao_ref.prefixo_codigo else 'REVIEW-')
+            if cupom.codigo.startswith(prefixo_avaliacao):
                 cupom.ativo = False
                 db.session.add(cupom)
 
