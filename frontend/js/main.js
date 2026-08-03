@@ -129,6 +129,12 @@ async function carregarSaldoCaixa() {
 // --- Lógica de Notificações ---
 let lastPendingCount = null;
 
+// Evita que o auto-refresh da tabela de pedidos atropele o admin no meio de uma ação
+// (ex: menu "Ações" aberto some/perde a posição se a tabela for redesenhada por baixo dele).
+function existeMenuAcaoAberto() {
+    return document.querySelector('#onlineOrdersTable .dropdown-menu.show') !== null;
+}
+
 // Função para tocar um "Beep" usando AudioContext (Mais confiável que Base64/Arquivos)
 function playNotificationSound() {
     try {
@@ -178,8 +184,8 @@ async function checkPendingOrders() {
             // 1. Toca o som
             playNotificationSound();
 
-            // 2. Auto-Refresh da Tabela
-            if (typeof loadOnlineOrders === 'function' && document.getElementById('onlineOrdersTable')) {
+            // 2. Auto-Refresh da Tabela (pulado se o admin estiver com o menu "Ações" aberto)
+            if (typeof loadOnlineOrders === 'function' && document.getElementById('onlineOrdersTable') && !existeMenuAcaoAberto()) {
                 console.log("Atualizando tabela...");
                 loadOnlineOrders();
             }
@@ -247,8 +253,9 @@ async function checkPaidOrders() {
             console.log("NOVO PAGAMENTO APROVADO! Tocando o sino...");
             playNotificationSound(); // Ka-ching!
 
-            // Auto-Refresh da Tabela se estiver na página de vendas online
-            if (typeof loadOnlineOrders === 'function' && document.getElementById('onlineOrdersTable')) {
+            // Auto-Refresh da Tabela se estiver na página de vendas online (pulado se o
+            // admin estiver com o menu "Ações" aberto)
+            if (typeof loadOnlineOrders === 'function' && document.getElementById('onlineOrdersTable') && !existeMenuAcaoAberto()) {
                 loadOnlineOrders();
             }
 
