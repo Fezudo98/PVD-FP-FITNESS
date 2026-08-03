@@ -130,12 +130,11 @@
 
         .swal2-title {
             font-family: 'Outfit', sans-serif;
-            color: var(--text-primary);
             font-size: 1.4rem;
         }
 
         .swal2-html-container {
-            color: #6c757d;
+            opacity: 0.75;
         }
 
         .swal2-styled.swal2-confirm {
@@ -169,6 +168,19 @@
         .swal2-icon.swal2-info {
             border-color: var(--secondary-gold);
             color: var(--secondary-gold);
+        }
+
+        .swal2-icon.swal2-success {
+            border-color: var(--primary-gold);
+            color: var(--primary-gold);
+        }
+
+        .swal2-icon.swal2-success [class^='swal2-success-line'] {
+            background-color: var(--primary-gold) !important;
+        }
+
+        .swal2-icon.swal2-success .swal2-success-ring {
+            border-color: rgba(224, 180, 49, 0.3);
         }
 
         .swal2-timer-progress-bar {
