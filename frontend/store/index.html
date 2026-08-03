@@ -91,30 +91,28 @@
             <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 z-3" data-bs-dismiss="modal" aria-label="Close" onclick="closeWelcomeModal()"></button>
 
             <div class="modal-body text-center p-5 position-relative z-2">
-                <!-- Icon -->
-                <div class="mb-4 animate__animated animate__fadeInDown">
-                    <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning rounded-circle" style="width: 80px; height: 80px; box-shadow: 0 0 20px rgba(255,193,7,0.2);">
-                        <i class="fa-solid fa-gift fs-1"></i>
-                    </div>
+                <!-- Eyebrow -->
+                <div class="d-inline-flex align-items-center gap-2 mb-2 animate__animated animate__fadeInDown">
+                    <i class="fa-solid fa-gift text-warning"></i>
+                    <span class="text-warning text-uppercase fw-bold small" style="letter-spacing: 2px;">Presente de boas-vindas</span>
                 </div>
 
-                <!-- Title -->
-                <h2 class="fw-bold text-white mb-3" style="font-family: 'Outfit', sans-serif;">Bem-vindo à FP Fitness</h2>
-                <p class="text-light mb-4 fs-5" style="font-weight: 300;">Para começar a treinar com estilo, preparamos um presente especial para você.</p>
+                <!-- Hero Percent -->
+                <h1 class="fw-bold mb-1 animate__animated animate__fadeInDown" id="welcomeCoupomPercentHero"
+                    style="font-family: 'Outfit', sans-serif; font-size: 3.5rem; line-height: 1; background: linear-gradient(135deg, #ffd54f, #e0b431); -webkit-background-clip: text; background-clip: text; color: transparent;"></h1>
+                <p class="text-light mb-4" style="font-weight: 300;">de desconto na sua primeira compra na FP Fitness</p>
 
                 <!-- Coupon Ticket -->
-                <div class="coupon-ticket position-relative bg-dark rounded-3 p-4 mb-4 border border-warning border-opacity-50 text-center animate__animated animate__zoomIn animate__delay-1s" style="box-shadow: 0 5px 15px rgba(0,0,0,0.3); border-style: dashed !important;">
-                    <p class="text-warning text-uppercase fw-bold small mb-2" style="letter-spacing: 1px;">Use o cupom no checkout</p>
-                    <div class="d-flex align-items-center justify-content-center gap-3 cursor-pointer user-select-all" id="welcomeCouponClick" title="Clique para copiar">
-                        <h1 class="display-5 fw-bold text-white mb-0" style="letter-spacing: 2px;" id="welcomeCoupomCodigo"></h1>
-                        <i class="fa-regular fa-copy text-warning fs-4"></i>
+                <div class="welcome-ticket d-flex mb-4 animate__animated animate__zoomIn animate__delay-1s">
+                    <div class="welcome-ticket-code flex-grow-1 py-3 px-4 text-start">
+                        <p class="text-warning text-uppercase fw-bold small mb-1" style="letter-spacing: 1px;">Use no checkout</p>
+                        <h2 class="fw-bold text-white mb-0" id="welcomeCoupomCodigo" style="letter-spacing: 2px;"></h2>
                     </div>
-                    <div class="mt-3">
-                        <span class="badge bg-warning text-dark px-3 py-2 fs-6 fw-bold rounded-pill shadow-sm" id="welcomeCoupomPercent"></span>
+                    <div class="welcome-ticket-stub d-flex flex-column align-items-center justify-content-center px-3 user-select-none" id="welcomeCouponClick" role="button" title="Clique para copiar">
+                        <i class="fa-regular fa-copy text-warning fs-5 mb-1"></i>
+                        <small class="text-warning fw-bold text-uppercase" style="font-size: 0.6rem; letter-spacing: 0.5px;">Copiar</small>
                     </div>
                 </div>
-
-                <hr class="border-secondary border-opacity-25 my-4">
 
                 <!-- Perks -->
                 <div class="d-flex align-items-start justify-content-center gap-3 text-start mb-4">
@@ -128,7 +126,7 @@
                 </div>
 
                 <!-- Action Button -->
-                <button type="button" class="btn btn-warning btn-lg rounded-pill w-100 fw-bold shadow-lg pulse-btn py-3 text-uppercase" style="letter-spacing: 1px;" data-bs-dismiss="modal" onclick="closeWelcomeModal()">
+                <button type="button" class="btn btn-warning btn-lg rounded-pill w-100 fw-bold shadow-lg welcome-cta py-3 text-uppercase" style="letter-spacing: 1px;" data-bs-dismiss="modal" onclick="closeWelcomeModal()">
                     Resgatar Meu Desconto
                 </button>
             </div>
@@ -137,14 +135,54 @@
 </div>
 
 <style>
-    .pulse-btn {
-        animation: pulse-gold 2s infinite;
+    /* Welcome modal: cupom em formato de ticket com recorte lateral e friso picotado */
+    .welcome-ticket {
+        position: relative;
+        background: #1a1a1a;
+        border: 1px solid rgba(255, 193, 7, 0.3);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     }
 
-    @keyframes pulse-gold {
-        0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
-        70% { box-shadow: 0 0 0 15px rgba(255, 193, 7, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+    .welcome-ticket::before,
+    .welcome-ticket::after {
+        content: "";
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        background: #121212;
+        border-radius: 50%;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+    }
+
+    .welcome-ticket::before {
+        left: -11px;
+    }
+
+    .welcome-ticket::after {
+        right: -11px;
+    }
+
+    .welcome-ticket-stub {
+        border-left: 2px dashed rgba(255, 193, 7, 0.35);
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .welcome-ticket-stub:hover {
+        background-color: rgba(255, 193, 7, 0.08);
+    }
+
+    .welcome-cta {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .welcome-cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(255, 193, 7, 0.35) !important;
     }
 
     .transition-scale {
@@ -183,7 +221,7 @@
         const hasSeenWelcome = localStorage.getItem('welcome_shown_v1');
         if (!hasSeenWelcome) {
             document.getElementById('welcomeCoupomCodigo').textContent = promoPrimeiraCompra.codigo;
-            document.getElementById('welcomeCoupomPercent').textContent = `${promoPrimeiraCompra.percent}% DE DESCONTO`;
+            document.getElementById('welcomeCoupomPercentHero').textContent = `${promoPrimeiraCompra.percent}% OFF`;
             document.getElementById('welcomeCouponClick').onclick = () => copyCoupon(promoPrimeiraCompra.codigo);
             // Delay slightly for effect
             setTimeout(() => {
