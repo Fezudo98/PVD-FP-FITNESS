@@ -4,6 +4,7 @@ from . import api_bp
 from ...extensions import db
 from ...models import Produto, ProdutoImagem
 from ...utils import token_required, registrar_log, generate_standard_sku
+from ...extensions import limiter
 # pyrefly: ignore [missing-import]
 from sqlalchemy import or_
 import os
@@ -92,6 +93,7 @@ def manage_categorias(current_user):
 
 @api_bp.route('/api/produtos', methods=['GET', 'POST'])
 @token_required
+@limiter.exempt  # busca/listagem usada pelo PDV (busca ao digitar + polling de 20s); já exige token
 def gerenciar_produtos(current_user):
     base_dir = os.path.abspath(os.path.join(current_app.root_path, '..'))
     

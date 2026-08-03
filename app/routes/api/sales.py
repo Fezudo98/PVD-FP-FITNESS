@@ -4,6 +4,7 @@ from ...extensions import db
 from ...models import Venda, ItemVenda, Pagamento, Cupom, MovimentacaoCaixa, Produto, Usuario, Cliente, Configuracao
 from ...utils import token_required, registrar_log, salvar_recibo_html
 from ...services.etiqueta_service import gerar_etiqueta_me
+from ...extensions import limiter
 import math
 import os
 import mercadopago
@@ -220,6 +221,7 @@ def get_venda_details(current_user, venda_id):
 
 @api_bp.route('/api/vendas/novas_notificacoes', methods=['GET'])
 @token_required
+@limiter.exempt  # painel admin faz polling a cada 5s; já exige token, rate limit não agrega proteção aqui
 def check_novas_vendas(current_user):
     last_id = request.args.get('last_id', 0, type=int)
     novas = Venda.query.filter(Venda.id > last_id, Venda.status == 'Concluída').order_by(Venda.id.asc()).all()
@@ -319,6 +321,7 @@ def gerar_etiqueta(current_user, venda_id):
 
 @api_bp.route('/api/vendas/online/pendentes/count', methods=['GET'])
 @token_required
+@limiter.exempt  # painel admin faz polling a cada 5s; já exige token, rate limit não agrega proteção aqui
 def count_pending_online_orders(current_user):
     if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
     count = Venda.query.filter(Venda.id_vendedor == None, Venda.status == 'Pendente').count()
