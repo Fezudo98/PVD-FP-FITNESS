@@ -120,28 +120,42 @@ def gerenciar_produtos(current_user):
         if current_user.role != 'admin': return jsonify({'message': 'Ação não permitida!'}), 403
         dados = request.form
         standard_sku = generate_standard_sku(dados['nome'], dados.get('cor'), dados.get('tamanho'))
-        
-        if Produto.query.filter_by(sku=standard_sku).first():
+
+        conflito = Produto.query.filter_by(sku=standard_sku).first()
+        if conflito and not conflito.deletado:
             return jsonify({'erro': f'Produto já existe (SKU: {standard_sku})'}), 400
-        
+
         quantidade_val = int(dados['quantidade'])
         if quantidade_val < 0:
             return jsonify({'erro': 'A quantidade não pode ser negativa'}), 400
-            
-        novo_produto = Produto(
-            sku=standard_sku,
-            nome=dados['nome'],
-            categoria=dados.get('categoria'),
-            cor=dados.get('cor'),
-            cor_hex=dados.get('cor_hex'),
-            tamanho=dados.get('tamanho'),
-            preco_custo=float(dados['preco_custo']),
-            preco_venda=float(dados['preco_venda']),
-            quantidade=quantidade_val,
-            descricao=dados.get('descricao'),
-            online_ativo=True
-        )
-        
+
+        reativando = conflito is not None
+        if reativando:
+            # Mesmo SKU de um produto excluído anteriormente (soft delete): reativa esse
+            # registro em vez de tentar inserir um novo com o mesmo SKU (violaria a
+            # restrição de unicidade no banco, já que o SKU é gerado sempre igual a
+            # partir de nome+cor+tamanho). Limpa os dados antigos (imagens, código de
+            # barras) para que o cadastro se comporte como se fosse realmente novo.
+            produto_alvo = conflito
+            produto_alvo.deletado = False
+            for img_antiga in list(produto_alvo.imagens):
+                db.session.delete(img_antiga)
+            produto_alvo.imagem_url = None
+            produto_alvo.codigo_barras_url = None
+        else:
+            produto_alvo = Produto(sku=standard_sku)
+
+        produto_alvo.nome = dados['nome']
+        produto_alvo.categoria = dados.get('categoria')
+        produto_alvo.cor = dados.get('cor')
+        produto_alvo.cor_hex = dados.get('cor_hex')
+        produto_alvo.tamanho = dados.get('tamanho')
+        produto_alvo.preco_custo = float(dados['preco_custo'])
+        produto_alvo.preco_venda = float(dados['preco_venda'])
+        produto_alvo.quantidade = quantidade_val
+        produto_alvo.descricao = dados.get('descricao')
+        produto_alvo.online_ativo = True
+
         imagens_files = request.files.getlist('imagem')
         if imagens_files:
             uploads_dir = os.path.join(base_dir, 'uploads')
@@ -159,29 +173,31 @@ def gerenciar_produtos(current_user):
                 file.save(os.path.join(uploads_dir, filename))
 
                 if i == 0:
-                    novo_produto.imagem_url = filename
+                    produto_alvo.imagem_url = filename
 
                 nova_img = ProdutoImagem(imagem_url=filename)
-                novo_produto.imagens.append(nova_img)
+                produto_alvo.imagens.append(nova_img)
 
         try:
             # pyrefly: ignore [missing-import]
             from barcode.writer import SVGWriter
             barcodes_dir = os.path.join(base_dir, 'barcodes')
             os.makedirs(barcodes_dir, exist_ok=True)
-            filename = f"{secure_filename(novo_produto.sku)}"
+            filename = f"{secure_filename(produto_alvo.sku)}"
             filepath = os.path.join(barcodes_dir, filename)
             CODE128 = barcode.get_barcode_class('code128')
-            codigo_gerado = CODE128(novo_produto.sku, writer=SVGWriter())
+            codigo_gerado = CODE128(produto_alvo.sku, writer=SVGWriter())
             codigo_gerado.save(filepath)
-            novo_produto.codigo_barras_url = f"{filename}.svg"
+            produto_alvo.codigo_barras_url = f"{filename}.svg"
         except Exception as e:
             print(f"Erro ao gerar barcode: {e}")
 
-        db.session.add(novo_produto)
-        registrar_log(current_user, "Produto Criado", f"SKU: {novo_produto.sku}, Nome: {novo_produto.nome}")
+        if not reativando:
+            db.session.add(produto_alvo)
+        acao_log = "Produto Reativado (SKU reaproveitado de exclusão anterior)" if reativando else "Produto Criado"
+        registrar_log(current_user, acao_log, f"SKU: {produto_alvo.sku}, Nome: {produto_alvo.nome}")
         db.session.commit()
-        return jsonify(novo_produto.to_dict()), 201
+        return jsonify(produto_alvo.to_dict()), 201
 
 @api_bp.route('/api/produtos/bulk', methods=['DELETE'])
 @token_required

@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 : 'N/A';
 
             tr.innerHTML = `
-                <td><img src="${API_URL}/uploads/${produto.imagem_url || 'default.png'}" alt="${produto.nome}" width="50" class="rounded"></td>
+                <td><img src="${produto.imagem_url ? API_URL + '/uploads/' + produto.imagem_url : '/static/img/no-image.png'}" alt="${produto.nome}" width="50" class="rounded"></td>
                 <td>${produto.sku}</td>
                 <td>${produto.nome}</td>
                 <td>${produto.categoria || 'N/A'}</td>

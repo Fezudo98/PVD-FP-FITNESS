@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     tr.dataset.id = produto.id;
                     tr.innerHTML = `
                         <td><input class="form-check-input row-checkbox" type="checkbox" value="${produto.id}"></td>
-                        <td><img src="${API_URL}/uploads/${produto.imagem_url || 'default.png'}" alt="${produto.nome}" width="50" class="rounded"></td>
+                        <td><img src="${produto.imagem_url ? API_URL + '/uploads/' + produto.imagem_url : '/static/img/no-image.png'}" alt="${produto.nome}" width="50" class="rounded"></td>
                         <td>${produto.sku}</td>
                         <td class="text-truncate" style="max-width: 150px;" title="${produto.nome}">${produto.nome}</td>
                         <td>${produto.categoria || 'N/A'}</td>

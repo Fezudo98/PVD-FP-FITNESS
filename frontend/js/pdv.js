@@ -142,7 +142,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = document.createElement('a');
             item.href = '#';
             item.className = 'list-group-item list-group-item-action d-flex align-items-center';
-            item.innerHTML = `<img src="${API_URL}/uploads/${p.imagem_url || 'default.png'}" alt="${p.nome}" class="rounded me-3" style="width: 50px; height: 50px; object-fit: cover;"><div>${p.nome} (SKU: ${p.sku})<br><small>Estoque: ${p.quantidade}</small></div>`;
+            const imgSrc = p.imagem_url ? `${API_URL}/uploads/${p.imagem_url}` : '/static/img/no-image.png';
+            item.innerHTML = `<img src="${imgSrc}" alt="${p.nome}" class="rounded me-3" style="width: 50px; height: 50px; object-fit: cover;"><div>${p.nome} (SKU: ${p.sku})<br><small>Estoque: ${p.quantidade}</small></div>`;
             item.dataset.productId = p.id;
             searchResults.appendChild(item);
         });
@@ -161,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Remove duplicatas se houver (caso a imagem principal esteja na lista de imagens extras)
         currentPreviewImages = [...new Set(currentPreviewImages)];
 
-        if (currentPreviewImages.length === 0) currentPreviewImages.push('default.png');
+        if (currentPreviewImages.length === 0) currentPreviewImages.push(null); // sem foto: usa o placeholder
 
         currentPreviewIndex = 0;
         updatePreviewDisplay();
@@ -181,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentPreviewImages.length === 0) return;
 
         const imageUrl = currentPreviewImages[currentPreviewIndex];
-        previewImage.src = `${API_URL}/uploads/${imageUrl}`;
+        previewImage.src = imageUrl ? `${API_URL}/uploads/${imageUrl}` : '/static/img/no-image.png';
 
         // Atualizar contador
         if (currentPreviewImages.length > 1) {
