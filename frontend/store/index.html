@@ -121,7 +121,7 @@
                     </div>
                     <div>
                         <h6 class="fw-bold mb-1 text-white">Mais Vantagens</h6>
-                        <small class="text-light text-opacity-75">Após a primeira compra, avalie seus produtos e ganhe <span class="text-warning fw-bold">+5% OFF</span> na próxima visita!</small>
+                        <small class="text-light text-opacity-75">Após a primeira compra, avalie seus produtos e ganhe <span class="text-warning fw-bold" id="welcomePerkAvaliacaoPercent">+10% OFF</span> na próxima visita!</small>
                     </div>
                 </div>
 
@@ -324,6 +324,12 @@
             const response = await fetch(`/api/store/config?t=${Date.now()}`);
             const config = await response.json();
             promoPrimeiraCompra = config.primeira_compra || null;
+
+            const primeiraAvaliacao = config.primeira_avaliacao;
+            const perkAvaliacaoEl = document.getElementById('welcomePerkAvaliacaoPercent');
+            if (perkAvaliacaoEl && primeiraAvaliacao && primeiraAvaliacao.ativo) {
+                perkAvaliacaoEl.textContent = `+${primeiraAvaliacao.percent}% OFF`;
+            }
 
             const banner = document.getElementById('promoBanner');
             if (promoPrimeiraCompra && promoPrimeiraCompra.ativo && promoPrimeiraCompra.codigo) {
