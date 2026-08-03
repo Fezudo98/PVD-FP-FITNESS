@@ -1,0 +1,127 @@
+{% extends "store/base.html" %}
+
+{% block content %}
+<section class="py-5 bg-light">
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card shadow-lg rounded-4 border-0 overflow-hidden">
+                    <div class="card-header p-5 text-center"
+                        style="background: linear-gradient(135deg, #d4af37 0%, #a0801a 100%);">
+                        <h1 class="display-6 fw-bolder text-white mb-2" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">Promoções Ativas</h1>
+                        <p class="mb-0 fs-5 text-white-50">Aproveite os descontos disponíveis agora na FP Moda Fitness.</p>
+                    </div>
+                    <div class="card-body p-4 p-md-5 bg-white">
+
+                        <div id="promoLoading" class="text-center py-5">
+                            <div class="spinner-border text-warning" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                        </div>
+
+                        <div id="promoEmptyState" class="text-center py-5 d-none">
+                            <i class="fa-solid fa-tags fs-1 text-muted mb-3"></i>
+                            <p class="lead text-muted mb-0">No momento não há promoções ativas.</p>
+                            <p class="text-muted">Fique de olho por aqui — novidades aparecem primeiro nesta página.</p>
+                        </div>
+
+                        <div id="promoList" class="row g-4"></div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyCoupomPromo(code) {
+        navigator.clipboard.writeText(code).then(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'Copiado!',
+                text: 'Cupom ' + code + ' copiado para a área de transferência.',
+                timer: 1500,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+        });
+    }
+
+    function renderPromoCard({ icone, titulo, descricao, codigo, corBadge }) {
+        const codigoHtml = codigo
+            ? `<button type="button" class="btn btn-warning fw-bold rounded-pill px-4 mt-3" onclick="copyCoupomPromo('${codigo}')">
+                    <i class="fa-regular fa-copy me-2"></i>Copiar cupom: ${codigo}
+               </button>`
+            : '';
+
+        return `
+            <div class="col-md-6">
+                <div class="p-4 rounded-4 border h-100 shadow-sm position-relative overflow-hidden bg-light">
+                    <div class="position-absolute top-0 start-0 w-100 ${corBadge}" style="height: 4px;"></div>
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="bg-warning text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width: 48px; height: 48px;">
+                            <i class="${icone} fs-5"></i>
+                        </span>
+                        <h4 class="fw-bold text-dark mb-0" style="font-family: 'Outfit', sans-serif;">${titulo}</h4>
+                    </div>
+                    <p class="text-secondary lh-lg mb-0">${descricao}</p>
+                    ${codigoHtml}
+                </div>
+            </div>`;
+    }
+
+    async function loadPromocoes() {
+        const loading = document.getElementById('promoLoading');
+        const emptyState = document.getElementById('promoEmptyState');
+        const list = document.getElementById('promoList');
+
+        try {
+            const response = await fetch(`/api/store/config?t=${Date.now()}`);
+            const config = await response.json();
+
+            let html = '';
+
+            const primeiraCompra = config.primeira_compra;
+            if (primeiraCompra && primeiraCompra.ativo && primeiraCompra.codigo) {
+                html += renderPromoCard({
+                    icone: 'fa-solid fa-bag-shopping',
+                    titulo: `${primeiraCompra.percent}% OFF na primeira compra`,
+                    descricao: `Nunca comprou com a gente? Use o cupom abaixo e ganhe ${primeiraCompra.percent}% de desconto na sua primeira compra na loja.`,
+                    codigo: primeiraCompra.codigo,
+                    corBadge: 'bg-warning'
+                });
+            }
+
+            const primeiraAvaliacao = config.primeira_avaliacao;
+            if (primeiraAvaliacao && primeiraAvaliacao.ativo) {
+                html += renderPromoCard({
+                    icone: 'fa-solid fa-star',
+                    titulo: `${primeiraAvaliacao.percent}% OFF avaliando sua compra`,
+                    descricao: `Depois de receber seu pedido, avalie um dos produtos comprados em "Minha Conta" e ganhe automaticamente um cupom exclusivo de ${primeiraAvaliacao.percent}% de desconto para usar na próxima compra.`,
+                    codigo: null,
+                    corBadge: 'bg-secondary'
+                });
+            }
+
+            loading.classList.add('d-none');
+
+            if (!html) {
+                emptyState.classList.remove('d-none');
+                return;
+            }
+
+            list.innerHTML = html;
+        } catch (e) {
+            console.error('Erro ao carregar promoções:', e);
+            loading.classList.add('d-none');
+            emptyState.classList.remove('d-none');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadPromocoes);
+</script>
+{% endblock %}

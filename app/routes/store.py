@@ -157,6 +157,10 @@ def store_checkout_page():
 def store_policies():
     return render_template('store/policies.html')
 
+@store_bp.route('/store/promocoes')
+def store_promotions_page():
+    return render_template('store/promocoes.html')
+
 @store_bp.route('/store/login')
 def store_login_page():
     return render_template('store/login.html')
