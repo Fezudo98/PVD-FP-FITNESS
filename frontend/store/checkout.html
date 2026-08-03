@@ -8,7 +8,7 @@
         </h1>
 
         <style>
-            .form-control, .form-select {
+            .form-control:not(.bg-dark), .form-select {
                 padding: 0.85rem 1.25rem !important;
                 border-radius: 0.75rem !important;
                 background-color: #f8f9fa !important;
@@ -16,10 +16,25 @@
                 box-shadow: none !important;
                 transition: all 0.3s ease;
             }
-            .form-control:focus, .form-select:focus {
+            .form-control:focus:not(.bg-dark), .form-select:focus {
                 background-color: #ffffff !important;
                 border-color: #ffc107 !important;
                 box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.15) !important;
+            }
+            .form-control.bg-dark {
+                padding: 0.85rem 1.25rem !important;
+                border-radius: 0.75rem !important;
+            }
+            .form-control.bg-dark:focus {
+                border-color: #ffc107 !important;
+                box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.15) !important;
+            }
+            .form-control.bg-dark:-webkit-autofill,
+            .form-control.bg-dark:-webkit-autofill:hover,
+            .form-control.bg-dark:-webkit-autofill:focus {
+                -webkit-box-shadow: 0 0 0 1000px #212529 inset !important;
+                -webkit-text-fill-color: #ffffff !important;
+                caret-color: #ffffff;
             }
         </style>
 
@@ -186,7 +201,7 @@
                     <div class="mb-4 position-relative z-2">
                         <label for="cupomInput" class="form-label text-light text-opacity-75 small text-uppercase fw-bold">Cupom de Desconto</label>
                         <div class="input-group input-group-lg rounded-pill overflow-hidden shadow-sm border border-secondary border-opacity-50">
-                            <input type="text" class="form-control premium-filter bg-dark text-white border-0" id="cupomInput" placeholder="CÓDIGO" style="text-transform: uppercase; box-shadow: none;">
+                            <input type="text" class="form-control premium-filter bg-dark text-white border-0" id="cupomInput" placeholder="CÓDIGO" autocomplete="off" style="text-transform: uppercase; box-shadow: none;">
                             <button class="btn btn-warning border-0 px-4 fw-bold" type="button" id="btnAplicarCupom" onclick="applyCoupon()">Aplicar</button>
                             <button class="btn btn-danger border-0 px-4 d-none" type="button" id="btnRemoverCupom" onclick="removeCoupon()"><i class="fa-solid fa-xmark"></i></button>
                         </div>
