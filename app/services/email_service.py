@@ -137,6 +137,24 @@ def enviar_pagamento_aprovado(venda):
     return _enviar_email(venda.cliente.email, f'Pagamento aprovado - Pedido #{venda.id} - FP Moda Fitness', html, anexos=anexos)
 
 
+def enviar_pagamento_rejeitado(venda):
+    if not venda.cliente or not venda.cliente.email:
+        return False
+
+    corpo = f'''
+        <p>Olá, {venda.cliente.nome}!</p>
+        <p>O pagamento do seu pedido <strong>#{venda.id}</strong> não foi aprovado pelo Mercado Pago. 😕</p>
+        {_lista_itens_html(venda)}
+        <p style="font-size:18px;font-weight:bold;color:#c9a22b;">Total: R$ {_fmt_brl(venda.total_venda)}</p>
+        <p>Isso pode acontecer por diversos motivos e nem sempre indica um problema com o seu cartão. Não se preocupe: nenhum valor foi cobrado e o estoque dos produtos já foi liberado novamente.</p>
+        <p><strong>Dica:</strong> tentar novamente pagando com <strong>PIX</strong> costuma ter aprovação mais rápida do que cartão de crédito.</p>
+        <a href="https://www.lojafpfitness.com.br/store/produtos" style="display:inline-block;margin-top:10px;padding:12px 24px;background:linear-gradient(135deg,#e0b431,#c9a22b);color:#000000;text-decoration:none;font-weight:bold;border-radius:50px;">Tentar novamente</a>
+    '''
+
+    html = _template_base(f'Pagamento não aprovado - Pedido #{venda.id}', corpo)
+    return _enviar_email(venda.cliente.email, f'Pagamento não aprovado - Pedido #{venda.id} - FP Moda Fitness', html)
+
+
 def enviar_pedido_enviado(venda):
     if not venda.cliente or not venda.cliente.email:
         return False

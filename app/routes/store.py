@@ -16,7 +16,7 @@ from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, Avali
 from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
-from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin
+from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin, enviar_pagamento_rejeitado
 import mercadopago
 import threading
 
@@ -963,6 +963,12 @@ def mercadopago_webhook():
                                     produto.quantidade += item.quantidade
                             registrar_log(None, "Venda Cancelada (Webhook MP)", f"ID: {venda.id} - Pagamento {payment_status}.")
                             db.session.commit()
+
+                            if payment_status == 'rejected':
+                                try:
+                                    enviar_pagamento_rejeitado(venda)
+                                except Exception as e:
+                                    print(f"Erro ao enviar e-mail de pagamento rejeitado da venda {venda.id}: {e}")
 
                     # Lógica para Estorno/Chargeback de vendas já Pagas
                     elif venda.status in ['Concluída', 'Em Transporte', 'Entregue']:
