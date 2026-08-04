@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from . import api_bp
 from ...extensions import db
-from ...models import Log, MovimentacaoCaixa, Venda, Pagamento, ItemVenda, Produto, Usuario, Configuracao
+from ...models import Log, MovimentacaoCaixa, Venda, Pagamento, ItemVenda, Produto, Usuario, Configuracao, VisitaSite
 from ...utils import token_required
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -90,6 +90,15 @@ def get_online_dashboard_data(current_user):
     # Included 'Entregue' in 'enviados' so they don't disappear from the dashboard metrics
     enviados = online_query.filter(Venda.status.in_(['Saiu para entrega', 'Produto Postado', 'Entregue', 'Pronto para retirada'])).count()
 
+    # Contador de visitas (pessoas que acessaram a loja online)
+    inicio_semana = agora - timedelta(days=7)
+
+    def contar_visitas(desde):
+        base = VisitaSite.query.filter(VisitaSite.timestamp >= desde)
+        total = base.count()
+        unicos = base.with_entities(func.count(func.distinct(VisitaSite.ip_hash))).scalar() or 0
+        return {'total': total, 'unicos': unicos}
+
     return jsonify({
         'hoje': {'total': round(total_hoje, 2), 'quantidade': qtd_hoje},
         'mes': {'total': round(total_mes, 2), 'quantidade': qtd_mes},
@@ -97,6 +106,11 @@ def get_online_dashboard_data(current_user):
             'pendentes': pendentes,
             'separacao': separacao,
             'enviados': enviados
+        },
+        'visitas': {
+            'hoje': contar_visitas(inicio_dia),
+            'semana': contar_visitas(inicio_semana),
+            'mes': contar_visitas(inicio_mes)
         }
     })
 

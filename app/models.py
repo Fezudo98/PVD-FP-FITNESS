@@ -277,6 +277,15 @@ class Log(db.Model):
     acao = db.Column(db.String(255), nullable=False)
     detalhes = db.Column(db.String(500))
 
+class VisitaSite(db.Model):
+    """Registro leve de visita à loja online (para o contador 'quantas pessoas acessaram').
+    Guarda um hash do IP (não o IP em si) só o suficiente para contar visitantes únicos por dia,
+    sem armazenar dado pessoal identificável além do necessário."""
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=current_brazil_time)
+    ip_hash = db.Column(db.String(64), nullable=False, index=True)
+    pagina = db.Column(db.String(100), nullable=True)
+
 class MovimentacaoCaixa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, nullable=False, default=current_brazil_time)

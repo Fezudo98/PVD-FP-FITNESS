@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 import uuid
 import types
 from ..extensions import db
-from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, current_brazil_time
+from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, VisitaSite, current_brazil_time
 from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
@@ -21,6 +21,28 @@ import mercadopago
 import threading
 
 store_bp = Blueprint('store', __name__)
+
+# Endpoints de página (não API) contados como "visita" para o contador de acesso do painel.
+_ENDPOINTS_VISITA = {
+    'store.store_home', 'store.store_products_page', 'store.store_product_detail_page',
+    'store.store_cart_page', 'store.store_checkout_page', 'store.store_policies',
+    'store.store_promotions_page', 'store.store_login_page', 'store.store_account_page'
+}
+
+@store_bp.before_request
+def _registrar_visita():
+    if request.endpoint not in _ENDPOINTS_VISITA:
+        return
+    try:
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr) or ''
+        if ',' in ip:
+            ip = ip.split(',')[0].strip()
+        ip_hash = hashlib.sha256(ip.encode('utf-8')).hexdigest()
+        db.session.add(VisitaSite(ip_hash=ip_hash, pagina=request.endpoint))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao registrar visita: {e}")
 
 def disparar_geracao_etiqueta_async(venda):
     """Gera a etiqueta do Melhor Envio em background (sem travar quem chamou), se a venda usou

@@ -369,6 +369,13 @@ async function loadOnlineDashboard() {
         document.getElementById('dashSeparacao').textContent = data.status.separacao;
         document.getElementById('dashEnviados').textContent = data.status.enviados;
 
+        // Populate Visits (se os elementos existirem na página)
+        if (data.visitas && document.getElementById('dashVisitasHoje')) {
+            document.getElementById('dashVisitasHoje').textContent = data.visitas.hoje.unicos;
+            document.getElementById('dashVisitasSemana').textContent = data.visitas.semana.unicos;
+            document.getElementById('dashVisitasMes').textContent = data.visitas.mes.unicos;
+        }
+
     } catch (e) {
         console.error("Dashboard Load Error:", e);
     }
