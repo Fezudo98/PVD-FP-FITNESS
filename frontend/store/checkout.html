@@ -390,7 +390,7 @@
             <div class="form-check mb-2">
                 <input class="form-check-input" type="radio" name="shippingOption" id="ship_${opt.id}"
                     value="${opt.valor}" data-name="${opt.nome}" data-option-id="${opt.id}"
-                    ${index === 0 ? 'checked' : ''} onchange="updateShippingCost(${opt.valor})">
+                    ${index === 0 ? 'checked' : ''} onchange="updateShippingCost(${opt.valor}, '${opt.id}')">
                 <label class="form-check-label d-flex justify-content-between w-100 pe-3" for="ship_${opt.id}">
                     <span>${opt.nome} (${opt.prazo})</span>
                     <span class="fw-bold">${valorFormatado}</span>
@@ -401,13 +401,26 @@
 
         // Apply first option by default
         if (options.length > 0) {
-            updateShippingCost(options[0].valor);
+            updateShippingCost(options[0].valor, options[0].id);
         }
     }
 
-    function updateShippingCost(cost) {
+    // Endereço só é obrigatório quando o pedido vai ser entregue. Na "Retirada na Loja" o
+    // cliente naturalmente deixa os campos em branco, e como continuavam marcados como
+    // required, o navegador bloqueava o envio do formulário silenciosamente (o aviso nativo
+    // de validação nem sempre aparece no navegador embutido do Instagram) - o botão
+    // "Confirmar Pedido" parecia simplesmente não fazer nada.
+    function toggleAddressRequired(isPickup) {
+        ['cep', 'rua', 'numero', 'bairro', 'cidade', 'estado'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.required = !isPickup;
+        });
+    }
+
+    function updateShippingCost(cost, optionId) {
         window.shippingCost = cost;
         document.getElementById('checkoutShipping').textContent = `R$ ${formatBRL(cost)}`;
+        toggleAddressRequired(optionId === 'retirada');
 
         // Trigger generic total update (assuming functionality exists or likely needs to be added here)
         // Since store.js handles logic, we need to ensure it sees this cost.
