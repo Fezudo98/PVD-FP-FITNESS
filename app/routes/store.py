@@ -869,6 +869,12 @@ def store_checkout():
             "pending": "https://www.fpfitness.com.br/store/conta"
         },
         "auto_return": "approved",
+        # PIX vem pré-selecionado por ter aprovação muito mais consistente que cartão de
+        # crédito no antifraude do Mercado Pago (dados reais: ~100% x ~36% de aprovação).
+        # Cartão continua disponível, só não é mais a opção em destaque.
+        "payment_methods": {
+            "default_payment_method_id": "pix"
+        },
     }
     
     preference_response = sdk.preference().create(preference_data, request_options=request_options)
