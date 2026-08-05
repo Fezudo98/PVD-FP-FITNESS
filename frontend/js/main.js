@@ -805,14 +805,30 @@ CEP: ${venda.entrega_cep}`;
         // Populate Tracking Inputs
         document.getElementById('trackingCodeInput').value = venda.codigo_rastreio || '';
 
+        // O texto salvo em venda.transportadora (ex: "Retirada na Loja", "Motoboy Próprio",
+        // "SEDEX") raramente bate com o valor exato das opções do dropdown (Retirada, Motoboy,
+        // Correios...), então tentar um match exato quase nunca funcionava - o admin tinha que
+        // reselecionar manualmente toda vez, mesmo o sistema já sabendo a transportadora.
+        // Em vez disso, procura qual opção está contida no texto salvo.
         const carrierSelect = document.getElementById('trackingCarrierInput');
+        carrierSelect.selectedIndex = 0;
         if (venda.transportadora && venda.transportadora !== 'None') {
-            carrierSelect.value = venda.transportadora;
-        }
+            const transportadoraLower = venda.transportadora.toLowerCase();
+            // Sinônimos que não aparecem como substring do nome da opção (ex: SEDEX/PAC são
+            // serviços dos Correios, mas não contêm a palavra "correios").
+            const sinonimos = { sedex: 'Correios', pac: 'Correios' };
+            const sinonimoEncontrado = Object.keys(sinonimos).find(chave => transportadoraLower.includes(chave));
 
-        // If no value set or invalid value (not in list), force default
-        if (carrierSelect.selectedIndex === -1 || !carrierSelect.value) {
-            carrierSelect.selectedIndex = 0;
+            if (sinonimoEncontrado) {
+                carrierSelect.value = sinonimos[sinonimoEncontrado];
+            } else {
+                for (const option of carrierSelect.options) {
+                    if (option.value && transportadoraLower.includes(option.value.toLowerCase())) {
+                        carrierSelect.value = option.value;
+                        break;
+                    }
+                }
+            }
         }
 
         // Store ID for save button context
