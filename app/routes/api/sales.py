@@ -1,7 +1,7 @@
 from flask import request, jsonify, current_app, Response
 from . import api_bp
 from ...extensions import db
-from ...models import Venda, ItemVenda, Pagamento, Cupom, MovimentacaoCaixa, Produto, Usuario, Cliente, Configuracao
+from ...models import Venda, ItemVenda, Pagamento, Cupom, MovimentacaoCaixa, Produto, Usuario, Cliente, Configuracao, current_brazil_time
 from ...utils import token_required, registrar_log, salvar_recibo_html, gerar_recibo_html
 from ...services.etiqueta_service import gerar_etiqueta_me
 from ...extensions import limiter
@@ -232,6 +232,40 @@ def get_venda_details(current_user, venda_id):
         'data_cancelamento': venda.data_cancelamento.strftime('%d/%m/%Y %H:%M:%S') if venda.data_cancelamento else None,
         'motivo_cancelamento': venda.motivo_cancelamento
     })
+
+@api_bp.route('/api/vendas/<int:venda_id>/marcar_pago', methods=['POST'])
+@token_required
+def marcar_venda_paga(current_user, venda_id):
+    """Registra manualmente o pagamento de uma venda que foi acertada fora do checkout online
+    (ex: cliente pagou em dinheiro/Pix na retirada). Sem isso, o admin só tinha como avançar o
+    status da venda direto, sem nenhum registro de como/quando ela foi paga de fato."""
+    if current_user.role != 'admin':
+        return jsonify({'message': 'Acesso negado.'}), 403
+
+    venda = Venda.query.get_or_404(venda_id)
+
+    if venda.status in ('Cancelada', 'Reembolsada'):
+        return jsonify({'erro': 'Não é possível marcar como pago um pedido cancelado ou reembolsado.'}), 400
+
+    if venda.pagamentos:
+        return jsonify({'erro': 'Este pedido já possui pagamento registrado.'}), 400
+
+    dados = request.get_json(silent=True) or {}
+    forma = (dados.get('forma_pagamento') or '').strip()
+    if not forma:
+        return jsonify({'erro': 'Informe a forma de pagamento.'}), 400
+
+    db.session.add(Pagamento(id_venda=venda.id, forma=forma, valor=venda.total_venda))
+
+    if not venda.data_pagamento:
+        venda.data_pagamento = current_brazil_time()
+    if venda.status == 'Pendente':
+        venda.atualizar_status('Concluída')
+
+    registrar_log(current_user, "Pagamento Registrado Manualmente", f"ID: {venda.id} - Forma: {forma} - Valor: R$ {venda.total_venda:.2f}")
+    db.session.commit()
+
+    return jsonify({'mensagem': 'Pagamento registrado com sucesso.'})
 
 @api_bp.route('/api/vendas/<int:venda_id>/comprovante', methods=['GET'])
 @token_required

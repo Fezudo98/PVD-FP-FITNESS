@@ -135,6 +135,30 @@ function existeMenuAcaoAberto() {
     return document.querySelector('#onlineOrdersTable .dropdown-menu.show') !== null;
 }
 
+async function marcarPagamentoManual() {
+    const venda = window.currentOrderDetails;
+    if (!venda) return;
+
+    const forma = document.getElementById('marcarPagoForma').value;
+    const token = localStorage.getItem('authToken');
+
+    try {
+        const response = await fetch(`${API_URL}/api/vendas/${venda.id}/marcar_pago`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-access-token': token },
+            body: JSON.stringify({ forma_pagamento: forma })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.erro || 'Erro ao registrar pagamento.');
+
+        Swal.fire('Sucesso!', 'Pagamento registrado.', 'success');
+        viewOrderDetails(venda.id);
+        loadOnlineOrders();
+    } catch (error) {
+        Swal.fire('Erro', error.message, 'error');
+    }
+}
+
 async function verComprovanteAdmin(vendaId) {
     const token = localStorage.getItem('authToken');
     try {
@@ -717,6 +741,15 @@ async function viewOrderDetails(id) {
             } else {
                 comprovanteBtn.classList.add('d-none');
             }
+        }
+
+        // Card "Sem pagamento registrado" (só aparece se não houver nenhum Pagamento e o
+        // pedido não estiver cancelado/reembolsado)
+        const marcarPagoCard = document.getElementById('marcarPagoCard');
+        if (marcarPagoCard) {
+            const semPagamento = (!venda.pagamentos || venda.pagamentos.length === 0);
+            const podeMarcar = !['Cancelada', 'Reembolsada'].includes(venda.status);
+            marcarPagoCard.classList.toggle('d-none', !(semPagamento && podeMarcar));
         }
 
         // Render Itens
