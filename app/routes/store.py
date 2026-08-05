@@ -864,9 +864,9 @@ def store_checkout():
         },
         "external_reference": str(nova_venda.id),
         "back_urls": {
-            "success": "https://www.fpfitness.com.br/store/conta",
-            "failure": "https://www.fpfitness.com.br/store/checkout",
-            "pending": "https://www.fpfitness.com.br/store/conta"
+            "success": "https://lojafpfitness.com.br/store/conta",
+            "failure": "https://lojafpfitness.com.br/store/checkout",
+            "pending": "https://lojafpfitness.com.br/store/conta"
         },
         "auto_return": "approved",
         # PIX vem pré-selecionado por ter aprovação muito mais consistente que cartão de
