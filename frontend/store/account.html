@@ -362,16 +362,16 @@
                                 <ul class="list-group list-group-flush mb-3">
                                     ${order.itens.map(item => `
                                         <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                                            <div class="d-flex align-items-center">
-                                                <img src="${item.imagem_url.startsWith('/') ? item.imagem_url : '/uploads/' + item.imagem_url}" 
-                                                     alt="${item.produto}" 
-                                                     class="rounded me-3 border" 
-                                                     width="60" height="60" 
+                                            <a href="/store/produto/${item.id_produto}" class="d-flex align-items-center text-decoration-none text-dark flex-grow-1" title="Ver produto / avaliar">
+                                                <img src="${item.imagem_url.startsWith('/') ? item.imagem_url : '/uploads/' + item.imagem_url}"
+                                                     alt="${item.produto}"
+                                                     class="rounded me-3 border"
+                                                     width="60" height="60"
                                                      style="object-fit: cover;">
                                                 <div>
                                                     <span class="fw-bold text-dark">${item.quantidade}x</span> ${item.produto}
                                                 </div>
-                                            </div>
+                                            </a>
                                             <span class="fw-bold">R$ ${formatBRL(item.total)}</span>
                                         </li>
                                     `).join('')}
@@ -721,10 +721,10 @@
                     <ul class="list-group list-group-flush border rounded">
                         ${order.itens.map(item => `
                             <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
-                                <div class="d-flex align-items-center">
+                                <a href="/store/produto/${item.id_produto}" class="d-flex align-items-center text-decoration-none" title="Ver produto / avaliar">
                                      <span class="badge bg-secondary me-2 rounded-pill">${item.quantidade}x</span>
                                      <span class="text-dark small">${item.produto}</span>
-                                </div>
+                                </a>
                                 <span class="fw-bold small">R$ ${formatBRL(item.total)}</span>
                             </li>
                         `).join('')}

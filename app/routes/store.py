@@ -1055,6 +1055,7 @@ def get_client_orders(current_client):
         itens = []
         for item in venda.itens:
             itens.append({
+                'id_produto': item.id_produto,
                 'produto': item.produto.nome,
                 'quantidade': item.quantidade,
                 'preco_unitario': item.preco_unitario_momento,
