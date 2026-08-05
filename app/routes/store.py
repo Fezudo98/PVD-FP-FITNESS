@@ -627,6 +627,66 @@ def get_store_config():
         }
     })
 
+def criar_preferencia_mercadopago(venda, cliente, device_id=None):
+    """Cria (ou recria, no caso de 'tentar pagar novamente') a preferência de pagamento do
+    Mercado Pago para uma venda já existente. Retorna (init_point, erro) - erro é None em
+    caso de sucesso. Centraliza a config usada tanto no checkout inicial quanto no retry,
+    para as duas nunca divergirem (ex: PIX como padrão, back_urls corretas)."""
+    config_mp = Configuracao.query.filter_by(chave='MERCADOPAGO_ACCESS_TOKEN').first()
+    mp_access_token = config_mp.valor if config_mp else os.environ.get('MERCADOPAGO_ACCESS_TOKEN')
+    if not mp_access_token:
+        return None, 'Token do Mercado Pago não configurado no sistema.'
+
+    sdk = mercadopago.SDK(mp_access_token)
+
+    # Device ID gerado pelo script security.js do Mercado Pago no checkout (ver base.html):
+    # ajuda o antifraude deles a diferenciar cliente legítimo de fraude, reduzindo rejeições
+    # por falso positivo.
+    request_options = None
+    if device_id:
+        request_options = mercadopago.config.RequestOptions(custom_headers={'X-meli-session-id': device_id})
+
+    mp_items = [{
+        "title": f"Pedido #{venda.id} - FP Fitness",
+        "quantity": 1,
+        "unit_price": round(venda.total_venda, 2),
+        "currency_id": "BRL"
+    }]
+
+    preference_data = {
+        "items": mp_items,
+        "payer": {
+            "name": cliente.nome,
+            "email": cliente.email,
+            "identification": {
+                "type": "CPF",
+                "number": cliente.cpf.replace('.', '').replace('-', '') if cliente.cpf else ""
+            }
+        },
+        "external_reference": str(venda.id),
+        "back_urls": {
+            "success": "https://lojafpfitness.com.br/store/conta",
+            "failure": "https://lojafpfitness.com.br/store/checkout",
+            "pending": "https://lojafpfitness.com.br/store/conta"
+        },
+        "auto_return": "approved",
+        # PIX vem pré-selecionado por ter aprovação muito mais consistente que cartão de
+        # crédito no antifraude do Mercado Pago (dados reais: ~100% x ~36% de aprovação).
+        # Cartão continua disponível, só não é mais a opção em destaque.
+        "payment_methods": {
+            "default_payment_method_id": "pix"
+        },
+    }
+
+    preference_response = sdk.preference().create(preference_data, request_options=request_options)
+    preference = preference_response["response"]
+
+    if "init_point" not in preference:
+        import json
+        return None, f'Erro MP: {json.dumps(preference)}'
+
+    return preference["init_point"], None
+
 @store_bp.route('/api/store/checkout', methods=['POST'])
 def store_checkout():
     dados = request.get_json(silent=True) or {}
@@ -824,68 +884,14 @@ def store_checkout():
     nova_venda.total_venda = total_final + nova_venda.taxa_entrega
 
     db.session.add(nova_venda) # Ensure updates are tracked
-    
-    # Configurar Mercado Pago
-    config_mp = Configuracao.query.filter_by(chave='MERCADOPAGO_ACCESS_TOKEN').first()
-    mp_access_token = config_mp.valor if config_mp else os.environ.get('MERCADOPAGO_ACCESS_TOKEN')
-    
-    if not mp_access_token:
-        db.session.rollback()
-        return jsonify({'erro': 'Token do Mercado Pago não configurado no sistema.'}), 500
 
-    sdk = mercadopago.SDK(mp_access_token)
-
-    # Device ID gerado pelo script security.js do Mercado Pago no checkout (ver base.html):
-    # ajuda o antifraude deles a diferenciar cliente legítimo de fraude, reduzindo rejeições
-    # por falso positivo (ex: cliente que desiste e tenta de novo em seguida).
     device_id = dados.get('device_id')
-    request_options = None
-    if device_id:
-        request_options = mercadopago.config.RequestOptions(custom_headers={'X-meli-session-id': device_id})
+    init_point, erro_mp = criar_preferencia_mercadopago(nova_venda, cliente, device_id=device_id)
 
-    # Para evitar erros de arredondamento de centavos ou rejeição por descontos negativos
-    # no Mercado Pago, passamos o totalizador consolidado.
-    mp_items = [{
-        "title": f"Pedido #{nova_venda.id} - FP Fitness",
-        "quantity": 1,
-        "unit_price": round(total_final + nova_venda.taxa_entrega, 2),
-        "currency_id": "BRL"
-    }]
-
-    preference_data = {
-        "items": mp_items,
-        "payer": {
-            "name": cliente.nome,
-            "email": cliente.email,
-            "identification": {
-                "type": "CPF",
-                "number": cliente.cpf.replace('.', '').replace('-', '') if cliente.cpf else ""
-            }
-        },
-        "external_reference": str(nova_venda.id),
-        "back_urls": {
-            "success": "https://lojafpfitness.com.br/store/conta",
-            "failure": "https://lojafpfitness.com.br/store/checkout",
-            "pending": "https://lojafpfitness.com.br/store/conta"
-        },
-        "auto_return": "approved",
-        # PIX vem pré-selecionado por ter aprovação muito mais consistente que cartão de
-        # crédito no antifraude do Mercado Pago (dados reais: ~100% x ~36% de aprovação).
-        # Cartão continua disponível, só não é mais a opção em destaque.
-        "payment_methods": {
-            "default_payment_method_id": "pix"
-        },
-    }
-    
-    preference_response = sdk.preference().create(preference_data, request_options=request_options)
-    preference = preference_response["response"]
-    
-    if "init_point" not in preference:
+    if erro_mp:
         db.session.rollback()
-        import json
-        detalhes_str = json.dumps(preference)
-        print("MERCADO PAGO ERROR:", detalhes_str, flush=True)
-        return jsonify({'erro': f'Erro MP: {detalhes_str}'}), 500
+        print("MERCADO PAGO ERROR:", erro_mp, flush=True)
+        return jsonify({'erro': erro_mp}), 500
 
     db.session.commit()
 
@@ -903,7 +909,7 @@ def store_checkout():
         'mensagem': 'Redirecionando para o pagamento...',
         'id_pedido': nova_venda.id,
         'total': nova_venda.total_venda,
-        'init_point': preference['init_point']
+        'init_point': init_point
     })
 
 def _validar_assinatura_webhook_mp(webhook_secret):
@@ -1088,6 +1094,53 @@ def get_client_orders(current_client):
             'has_feedback': venda.feedback is not None
         })
     return jsonify(orders_data)
+
+@store_bp.route('/api/client/orders/<int:venda_id>/retry_payment', methods=['POST'])
+@client_token_required
+def retry_client_order_payment(current_client, venda_id):
+    """Gera um novo link de pagamento para um pedido ainda Pendente (ex: cliente saiu da
+    página do Mercado Pago sem concluir). Reaproveita a mesma venda/itens já reservados,
+    sem duplicar estoque nem criar um pedido novo."""
+    venda = Venda.query.filter_by(id=venda_id, id_cliente=current_client.id).first()
+    if not venda:
+        return jsonify({'erro': 'Pedido não encontrado.'}), 404
+
+    # Re-checa o status na hora, o mais perto possível da ação: evita reabrir pagamento de
+    # um pedido que acabou de ser confirmado (webhook) ou cancelado (abandono) nesse meio-tempo.
+    if venda.status != 'Pendente':
+        return jsonify({'erro': f'Este pedido não está mais pendente (status atual: {venda.status}).'}), 400
+
+    dados = request.get_json(silent=True) or {}
+    device_id = dados.get('device_id')
+    init_point, erro_mp = criar_preferencia_mercadopago(venda, current_client, device_id=device_id)
+
+    if erro_mp:
+        print("MERCADO PAGO ERROR (retry):", erro_mp, flush=True)
+        return jsonify({'erro': erro_mp}), 500
+
+    return jsonify({'init_point': init_point})
+
+@store_bp.route('/api/client/orders/<int:venda_id>/cancelar', methods=['POST'])
+@client_token_required
+def cancelar_client_order(current_client, venda_id):
+    """Cancelamento self-service, restrito a pedidos ainda Pendentes (nenhum valor foi
+    cobrado, então não há reembolso a fazer - só devolve o estoque)."""
+    venda = Venda.query.filter_by(id=venda_id, id_cliente=current_client.id).first()
+    if not venda:
+        return jsonify({'erro': 'Pedido não encontrado.'}), 404
+
+    if venda.status != 'Pendente':
+        return jsonify({'erro': f'Só é possível cancelar pedidos pendentes. Este pedido está: {venda.status}.'}), 400
+
+    for item in venda.itens:
+        if item.produto:
+            item.produto.quantidade += item.quantidade
+
+    venda.atualizar_status('Cancelada', motivo='Cancelado pelo cliente (pedido não pago).')
+    registrar_log(None, "Venda Cancelada (Cliente)", f"ID: {venda.id} - Cancelado pelo próprio cliente via Minha Conta.")
+    db.session.commit()
+
+    return jsonify({'mensagem': 'Pedido cancelado com sucesso.'})
 
 @store_bp.route('/api/client/orders/<int:venda_id>/comprovante', methods=['GET'])
 @client_token_required

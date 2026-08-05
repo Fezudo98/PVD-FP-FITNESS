@@ -392,12 +392,20 @@
 
                                     ${getTrackingContent(order)}
 
-                                    ${['Entregue', 'Cancelada', 'Reembolsada'].includes(order.status) ? '' : `
+                                    ${order.status === 'Pendente' ? `
+                                    <button class="btn btn-outline-success btn-sm rounded-pill px-4" onclick="retryPayment(${order.id}, this)">
+                                        <i class="fas fa-rotate-right me-1"></i> Tentar Pagar Novamente
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm rounded-pill px-4" onclick="cancelarPedidoPendente(${order.id}, this)">
+                                        <i class="fas fa-xmark me-1"></i> Cancelar Pedido
+                                    </button>` : ''}
+
+                                    ${!['Pendente', 'Entregue', 'Cancelada', 'Reembolsada'].includes(order.status) ? `
                                     <a href="https://wa.me/558597293349?text=Ol%C3%A1%2C%20gostaria%20de%20cancelar%20o%20pedido%20%23${order.id}"
                                        target="_blank"
                                        class="btn btn-outline-danger btn-sm rounded-pill px-4">
                                         <i class="fab fa-whatsapp me-1"></i> Cancelar Pedido
-                                    </a>`}
+                                    </a>` : ''}
                                 </div>
                             </div>
                         </div>`).join('');
@@ -421,6 +429,55 @@
                 window.open(url, '_blank');
             } catch (error) {
                 Swal.fire('Erro', error.message, 'error');
+            }
+        };
+
+        window.retryPayment = async (orderId, btn) => {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            try {
+                const res = await fetch(`/api/client/orders/${orderId}/retry_payment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-client-token': token },
+                    body: JSON.stringify({ device_id: window.MP_DEVICE_SESSION_ID || null })
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.erro || 'Não foi possível gerar um novo link de pagamento.');
+                window.location.href = result.init_point;
+            } catch (error) {
+                Swal.fire('Erro', error.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        };
+
+        window.cancelarPedidoPendente = async (orderId, btn) => {
+            const confirm = await Swal.fire({
+                title: 'Cancelar pedido?',
+                text: 'Como o pagamento ainda não foi confirmado, nada foi cobrado. Deseja cancelar este pedido?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sim, cancelar',
+                cancelButtonText: 'Voltar'
+            });
+            if (!confirm.isConfirmed) return;
+
+            btn.disabled = true;
+            try {
+                const res = await fetch(`/api/client/orders/${orderId}/cancelar`, {
+                    method: 'POST',
+                    headers: { 'x-client-token': token }
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.erro || 'Não foi possível cancelar o pedido.');
+                Swal.fire('Cancelado!', 'Seu pedido foi cancelado.', 'success');
+                loadOrders();
+            } catch (error) {
+                Swal.fire('Erro', error.message, 'error');
+                btn.disabled = false;
             }
         };
 
