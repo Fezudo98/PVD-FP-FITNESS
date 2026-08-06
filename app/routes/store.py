@@ -364,6 +364,20 @@ def store_validate_coupon(codigo):
         'aplicacao': cupom.aplicacao
     })
 
+def get_variant_ids(produto_id):
+    """Retorna os ids de todas as variações (cor/tamanho) do mesmo produto (mesmo nome).
+
+    Cada variação é uma linha própria em Produto, mas avaliações devem ser
+    compartilhadas entre todas as variações do mesmo produto, já que o cliente
+    pode ter comprado/avaliado uma variação diferente da que é usada como
+    URL canônica (a de menor id) nas páginas de listagem/detalhe.
+    """
+    produto = Produto.query.get(produto_id)
+    if not produto:
+        return [produto_id]
+    ids = db.session.query(Produto.id).filter_by(nome=produto.nome).all()
+    return [i[0] for i in ids] or [produto_id]
+
 @store_bp.route('/api/store/products/<int:produto_id>', methods=['GET'])
 def store_get_product_detail(produto_id):
     produto = Produto.query.filter_by(id=produto_id, online_ativo=True, deletado=False).first_or_404()
@@ -381,8 +395,9 @@ def store_get_product_detail(produto_id):
 @store_bp.route('/api/store/products/<int:produto_id>/reviews', methods=['GET', 'POST'])
 def store_product_reviews(produto_id):
     if request.method == 'GET':
-        reviews = Avaliacao.query.filter_by(id_produto=produto_id).order_by(Avaliacao.data_criacao.desc()).all()
-        
+        variant_ids = get_variant_ids(produto_id)
+        reviews = Avaliacao.query.filter(Avaliacao.id_produto.in_(variant_ids)).order_by(Avaliacao.data_criacao.desc()).all()
+
         # Check ownership
         current_client_id = None
         token = request.headers.get('x-client-token')
@@ -392,11 +407,11 @@ def store_product_reviews(produto_id):
                 current_client_id = data.get('id')
             except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
                 pass  # Token ausente ou expirado — trata como cliente anônimo
-            
-        # Precompute which clients actually bought this product
+
+        # Precompute which clients actually bought this product (qualquer variação)
         vendas_produto = db.session.query(Venda.id_cliente).join(ItemVenda).filter(
             Venda.status.notin_(['Pendente', 'Cancelada', 'Reembolsada']),
-            ItemVenda.id_produto == produto_id
+            ItemVenda.id_produto.in_(variant_ids)
         ).all()
         clientes_compradores = {v[0] for v in vendas_produto}
 
@@ -425,16 +440,21 @@ def store_product_reviews(produto_id):
     # "Concluida" (que e so o estado logo apos o pagamento). Uma vez que o pedido avanca
     # para Em separacao/Entregue/etc, ainda deve continuar avaliavel, ja que a cliente
     # efetivamente comprou e recebeu o produto.
+    variant_ids = get_variant_ids(produto_id)
+
     has_purchased = db.session.query(Venda).join(ItemVenda).filter(
         Venda.id_cliente == current_client.id,
         Venda.status.notin_(['Pendente', 'Cancelada', 'Reembolsada']),
-        ItemVenda.id_produto == produto_id
+        ItemVenda.id_produto.in_(variant_ids)
     ).first()
 
     if not has_purchased:
         return jsonify({'erro': 'Você precisa comprar este produto para avaliá-lo.'}), 403
 
-    existing_review = Avaliacao.query.filter_by(id_cliente=current_client.id, id_produto=produto_id).first()
+    existing_review = Avaliacao.query.filter(
+        Avaliacao.id_cliente == current_client.id,
+        Avaliacao.id_produto.in_(variant_ids)
+    ).first()
     if existing_review:
         return jsonify({'erro': 'Você já avaliou este produto.'}), 400
 
@@ -532,13 +552,18 @@ def update_review(current_client, review_id):
 @store_bp.route('/api/store/products/<int:produto_id>/can_review', methods=['GET'])
 @client_token_required
 def check_review_eligibility(current_client, produto_id):
+    variant_ids = get_variant_ids(produto_id)
+
     has_purchased = db.session.query(Venda).join(ItemVenda).filter(
         Venda.id_cliente == current_client.id,
         Venda.status.notin_(['Pendente', 'Cancelada', 'Reembolsada']),
-        ItemVenda.id_produto == produto_id
+        ItemVenda.id_produto.in_(variant_ids)
     ).first()
 
-    already_reviewed = Avaliacao.query.filter_by(id_cliente=current_client.id, id_produto=produto_id).first()
+    already_reviewed = Avaliacao.query.filter(
+        Avaliacao.id_cliente == current_client.id,
+        Avaliacao.id_produto.in_(variant_ids)
+    ).first()
     
     return jsonify({
         'can_review': bool(has_purchased) and not bool(already_reviewed),
