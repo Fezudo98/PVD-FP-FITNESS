@@ -651,7 +651,8 @@ def get_store_config():
         },
         'primeira_avaliacao': {
             'ativo': bool(promo_primeira_avaliacao and promo_primeira_avaliacao.ativo),
-            'percent': promo_primeira_avaliacao.valor_desconto if promo_primeira_avaliacao else None
+            'percent': promo_primeira_avaliacao.valor_desconto if promo_primeira_avaliacao else None,
+            'tipo': promo_primeira_avaliacao.tipo_desconto if promo_primeira_avaliacao else None
         }
     })
 
@@ -1084,6 +1085,14 @@ def manage_client_me(current_client):
 @client_token_required
 def get_client_orders(current_client):
     vendas = Venda.query.filter_by(id_cliente=current_client.id).order_by(Venda.data_hora.desc()).all()
+
+    # Nomes de produto que o cliente ja avaliou (qualquer variacao de cor/tamanho), para marcar
+    # 'avaliado' por produto e nao por id exato de variacao (ver get_variant_ids).
+    ids_avaliados = [a.id_produto for a in Avaliacao.query.filter_by(id_cliente=current_client.id).all()]
+    nomes_avaliados = set()
+    if ids_avaliados:
+        nomes_avaliados = {p.nome for p in Produto.query.filter(Produto.id.in_(ids_avaliados)).all()}
+
     orders_data = []
     for venda in vendas:
         itens = []
@@ -1094,7 +1103,8 @@ def get_client_orders(current_client):
                 'quantidade': item.quantidade,
                 'preco_unitario': item.preco_unitario_momento,
                 'total': item.quantidade * item.preco_unitario_momento,
-                'imagem_url': item.produto.imagem_url or '/static/img/no-image.png'
+                'imagem_url': item.produto.imagem_url or '/static/img/no-image.png',
+                'avaliado': item.produto.nome in nomes_avaliados
             })
         endereco_full = "Retirada na Loja"
         if venda.tipo_entrega != 'Retirada' and venda.entrega_rua:

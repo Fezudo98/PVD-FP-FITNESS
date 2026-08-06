@@ -230,6 +230,60 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Post-Purchase Product Review -->
+    <div class="modal fade" id="productReviewModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0 pb-0">
+                    <span class="badge bg-light text-dark rounded-pill" id="productReviewProgress"></span>
+                    <button type="button" class="btn-close" id="productReviewCloseBtn" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 pt-2 text-center">
+                    <div id="productReviewRewardBanner" class="alert alert-warning rounded-4 small text-start d-none mb-4">
+                        <i class="fas fa-gift me-1"></i> <span id="productReviewRewardText"></span>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-center gap-3 mb-3">
+                        <img id="productReviewImg" src="" alt="" class="rounded-3 border" width="64" height="64" style="object-fit: cover;">
+                        <h5 class="fw-bold mb-0" id="productReviewNome" style="font-family: 'Outfit', sans-serif;"></h5>
+                    </div>
+                    <p class="text-muted mb-3">O que você achou deste produto?</p>
+
+                    <div class="d-flex justify-content-center gap-2 mb-3" id="productReviewStars">
+                        <i class="far fa-star fa-2x text-warning" data-rating="1" style="cursor: pointer;"></i>
+                        <i class="far fa-star fa-2x text-warning" data-rating="2" style="cursor: pointer;"></i>
+                        <i class="far fa-star fa-2x text-warning" data-rating="3" style="cursor: pointer;"></i>
+                        <i class="far fa-star fa-2x text-warning" data-rating="4" style="cursor: pointer;"></i>
+                        <i class="far fa-star fa-2x text-warning" data-rating="5" style="cursor: pointer;"></i>
+                    </div>
+
+                    <input type="hidden" id="productReviewNota" value="0">
+                    <input type="hidden" id="productReviewIdProduto" value="">
+
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control" placeholder="Conte-nos o que achou (opcional)" id="productReviewComentario" style="height: 90px"></textarea>
+                        <label for="productReviewComentario">Comentário (Opcional)</label>
+                    </div>
+
+                    <div class="mb-4 text-start">
+                        <label for="productReviewMedia" class="form-label fw-bold text-muted small text-uppercase">Fotos ou Vídeo (Opcional)</label>
+                        <input class="form-control bg-light border-0" type="file" id="productReviewMedia" multiple accept="image/*,video/*">
+                        <div class="form-text small text-muted mt-1"><i class="fas fa-info-circle me-1"></i>Máximo 3 arquivos.</div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill fw-bold flex-shrink-0 px-4" id="btnSkipProductReview">
+                            Pular
+                        </button>
+                        <button type="button" class="btn btn-warning rounded-pill fw-bold w-100 py-2" id="btnSubmitProductReview">
+                            Enviar Avaliação <i class="fas fa-paper-plane ms-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 {% endblock %}
 
@@ -338,14 +392,24 @@
 
                 window.allOrders = orders; // Store for modal access
 
-                // Auto-trigger Feedback if latest order is pending feedback
+                // Auto-trigger Feedback if latest order is pending feedback; em seguida (apos o
+                // feedback de compra) o fluxo encadeia para a avaliacao dos produtos comprados.
                 const latestOrder = orders[0];
-                if (latestOrder && !latestOrder.has_feedback && latestOrder.status !== 'Cancelada' && latestOrder.status !== 'Pendente') {
+                const isEligibleOrder = latestOrder && latestOrder.status !== 'Cancelada' && latestOrder.status !== 'Pendente';
+                if (isEligibleOrder && !latestOrder.has_feedback) {
                     if (!localStorage.getItem('feedback_prompted_' + latestOrder.id)) {
                         setTimeout(() => {
                             window.openFeedbackModal(latestOrder.id);
                         }, 1500);
                         localStorage.setItem('feedback_prompted_' + latestOrder.id, 'true');
+                    }
+                } else if (isEligibleOrder && latestOrder.itens.some(i => !i.avaliado)) {
+                    // Feedback de compra ja enviado anteriormente, mas ainda ha produtos sem
+                    // avaliacao nesse pedido: pede para avaliar mesmo assim.
+                    if (!localStorage.getItem('products_prompted_' + latestOrder.id)) {
+                        setTimeout(() => {
+                            window.startProductReviewFlow(latestOrder.id);
+                        }, 1500);
                     }
                 }
 
@@ -877,8 +941,9 @@
 
                 if (response.ok) {
                     bootstrap.Modal.getInstance(document.getElementById('feedbackCompraModal')).hide();
-                    Swal.fire('Sucesso!', 'Seu feedback foi enviado. Muito obrigado!', 'success');
-                    loadOrders(); // Reload to update button states if needed
+                    await Swal.fire('Sucesso!', 'Seu feedback foi enviado. Muito obrigado!', 'success');
+                    await loadOrders(); // Reload to refresh has_feedback/avaliado antes de seguir para os produtos
+                    window.startProductReviewFlow(vendaId);
                 } else {
                     Swal.fire('Erro', data.erro || 'Erro ao enviar feedback.', 'error');
                 }
@@ -890,6 +955,163 @@
                 btn.innerHTML = 'Enviar Avaliação';
             }
         };
+
+        // --- PRODUCT REVIEW FLOW (pos-compra) ---
+        let productReviewQueue = [];
+        let productReviewTotal = 0;
+        let productReviewRewardMessage = null; // null = ainda nao verificado nesta sessao
+
+        async function getProductReviewRewardMessage() {
+            if (productReviewRewardMessage !== null) return productReviewRewardMessage;
+            try {
+                const [configRes, meRes] = await Promise.all([
+                    fetch('/api/store/config'),
+                    fetch('/api/client/me', { headers: { 'x-client-token': token } })
+                ]);
+                const config = await configRes.json();
+                const me = await meRes.json();
+                const promo = config.primeira_avaliacao;
+                if (promo && promo.ativo && promo.percent && !me.recompensa_avaliacao_concedida) {
+                    const descontoTxt = promo.tipo === 'valor' ? `R$ ${Number(promo.percent).toFixed(2).replace('.', ',')}` : `${promo.percent}%`;
+                    productReviewRewardMessage = `Ganhe <b>${descontoTxt} de desconto</b> na sua próxima compra ao avaliar seu primeiro produto!`;
+                } else {
+                    productReviewRewardMessage = false;
+                }
+            } catch (err) {
+                console.error(err);
+                productReviewRewardMessage = false;
+            }
+            return productReviewRewardMessage;
+        }
+
+        window.startProductReviewFlow = async (vendaId) => {
+            if (window._productReviewFlowActive) return; // evita disparo duplicado (auto-trigger + chamada pos-feedback)
+            const order = (window.allOrders || []).find(o => o.id == vendaId);
+            if (!order) return;
+            const pendentes = order.itens.filter(i => !i.avaliado);
+            if (pendentes.length === 0) return;
+
+            window._productReviewFlowActive = true;
+            localStorage.setItem('products_prompted_' + vendaId, 'true');
+            productReviewQueue = pendentes.map(i => ({ id_produto: i.id_produto, produto: i.produto, imagem_url: i.imagem_url }));
+            productReviewTotal = productReviewQueue.length;
+            showNextProductReview();
+        };
+
+        async function showNextProductReview() {
+            if (productReviewQueue.length === 0) return;
+            const item = productReviewQueue[0];
+
+            document.getElementById('productReviewIdProduto').value = item.id_produto;
+            document.getElementById('productReviewNome').textContent = item.produto;
+            document.getElementById('productReviewImg').src = item.imagem_url.startsWith('/') ? item.imagem_url : '/uploads/' + item.imagem_url;
+            const posicaoAtual = productReviewTotal - productReviewQueue.length + 1;
+            document.getElementById('productReviewProgress').textContent = productReviewTotal > 1 ? `${posicaoAtual} de ${productReviewTotal}` : '';
+            document.getElementById('productReviewNota').value = 0;
+            document.getElementById('productReviewComentario').value = '';
+            document.getElementById('productReviewMedia').value = '';
+            document.querySelectorAll('#productReviewStars i').forEach(star => {
+                star.classList.remove('fas');
+                star.classList.add('far');
+            });
+
+            const rewardBanner = document.getElementById('productReviewRewardBanner');
+            const rewardMsg = await getProductReviewRewardMessage();
+            if (rewardMsg) {
+                document.getElementById('productReviewRewardText').innerHTML = rewardMsg;
+                rewardBanner.classList.remove('d-none');
+            } else {
+                rewardBanner.classList.add('d-none');
+            }
+
+            new bootstrap.Modal(document.getElementById('productReviewModal')).show();
+        }
+
+        function advanceProductReviewQueue() {
+            productReviewQueue.shift();
+            bootstrap.Modal.getInstance(document.getElementById('productReviewModal'))?.hide();
+            if (productReviewQueue.length > 0) {
+                setTimeout(showNextProductReview, 400);
+            } else {
+                window._productReviewFlowActive = false;
+            }
+        }
+
+        document.querySelectorAll('#productReviewStars i').forEach(star => {
+            star.addEventListener('click', (e) => {
+                const rating = e.target.getAttribute('data-rating');
+                document.getElementById('productReviewNota').value = rating;
+                document.querySelectorAll('#productReviewStars i').forEach(s => {
+                    if (s.getAttribute('data-rating') <= rating) {
+                        s.classList.remove('far');
+                        s.classList.add('fas');
+                    } else {
+                        s.classList.remove('fas');
+                        s.classList.add('far');
+                    }
+                });
+            });
+        });
+
+        document.getElementById('btnSkipProductReview').addEventListener('click', () => {
+            advanceProductReviewQueue();
+        });
+        document.getElementById('productReviewCloseBtn').addEventListener('click', () => {
+            productReviewQueue = [];
+            window._productReviewFlowActive = false;
+            bootstrap.Modal.getInstance(document.getElementById('productReviewModal'))?.hide();
+        });
+
+        document.getElementById('btnSubmitProductReview').addEventListener('click', async () => {
+            const idProduto = document.getElementById('productReviewIdProduto').value;
+            const nota = document.getElementById('productReviewNota').value;
+            const comentario = document.getElementById('productReviewComentario').value;
+            const files = document.getElementById('productReviewMedia').files;
+
+            if (nota == 0) {
+                Swal.fire('Atenção', 'Por favor, selecione uma nota nas estrelas.', 'warning');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('nota', nota);
+            formData.append('comentario', comentario);
+            for (let i = 0; i < files.length; i++) {
+                formData.append('midia', files[i]);
+            }
+
+            const btn = document.getElementById('btnSubmitProductReview');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
+
+            try {
+                const res = await fetch(`/api/store/products/${idProduto}/reviews`, {
+                    method: 'POST',
+                    headers: { 'x-client-token': token },
+                    body: formData
+                });
+                const result = await res.json();
+
+                if (res.ok) {
+                    advanceProductReviewQueue();
+                    if (result.recompensa_ganha) {
+                        productReviewRewardMessage = false; // ja concedida, nao mostrar mais nesta sessao
+                        Swal.fire({ icon: 'success', title: '🎉 Parabéns!', text: result.recompensa_ganha.mensagem });
+                    } else {
+                        Swal.fire({ icon: 'success', title: 'Avaliação enviada!', text: 'Obrigado por avaliar o produto.', timer: 2000, showConfirmButton: false });
+                    }
+                    loadOrders();
+                } else {
+                    Swal.fire('Erro', result.erro || 'Erro ao enviar avaliação.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Erro', 'Erro de conexão.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Enviar Avaliação <i class="fas fa-paper-plane ms-1"></i>';
+            }
+        });
 
         // Initialize tabs based on hash
         const hash = window.location.hash;

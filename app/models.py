@@ -139,6 +139,7 @@ class Cliente(db.Model):
             'id': self.id, 'nome': self.nome, 'telefone': self.telefone, 'cpf': self.cpf,
             'email': self.email,
             'foto_perfil': self.foto_perfil,
+            'recompensa_avaliacao_concedida': self.recompensa_avaliacao_concedida,
             'recompensa_avaliacao_disponivel': self.recompensa_avaliacao_disponivel(),
             'desconto_avaliacao_percentual': self.desconto_avaliacao_percentual,
             'desconto_avaliacao_tipo': self.desconto_avaliacao_tipo,
