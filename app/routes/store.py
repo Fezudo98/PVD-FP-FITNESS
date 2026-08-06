@@ -395,7 +395,7 @@ def store_product_reviews(produto_id):
             
         # Precompute which clients actually bought this product
         vendas_produto = db.session.query(Venda.id_cliente).join(ItemVenda).filter(
-            Venda.status.in_(['Concluída', 'Concluida']),
+            Venda.status.notin_(['Pendente', 'Cancelada', 'Reembolsada']),
             ItemVenda.id_produto == produto_id
         ).all()
         clientes_compradores = {v[0] for v in vendas_produto}
@@ -421,10 +421,13 @@ def store_product_reviews(produto_id):
     except Exception:
         return jsonify({'erro': 'Token inválido.'}), 401
     
-    # Check eligibility
+    # Check eligibility: qualquer status que indique compra paga e valida - nao so
+    # "Concluida" (que e so o estado logo apos o pagamento). Uma vez que o pedido avanca
+    # para Em separacao/Entregue/etc, ainda deve continuar avaliavel, ja que a cliente
+    # efetivamente comprou e recebeu o produto.
     has_purchased = db.session.query(Venda).join(ItemVenda).filter(
         Venda.id_cliente == current_client.id,
-        Venda.status == 'Concluída',
+        Venda.status.notin_(['Pendente', 'Cancelada', 'Reembolsada']),
         ItemVenda.id_produto == produto_id
     ).first()
 
@@ -531,10 +534,10 @@ def update_review(current_client, review_id):
 def check_review_eligibility(current_client, produto_id):
     has_purchased = db.session.query(Venda).join(ItemVenda).filter(
         Venda.id_cliente == current_client.id,
-        Venda.status.in_(['Concluída', 'Concluida']),
+        Venda.status.notin_(['Pendente', 'Cancelada', 'Reembolsada']),
         ItemVenda.id_produto == produto_id
     ).first()
-    
+
     already_reviewed = Avaliacao.query.filter_by(id_cliente=current_client.id, id_produto=produto_id).first()
     
     return jsonify({
