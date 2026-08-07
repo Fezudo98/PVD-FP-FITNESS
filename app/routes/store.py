@@ -22,6 +22,13 @@ import threading
 
 store_bp = Blueprint('store', __name__)
 
+def _cpf_coluna_normalizada():
+    """Expressão SQL que remove pontuação do Cliente.cpf armazenado, para comparar com um CPF
+    de entrada já limpo (só dígitos) independente de como foi salvo no banco (com ou sem
+    pontuação). Sem isso, buscas por CPF podem falhar silenciosamente e tratar o mesmo cliente
+    como se fosse novo (ex: burlando a checagem de "primeira compra")."""
+    return func.replace(func.replace(Cliente.cpf, '.', ''), '-', '')
+
 # Endpoints de página (não API) contados como "visita" para o contador de acesso do painel.
 _ENDPOINTS_VISITA = {
     'store.store_home', 'store.store_products_page', 'store.store_product_detail_page',
@@ -331,8 +338,7 @@ def store_validate_coupon(codigo):
             cpf = request.args.get('cpf')
             if cpf:
                 cpf = cpf.replace('.', '').replace('-', '')
-                # Como o CPF pode ou não estar formatado no BD, tentamos as duas formas
-                cliente = Cliente.query.filter((Cliente.cpf == cpf) | (Cliente.cpf.like(f'%{cpf}%'))).first()
+                cliente = Cliente.query.filter(_cpf_coluna_normalizada() == cpf).first()
 
         if cliente:
             has_orders = Venda.query.filter(
@@ -732,8 +738,10 @@ def store_checkout():
     # 1. Identificar ou Criar Cliente
     cliente = Cliente.query.filter_by(email=cliente_data.get('email')).first()
     if not cliente:
-        if cliente_data.get('cpf'):
-             cliente = Cliente.query.filter_by(cpf=cliente_data.get('cpf')).first()
+        cpf_informado = cliente_data.get('cpf')
+        if cpf_informado:
+            cpf_limpo = cpf_informado.replace('.', '').replace('-', '')
+            cliente = Cliente.query.filter(_cpf_coluna_normalizada() == cpf_limpo).first()
     
     if not cliente:
         cliente = Cliente(
@@ -1067,7 +1075,10 @@ def manage_client_me(current_client):
             # I need to check imports. validate_cpf is in ..utils.
             return jsonify({'erro': 'CPF inválido.'}), 400
         # Check uniqueness if changed
-        if cpf != current_client.cpf and Cliente.query.filter_by(cpf=cpf).first():
+        cpf_limpo = cpf.replace('.', '').replace('-', '') if cpf else cpf
+        if cpf != current_client.cpf and cpf_limpo and Cliente.query.filter(
+            _cpf_coluna_normalizada() == cpf_limpo, Cliente.id != current_client.id
+        ).first():
              return jsonify({'erro': 'CPF já cadastrado.'}), 400
         current_client.cpf = cpf
         
