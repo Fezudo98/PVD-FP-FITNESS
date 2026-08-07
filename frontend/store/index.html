@@ -3,10 +3,14 @@
 {% block content %}
 <!-- Promo Banner -->
 <div id="promoBanner"
-    class="alert alert-warning text-center fw-bold rounded-0 mb-0 d-none animate__animated animate__fadeInDown"
-    role="alert">
-    🎉 Ganhe <span id="promoPercent"></span>% de desconto na sua primeira compra com o cupom <span
-        class="badge bg-dark" id="promoCodigoBanner"></span>! Aproveite! 🛍️
+    class="d-none animate__animated animate__fadeInDown text-center"
+    role="alert"
+    style="background: linear-gradient(135deg, #1a1a1a, #2b2b2b); padding: 0.85rem 1rem; border-bottom: 1px solid rgba(224,180,49,0.35);">
+    <span style="color: #f1f1f1; font-size: 0.95rem;">
+        <i class="fa-solid fa-gift" style="color: #e0b431;"></i>
+        Ganhe <strong style="color: #e0b431;"><span id="promoPercent"></span>%</strong> de desconto na primeira compra com o cupom
+        <span class="badge" id="promoCodigoBanner" style="background: linear-gradient(135deg, #e0b431, #c9a22b); color: #000; letter-spacing: 0.5px;"></span>
+    </span>
 </div>
 
 <!-- Hero Section -->

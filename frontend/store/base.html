@@ -208,8 +208,19 @@
                 /* Smaller cards on mobile */
             }
 
+            /* Logo original (max-height: 100px) deixava a navbar mobile mais alta que os 80px
+               reservados aqui embaixo, cobrindo o topo do banner de promoção e do herói. */
+            .store-navbar .navbar-brand img {
+                max-height: 48px !important;
+            }
+
+            .store-navbar.py-1 {
+                padding-top: 0.4rem !important;
+                padding-bottom: 0.4rem !important;
+            }
+
             main {
-                margin-top: 80px !important;
+                margin-top: 64px !important;
                 /* Adjust for smaller navbar */
             }
 
