@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <tr>
                     <td class="px-4 py-3"><small class="text-muted">${a.data_criacao}</small></td>
                     <td>
-                        <a href="/loja_online_produto.html?id=${a.id_produto}" class="text-decoration-none fw-bold text-dark" target="_blank">
+                        <a href="/store/produto/${a.id_produto}" class="text-decoration-none fw-bold text-dark" target="_blank">
                             <i class="fas fa-box me-1"></i> ${a.produto_nome} <small class="text-muted">(#${a.id_produto})</small>
                         </a>
                     </td>
