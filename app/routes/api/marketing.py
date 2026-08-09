@@ -1,8 +1,10 @@
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from . import api_bp
 from ...extensions import db
-from ...models import Cupom, Produto, PromocaoAutomatica
+from ...models import Cupom, Produto, PromocaoAutomatica, Cliente
 from ...utils import token_required, registrar_log
+from ...services.email_service import enviar_comunicado_marketing
+import threading
 
 GATILHOS_VALIDOS = ('primeira_compra', 'primeira_avaliacao')
 
@@ -142,3 +144,75 @@ def gerenciar_promocao_automatica_especifica(current_user, promocao_id):
         db.session.delete(promocao)
         db.session.commit()
         return jsonify({'mensagem': 'Promoção automática removida!'})
+
+
+def _destinatarios_comunicado():
+    """Lista (email, nome) de todos os clientes com e-mail cadastrado, sem duplicar por
+    e-mail (case-insensitive)."""
+    clientes = Cliente.query.filter(Cliente.email.isnot(None), Cliente.email != '').all()
+    vistos = set()
+    destinatarios = []
+    for c in clientes:
+        email_norm = c.email.strip().lower()
+        if email_norm not in vistos:
+            vistos.add(email_norm)
+            destinatarios.append((c.email, c.nome))
+    return destinatarios
+
+
+@api_bp.route('/api/marketing/comunicado/destinatarios', methods=['GET'])
+@token_required
+def contar_destinatarios_comunicado(current_user):
+    if current_user.role != 'admin': return jsonify({'erro': 'Acesso negado.'}), 403
+    return jsonify({'total': len(_destinatarios_comunicado())})
+
+
+@api_bp.route('/api/marketing/comunicado', methods=['POST'])
+@token_required
+def enviar_comunicado(current_user):
+    """Envia um comunicado por e-mail (ex: mensagem de data comemorativa, aviso) para todos
+    os clientes com e-mail cadastrado. Envio acontece em background (pode levar minutos com
+    muitos destinatários) - a resposta confirma só que o disparo comecou."""
+    if current_user.role != 'admin': return jsonify({'erro': 'Acesso negado.'}), 403
+
+    dados = request.get_json(silent=True) or {}
+    assunto = (dados.get('assunto') or '').strip()
+    mensagem = (dados.get('mensagem') or '').strip()
+
+    if not assunto or not mensagem:
+        return jsonify({'erro': 'Assunto e mensagem são obrigatórios.'}), 400
+
+    destinatarios = _destinatarios_comunicado()
+    if not destinatarios:
+        return jsonify({'erro': 'Nenhum cliente com e-mail cadastrado.'}), 400
+
+    total = len(destinatarios)
+    admin_nome = current_user.nome
+    registrar_log(current_user, "Comunicado em Massa Iniciado", f"Assunto: '{assunto}' - {total} destinatário(s).")
+    db.session.commit()
+
+    def enviar_em_background(app, destinatarios, assunto, mensagem, admin_nome):
+        with app.app_context():
+            from ...utils import registrar_log as _registrar_log
+            sucesso = 0
+            falha = 0
+            for email, nome in destinatarios:
+                try:
+                    ok = enviar_comunicado_marketing(email, nome, assunto, mensagem)
+                except Exception as e:
+                    print(f"Erro ao enviar comunicado para {email}: {e}")
+                    ok = False
+                if ok:
+                    sucesso += 1
+                else:
+                    falha += 1
+            _registrar_log(None, "Comunicado em Massa Concluído", f"Assunto: '{assunto}' - Enviados: {sucesso}, Falhas: {falha} (disparado por {admin_nome}).")
+            db.session.commit()
+
+    thread = threading.Thread(
+        target=enviar_em_background,
+        args=(current_app._get_current_object(), destinatarios, assunto, mensagem, admin_nome)
+    )
+    thread.start()
+
+    return jsonify({'mensagem': f'Envio iniciado para {total} cliente(s). Pode levar alguns minutos - acompanhe pelo Log de Atividades.'}), 202

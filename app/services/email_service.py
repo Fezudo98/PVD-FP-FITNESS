@@ -200,3 +200,19 @@ def enviar_aviso_novo_pedido_admin(venda):
         rodape_texto='Ver no painel administrativo'
     )
     return _enviar_email(destinatario, f'🛍️ Novo pedido #{venda.id} recebido - FP Moda Fitness', html)
+
+
+def enviar_comunicado_marketing(email_destino, nome_destino, assunto, mensagem):
+    """Envia um comunicado avulso (ex: mensagem de data comemorativa, aviso geral) escrito
+    pela lojista no painel, usando o mesmo template visual dos e-mails transacionais.
+    `{{nome}}` na mensagem é substituído pelo primeiro nome do destinatário."""
+    if not email_destino:
+        return False
+
+    primeiro_nome = (nome_destino or 'Cliente').strip().split(' ')[0]
+    mensagem_personalizada = mensagem.replace('{{nome}}', primeiro_nome)
+    corpo_formatado = mensagem_personalizada.replace('\n', '<br>')
+    corpo = f'<div style="line-height:1.7;">{corpo_formatado}</div>'
+
+    html = _template_base(assunto, corpo, rodape_link='https://lojafpfitness.com.br/store', rodape_texto='Visitar a loja')
+    return _enviar_email(email_destino, f'{assunto} - FP Moda Fitness', html)
