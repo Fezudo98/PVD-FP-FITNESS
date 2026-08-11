@@ -601,7 +601,7 @@ function initStoreSearchBar() {
 
         const itens = produtos.map(p => {
             const preco = (Number(p.preco_venda) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const img = p.imagem_url || '/static/img/placeholder.png';
+            const img = p.imagem_url ? `/uploads/${p.imagem_url}` : 'https://via.placeholder.com/80x80?text=%20';
             return `
                 <a href="/store/produto/${p.id}" class="store-search-result-item" role="option">
                     <img src="${img}" alt="${p.nome}" loading="lazy" onerror="this.style.visibility='hidden'">
