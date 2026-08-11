@@ -52,7 +52,9 @@
         }
 
         /* Painel de busca da navbar: fica escondido acima da tela e desliza pra baixo,
-           sem empurrar o conteudo (nao afeta o margin-top do <main>). */
+           sem empurrar o conteudo (nao afeta o margin-top do <main>). Estilos do formulario
+           sao isolados (nao usam .form-control puro) porque /css/style.css define
+           .form-control com tema escuro globalmente pro painel admin. */
         .store-search-bar {
             position: fixed;
             top: 110px;
@@ -60,7 +62,7 @@
             right: 0;
             background: #ffffff;
             border-bottom: 1px solid var(--border-color);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
             z-index: 1029;
             transform: translateY(-10px);
             opacity: 0;
@@ -76,14 +78,65 @@
             pointer-events: auto;
         }
 
-        .store-search-bar .input-group:focus-within {
+        .store-search-form {
+            max-width: 420px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .store-search-form:focus-within {
+            border-color: var(--primary-gold);
             box-shadow: 0 0 0 0.2rem rgba(224, 180, 49, 0.25);
-            border-radius: 50px;
+        }
+
+        .store-search-form .input-group-text {
+            background: #ffffff !important;
+            color: #adb5bd;
+            border: none;
+            padding-left: 1.25rem;
+            padding-right: 0.5rem;
+        }
+
+        .store-search-form input.form-control {
+            background: #ffffff !important;
+            color: var(--text-primary) !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0.6rem 0.75rem;
+        }
+
+        .store-search-form input.form-control:focus {
+            background: #ffffff !important;
+            color: var(--text-primary) !important;
+        }
+
+        .store-search-form input.form-control::placeholder {
+            color: #adb5bd;
+        }
+
+        .store-search-form button[type="submit"] {
+            background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
+            color: #000;
+            border: none;
+            padding: 0.6rem 1.5rem;
+        }
+
+        .store-search-form button[type="submit"]:hover {
+            filter: brightness(0.95);
         }
 
         @media (max-width: 768px) {
             .store-search-bar {
                 top: 64px;
+            }
+
+            .store-search-bar .container {
+                justify-content: center !important;
+            }
+
+            .store-search-form {
+                max-width: none;
             }
         }
 
@@ -288,8 +341,8 @@
                 </a>
 
                 <div class="d-flex align-items-center ms-auto">
-                    <!-- Search Toggle (visible em todas as telas) -->
-                    <button type="button" class="btn btn-link text-dark position-relative me-1" id="searchToggleBtn"
+                    <!-- Mobile Search Toggle (visible < lg, fica ao lado do carrinho mobile) -->
+                    <button type="button" class="btn btn-link text-dark position-relative d-lg-none me-1 store-search-toggle"
                         title="Buscar produtos" aria-label="Buscar produtos" aria-expanded="false"
                         aria-controls="storeSearchBar">
                         <i class="fa-solid fa-magnifying-glass fa-lg"></i>
@@ -318,6 +371,12 @@
                     </ul>
 
                     <div class="d-flex align-items-center gap-3">
+                        <!-- Desktop Search Toggle -->
+                        <button type="button" class="btn btn-link text-dark position-relative d-none d-lg-block store-search-toggle"
+                            title="Buscar produtos" aria-label="Buscar produtos" aria-expanded="false"
+                            aria-controls="storeSearchBar">
+                            <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+                        </button>
                         <!-- Desktop Favorites -->
                         <a href="/store/conta" onclick="setTimeout(()=>document.getElementById('favorites-tab')?.click(), 500)" class="btn btn-link text-dark position-relative d-none d-lg-block" title="Meus Favoritos">
                             <i class="fa-regular fa-heart fa-lg text-danger"></i>
@@ -344,14 +403,14 @@
 
         <!-- Painel de busca rapida (some por padrao; abre pelo icone de lupa da navbar) -->
         <div id="storeSearchBar" class="store-search-bar" role="search">
-            <div class="container py-3">
-                <form id="storeSearchForm" class="input-group shadow-sm rounded-pill overflow-hidden bg-white border-0">
-                    <span class="input-group-text bg-white border-0 ps-4 pe-0">
-                        <i class="fas fa-search text-muted"></i>
+            <div class="container d-flex justify-content-end py-3">
+                <form id="storeSearchForm" class="store-search-form input-group shadow-sm rounded-pill overflow-hidden">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
                     </span>
-                    <input type="search" class="form-control border-0 py-2 px-3" id="storeSearchInput"
-                        placeholder="Buscar produtos... (ex: legging, top, short)" aria-label="Buscar produtos">
-                    <button class="btn btn-warning fw-bold border-0 px-4" type="submit">Buscar</button>
+                    <input type="search" class="form-control" id="storeSearchInput"
+                        placeholder="Buscar produtos..." aria-label="Buscar produtos">
+                    <button class="btn fw-bold" type="submit">Buscar</button>
                 </form>
             </div>
         </div>
@@ -497,7 +556,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Device ID do Mercado Pago: reduz falsos positivos do antifraude deles no checkout -->
     <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
-    <script src="/frontend/js/store.js?v=5"></script>
+    <script src="/frontend/js/store.js?v=6"></script>
     {% block scripts %}{% endblock %}
 </body>
 

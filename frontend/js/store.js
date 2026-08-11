@@ -556,25 +556,31 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initStoreSearchBar() {
-    const toggleBtn = document.getElementById('searchToggleBtn');
+    // Existem dois botoes de lupa (um pro layout mobile, outro pro desktop) que
+    // controlam o mesmo painel de busca.
+    const toggleBtns = document.querySelectorAll('.store-search-toggle');
     const searchBar = document.getElementById('storeSearchBar');
     const searchForm = document.getElementById('storeSearchForm');
     const searchInput = document.getElementById('storeSearchInput');
-    if (!toggleBtn || !searchBar || !searchForm || !searchInput) return;
+    if (!toggleBtns.length || !searchBar || !searchForm || !searchInput) return;
+
+    const setExpanded = (valor) => toggleBtns.forEach(btn => btn.setAttribute('aria-expanded', valor));
 
     const abrirBusca = () => {
         searchBar.classList.add('show');
-        toggleBtn.setAttribute('aria-expanded', 'true');
+        setExpanded('true');
         setTimeout(() => searchInput.focus(), 150);
     };
     const fecharBusca = () => {
         searchBar.classList.remove('show');
-        toggleBtn.setAttribute('aria-expanded', 'false');
+        setExpanded('false');
     };
 
-    toggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        searchBar.classList.contains('show') ? fecharBusca() : abrirBusca();
+    toggleBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            searchBar.classList.contains('show') ? fecharBusca() : abrirBusca();
+        });
     });
 
     searchForm.addEventListener('submit', (e) => {
@@ -585,9 +591,10 @@ function initStoreSearchBar() {
         }
     });
 
-    // Fecha ao clicar fora do painel (mas nao ao clicar no proprio botao que já trata isso)
+    // Fecha ao clicar fora do painel (mas nao ao clicar em algum dos botoes, que já tratam isso)
     document.addEventListener('click', (e) => {
-        if (searchBar.classList.contains('show') && !searchBar.contains(e.target) && !toggleBtn.contains(e.target)) {
+        const clicouEmToggle = Array.from(toggleBtns).some(btn => btn.contains(e.target));
+        if (searchBar.classList.contains('show') && !searchBar.contains(e.target) && !clicouEmToggle) {
             fecharBusca();
         }
     });
