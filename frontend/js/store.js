@@ -549,10 +549,59 @@ async function submitOrder() {
 document.addEventListener('DOMContentLoaded', () => {
     updateCartCount();
     updateAuthUI();
+    initStoreSearchBar();
     if (window.location.pathname.includes('/checkout')) {
         autoFillCheckout();
     }
 });
+
+function initStoreSearchBar() {
+    const toggleBtn = document.getElementById('searchToggleBtn');
+    const searchBar = document.getElementById('storeSearchBar');
+    const searchForm = document.getElementById('storeSearchForm');
+    const searchInput = document.getElementById('storeSearchInput');
+    if (!toggleBtn || !searchBar || !searchForm || !searchInput) return;
+
+    const abrirBusca = () => {
+        searchBar.classList.add('show');
+        toggleBtn.setAttribute('aria-expanded', 'true');
+        setTimeout(() => searchInput.focus(), 150);
+    };
+    const fecharBusca = () => {
+        searchBar.classList.remove('show');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+    };
+
+    toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        searchBar.classList.contains('show') ? fecharBusca() : abrirBusca();
+    });
+
+    searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const termo = searchInput.value.trim();
+        if (termo) {
+            window.location.href = `/store/produtos?q=${encodeURIComponent(termo)}`;
+        }
+    });
+
+    // Fecha ao clicar fora do painel (mas nao ao clicar no proprio botao que já trata isso)
+    document.addEventListener('click', (e) => {
+        if (searchBar.classList.contains('show') && !searchBar.contains(e.target) && !toggleBtn.contains(e.target)) {
+            fecharBusca();
+        }
+    });
+
+    // Fecha com ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && searchBar.classList.contains('show')) fecharBusca();
+    });
+
+    // Se a navbar ja abriu numa pagina de busca (?q=...), pre-preenche o campo pra
+    // o usuario ver o termo atual caso reabra o painel.
+    const qAtual = new URLSearchParams(window.location.search).get('q');
+    if (qAtual) searchInput.value = qAtual;
+}
 
 function updateAuthUI() {
     const authContainer = document.getElementById('authButtons');

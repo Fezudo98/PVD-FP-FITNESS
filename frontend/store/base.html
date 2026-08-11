@@ -51,6 +51,42 @@
             margin-top: auto;
         }
 
+        /* Painel de busca da navbar: fica escondido acima da tela e desliza pra baixo,
+           sem empurrar o conteudo (nao afeta o margin-top do <main>). */
+        .store-search-bar {
+            position: fixed;
+            top: 110px;
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+            z-index: 1029;
+            transform: translateY(-10px);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: transform 0.2s ease, opacity 0.2s ease, visibility 0.2s;
+        }
+
+        .store-search-bar.show {
+            transform: translateY(0);
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .store-search-bar .input-group:focus-within {
+            box-shadow: 0 0 0 0.2rem rgba(224, 180, 49, 0.25);
+            border-radius: 50px;
+        }
+
+        @media (max-width: 768px) {
+            .store-search-bar {
+                top: 64px;
+            }
+        }
+
         .product-card {
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             background: var(--surface-card);
@@ -251,15 +287,24 @@
                         onerror="this.onerror=null; this.src='/frontend/logo.png';">
                 </a>
 
-                <!-- Mobile Cart (Visible < lg) -->
-                <a href="/store/carrinho" class="btn btn-link text-dark position-relative d-lg-none me-2"
-                    id="cartBtnMobile">
-                    <i class="fa-solid fa-cart-shopping fa-lg"></i>
-                    <span
-                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-count-badge">
-                        0
-                    </span>
-                </a>
+                <div class="d-flex align-items-center ms-auto">
+                    <!-- Search Toggle (visible em todas as telas) -->
+                    <button type="button" class="btn btn-link text-dark position-relative me-1" id="searchToggleBtn"
+                        title="Buscar produtos" aria-label="Buscar produtos" aria-expanded="false"
+                        aria-controls="storeSearchBar">
+                        <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+                    </button>
+
+                    <!-- Mobile Cart (Visible < lg) -->
+                    <a href="/store/carrinho" class="btn btn-link text-dark position-relative d-lg-none me-2"
+                        id="cartBtnMobile">
+                        <i class="fa-solid fa-cart-shopping fa-lg"></i>
+                        <span
+                            class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-count-badge">
+                            0
+                        </span>
+                    </a>
+                </div>
 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#storeNavbar">
                     <span class="navbar-toggler-icon"></span>
@@ -296,6 +341,20 @@
                 </div>
             </div>
         </nav>
+
+        <!-- Painel de busca rapida (some por padrao; abre pelo icone de lupa da navbar) -->
+        <div id="storeSearchBar" class="store-search-bar" role="search">
+            <div class="container py-3">
+                <form id="storeSearchForm" class="input-group shadow-sm rounded-pill overflow-hidden bg-white border-0">
+                    <span class="input-group-text bg-white border-0 ps-4 pe-0">
+                        <i class="fas fa-search text-muted"></i>
+                    </span>
+                    <input type="search" class="form-control border-0 py-2 px-3" id="storeSearchInput"
+                        placeholder="Buscar produtos... (ex: legging, top, short)" aria-label="Buscar produtos">
+                    <button class="btn btn-warning fw-bold border-0 px-4" type="submit">Buscar</button>
+                </form>
+            </div>
+        </div>
 
         <!-- Main Content -->
         <main class="flex-grow-1" style="margin-top: 110px;">
@@ -438,7 +497,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Device ID do Mercado Pago: reduz falsos positivos do antifraude deles no checkout -->
     <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
-    <script src="/frontend/js/store.js?v=4"></script>
+    <script src="/frontend/js/store.js?v=5"></script>
     {% block scripts %}{% endblock %}
 </body>
 
