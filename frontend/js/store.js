@@ -562,7 +562,13 @@ function initStoreSearchBar() {
     const searchBar = document.getElementById('storeSearchBar');
     const searchForm = document.getElementById('storeSearchForm');
     const searchInput = document.getElementById('storeSearchInput');
-    if (!toggleBtns.length || !searchBar || !searchForm || !searchInput) return;
+    const resultsBox = document.getElementById('storeSearchResults');
+    if (!toggleBtns.length || !searchBar || !searchForm || !searchInput || !resultsBox) return;
+
+    const MIN_CHARS = 2;
+    let abortController = null;
+    let ultimoTermoBuscado = '';
+    let itemAtivoIndex = -1;
 
     const setExpanded = (valor) => toggleBtns.forEach(btn => btn.setAttribute('aria-expanded', valor));
 
@@ -574,7 +580,79 @@ function initStoreSearchBar() {
     const fecharBusca = () => {
         searchBar.classList.remove('show');
         setExpanded('false');
+        esconderResultados();
     };
+
+    const esconderResultados = () => {
+        resultsBox.classList.remove('show');
+        itemAtivoIndex = -1;
+    };
+
+    const irParaResultados = (termo) => {
+        window.location.href = `/store/produtos?q=${encodeURIComponent(termo)}`;
+    };
+
+    function renderResultados(produtos, termo) {
+        if (!produtos.length) {
+            resultsBox.innerHTML = `<div class="store-search-results-empty">Nenhum produto encontrado para "${termo}".</div>`;
+            resultsBox.classList.add('show');
+            return;
+        }
+
+        const itens = produtos.map(p => {
+            const preco = (Number(p.preco_venda) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const img = p.imagem_url || '/static/img/placeholder.png';
+            return `
+                <a href="/store/produto/${p.id}" class="store-search-result-item" role="option">
+                    <img src="${img}" alt="${p.nome}" loading="lazy" onerror="this.style.visibility='hidden'">
+                    <div>
+                        <div class="result-nome">${p.nome}</div>
+                        <div class="result-preco">R$ ${preco}</div>
+                    </div>
+                </a>`;
+        }).join('');
+
+        resultsBox.innerHTML = itens + `
+            <a href="/store/produtos?q=${encodeURIComponent(termo)}" class="store-search-results-footer">
+                Ver todos os resultados para "${termo}"
+            </a>`;
+        resultsBox.classList.add('show');
+        itemAtivoIndex = -1;
+    }
+
+    async function buscarSugestoes(termo) {
+        if (abortController) abortController.abort();
+        abortController = new AbortController();
+        ultimoTermoBuscado = termo;
+
+        resultsBox.innerHTML = `<div class="store-search-results-loading"><span class="spinner-border spinner-border-sm me-2"></span>Buscando...</div>`;
+        resultsBox.classList.add('show');
+
+        try {
+            const res = await fetch(`/api/store/products?q=${encodeURIComponent(termo)}&per_page=6&sort=alfabetica`, {
+                signal: abortController.signal
+            });
+            if (!res.ok) throw new Error('Falha na busca');
+            const data = await res.json();
+            // Ignora resposta se o usuario ja digitou outra coisa enquanto isso carregava
+            if (termo === ultimoTermoBuscado) {
+                renderResultados(data.produtos || [], termo);
+            }
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                resultsBox.innerHTML = `<div class="store-search-results-empty">Não foi possível buscar agora. Tente novamente.</div>`;
+                resultsBox.classList.add('show');
+            }
+        }
+    }
+
+    const buscarComDebounce = (() => {
+        let timer;
+        return (termo) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => buscarSugestoes(termo), 300);
+        };
+    })();
 
     toggleBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -583,12 +661,40 @@ function initStoreSearchBar() {
         });
     });
 
+    searchInput.addEventListener('input', () => {
+        const termo = searchInput.value.trim();
+        if (termo.length < MIN_CHARS) {
+            esconderResultados();
+            return;
+        }
+        buscarComDebounce(termo);
+    });
+
+    // Navegacao por teclado entre as sugestoes (setas + Enter)
+    searchInput.addEventListener('keydown', (e) => {
+        const itens = resultsBox.querySelectorAll('.store-search-result-item');
+        if (!itens.length || !resultsBox.classList.contains('show')) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            itemAtivoIndex = Math.min(itemAtivoIndex + 1, itens.length - 1);
+            itens.forEach((el, i) => el.classList.toggle('active', i === itemAtivoIndex));
+            itens[itemAtivoIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            itemAtivoIndex = Math.max(itemAtivoIndex - 1, 0);
+            itens.forEach((el, i) => el.classList.toggle('active', i === itemAtivoIndex));
+            itens[itemAtivoIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter' && itemAtivoIndex >= 0) {
+            e.preventDefault();
+            itens[itemAtivoIndex].click();
+        }
+    });
+
     searchForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const termo = searchInput.value.trim();
-        if (termo) {
-            window.location.href = `/store/produtos?q=${encodeURIComponent(termo)}`;
-        }
+        if (termo) irParaResultados(termo);
     });
 
     // Fecha ao clicar fora do painel (mas nao ao clicar em algum dos botoes, que já tratam isso)

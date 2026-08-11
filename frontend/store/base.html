@@ -78,8 +78,13 @@
             pointer-events: auto;
         }
 
-        .store-search-form {
+        .store-search-wrapper {
+            position: relative;
             max-width: 420px;
+            width: 100%;
+        }
+
+        .store-search-form {
             width: 100%;
             border: 1px solid var(--border-color);
             transition: box-shadow 0.2s ease, border-color 0.2s ease;
@@ -126,6 +131,93 @@
             filter: brightness(0.95);
         }
 
+        /* Dropdown de sugestoes em tempo real, ancorado embaixo do form de busca */
+        .store-search-results {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+            max-height: 70vh;
+            overflow-y: auto;
+            z-index: 1030;
+        }
+
+        .store-search-results.show {
+            display: block;
+        }
+
+        .store-search-result-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0.9rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.15s ease;
+        }
+
+        .store-search-result-item:last-of-type {
+            border-bottom: none;
+        }
+
+        .store-search-result-item:hover,
+        .store-search-result-item:focus,
+        .store-search-result-item.active {
+            background-color: var(--surface-card);
+            color: var(--text-primary);
+        }
+
+        .store-search-result-item img {
+            width: 44px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 8px;
+            flex-shrink: 0;
+            background: var(--surface-card);
+        }
+
+        .store-search-result-item .result-nome {
+            font-size: 0.9rem;
+            font-weight: 500;
+            line-height: 1.25;
+        }
+
+        .store-search-result-item .result-preco {
+            font-size: 0.82rem;
+            color: var(--secondary-gold);
+            font-weight: 600;
+        }
+
+        .store-search-results-footer {
+            display: block;
+            text-align: center;
+            padding: 0.7rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--secondary-gold);
+            text-decoration: none;
+            background: var(--surface-card);
+        }
+
+        .store-search-results-footer:hover {
+            color: var(--text-primary);
+            background: #f0f0f0;
+        }
+
+        .store-search-results-empty,
+        .store-search-results-loading {
+            padding: 1rem;
+            text-align: center;
+            font-size: 0.88rem;
+            color: #6c757d;
+        }
+
         @media (max-width: 768px) {
             .store-search-bar {
                 top: 64px;
@@ -135,7 +227,7 @@
                 justify-content: center !important;
             }
 
-            .store-search-form {
+            .store-search-wrapper {
                 max-width: none;
             }
         }
@@ -401,17 +493,22 @@
             </div>
         </nav>
 
-        <!-- Painel de busca rapida (some por padrao; abre pelo icone de lupa da navbar) -->
+        <!-- Painel de busca rapida (some por padrao; abre pelo icone de lupa da navbar).
+             Mostra sugestoes de produto em tempo real conforme o usuario digita. -->
         <div id="storeSearchBar" class="store-search-bar" role="search">
             <div class="container d-flex justify-content-end py-3">
-                <form id="storeSearchForm" class="store-search-form input-group shadow-sm rounded-pill overflow-hidden">
-                    <span class="input-group-text">
-                        <i class="fas fa-search"></i>
-                    </span>
-                    <input type="search" class="form-control" id="storeSearchInput"
-                        placeholder="Buscar produtos..." aria-label="Buscar produtos">
-                    <button class="btn fw-bold" type="submit">Buscar</button>
-                </form>
+                <div class="store-search-wrapper">
+                    <form id="storeSearchForm" class="store-search-form input-group shadow-sm rounded-pill overflow-hidden">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="search" class="form-control" id="storeSearchInput" autocomplete="off"
+                            placeholder="Buscar produtos..." aria-label="Buscar produtos"
+                            aria-controls="storeSearchResults" aria-autocomplete="list">
+                        <button class="btn fw-bold" type="submit">Buscar</button>
+                    </form>
+                    <div id="storeSearchResults" class="store-search-results"></div>
+                </div>
             </div>
         </div>
 
@@ -556,7 +653,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Device ID do Mercado Pago: reduz falsos positivos do antifraude deles no checkout -->
     <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
-    <script src="/frontend/js/store.js?v=6"></script>
+    <script src="/frontend/js/store.js?v=7"></script>
     {% block scripts %}{% endblock %}
 </body>
 
