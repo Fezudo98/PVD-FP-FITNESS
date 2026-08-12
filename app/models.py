@@ -232,6 +232,11 @@ class Venda(db.Model):
     data_cancelamento = db.Column(db.DateTime, nullable=True)
     motivo_cancelamento = db.Column(db.String(255), nullable=True)
 
+    # Controla o envio único do e-mail de lembrete de carrinho abandonado (ver
+    # lembrar_carrinhos_abandonados em store.py) - sem isso, cada execução do job de 15 em 15
+    # minutos reenviaria o lembrete pro mesmo pedido pendente.
+    lembrete_abandono_enviado = db.Column(db.Boolean, nullable=False, default=False)
+
     cliente = db.relationship('Cliente')
     vendedor = db.relationship('Usuario')
     itens = db.relationship('ItemVenda', backref='venda', cascade="all, delete-orphan")

@@ -16,6 +16,14 @@ def init_scheduler(app):
             except Exception as e:
                 print(f"[Scheduler] Erro ao limpar vendas abandonadas: {e}")
 
+    def job_lembrar_carrinho_abandonado():
+        with app.app_context():
+            from .routes.store import lembrar_carrinhos_abandonados
+            try:
+                lembrar_carrinhos_abandonados()
+            except Exception as e:
+                print(f"[Scheduler] Erro ao lembrar carrinhos abandonados: {e}")
+
     def job_atualizar_rastreio():
         with app.app_context():
             try:
@@ -76,6 +84,10 @@ def init_scheduler(app):
 
     # Roda a limpeza de vendas a cada 15 minutos
     scheduler.add_job(func=job_limpar_abandonadas, trigger="interval", minutes=15)
+
+    # Roda o lembrete de carrinho abandonado a cada 5 minutos (pedidos com 10+ min de idade),
+    # com folga suficiente pro cliente receber o e-mail antes do cancelamento automático aos 30 min
+    scheduler.add_job(func=job_lembrar_carrinho_abandonado, trigger="interval", minutes=5)
     
     # Roda a atualização de rastreios a cada 3 horas (para não estourar limite de requisições)
     scheduler.add_job(func=job_atualizar_rastreio, trigger="interval", hours=3)

@@ -155,6 +155,29 @@ def enviar_pagamento_rejeitado(venda):
     return _enviar_email(venda.cliente.email, f'Pagamento não aprovado - Pedido #{venda.id} - FP Moda Fitness', html)
 
 
+def enviar_lembrete_carrinho_abandonado(venda):
+    """Lembrete enviado pra quem iniciou o checkout mas não terminou de pagar, antes que o
+    pedido seja cancelado automaticamente por abandono (30 min). Link vai para o login com
+    redirect pra 'Minha Conta', de onde dá pra retomar o pagamento do pedido pendente."""
+    if not venda.cliente or not venda.cliente.email:
+        return False
+
+    primeiro_nome = venda.cliente.nome.strip().split(' ')[0]
+    link_retomar = 'https://lojafpfitness.com.br/store/login?redirect=/store/conta'
+
+    corpo = f'''
+        <p>Olá, {primeiro_nome}!</p>
+        <p>Vimos que você separou uns itens mas não finalizou o pagamento do pedido <strong>#{venda.id}</strong>. Eles ainda estão reservados pra você, mas por pouco tempo.</p>
+        {_lista_itens_html(venda)}
+        <p style="font-size:18px;font-weight:bold;color:#c9a22b;">Total: R$ {_fmt_brl(venda.total_venda)}</p>
+        <p><strong>Dica:</strong> pagar com <strong>PIX</strong> costuma aprovar na hora.</p>
+        <a href="{link_retomar}" style="display:inline-block;margin-top:10px;padding:12px 24px;background:linear-gradient(135deg,#e0b431,#c9a22b);color:#000000;text-decoration:none;font-weight:bold;border-radius:50px;">Finalizar Pagamento</a>
+    '''
+
+    html = _template_base(f'Seu carrinho está te esperando! 🛒', corpo)
+    return _enviar_email(venda.cliente.email, f'Você esqueceu algo no carrinho - Pedido #{venda.id} - FP Moda Fitness', html)
+
+
 def enviar_pedido_enviado(venda):
     if not venda.cliente or not venda.cliente.email:
         return False

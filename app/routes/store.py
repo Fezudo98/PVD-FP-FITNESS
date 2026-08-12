@@ -16,7 +16,7 @@ from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, Avali
 from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
-from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin, enviar_pagamento_rejeitado
+from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin, enviar_pagamento_rejeitado, enviar_lembrete_carrinho_abandonado
 from ..services.meta_capi_service import enviar_evento_purchase
 import mercadopago
 import threading
@@ -165,6 +165,40 @@ def limpar_vendas_abandonadas():
     except Exception as e:
         db.session.rollback()
         print(f"[Estoque] Erro ao limpar vendas abandonadas: {e}")
+
+def lembrar_carrinhos_abandonados():
+    """Manda um e-mail de lembrete pra quem iniciou o checkout mas ainda não pagou, antes que o
+    pedido seja cancelado automaticamente por abandono (30 min, ver limpar_vendas_abandonadas).
+    Só considera pedidos com pelo menos 10 min de idade (dá tempo da pessoa ainda estar
+    terminando o pagamento sozinha) e nunca reenvia pro mesmo pedido (lembrete_abandono_enviado)."""
+    try:
+        limite_tempo = current_brazil_time() - timedelta(minutes=10)
+        candidatas = Venda.query.filter(
+            Venda.status == 'Pendente',
+            Venda.data_hora <= limite_tempo,
+            Venda.id_vendedor == None,
+            Venda.lembrete_abandono_enviado == False
+        ).all()
+
+        if not candidatas:
+            return
+
+        total_enviados = 0
+        for venda in candidatas:
+            venda.lembrete_abandono_enviado = True  # marca sempre, mesmo sem e-mail cadastrado, pra não reprocessar
+            if venda.cliente and venda.cliente.email:
+                try:
+                    if enviar_lembrete_carrinho_abandonado(venda):
+                        total_enviados += 1
+                except Exception as e:
+                    print(f"Erro ao enviar lembrete de carrinho abandonado da venda {venda.id}: {e}")
+
+        db.session.commit()
+        if total_enviados:
+            print(f"[Carrinho Abandonado] {total_enviados} lembrete(s) de pagamento enviado(s).")
+    except Exception as e:
+        db.session.rollback()
+        print(f"[Carrinho Abandonado] Erro ao processar lembretes: {e}")
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'mp4', 'mov', 'avi'}
 
