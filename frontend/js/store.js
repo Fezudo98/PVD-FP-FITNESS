@@ -5,6 +5,16 @@ function formatBRL(value) {
     return (Number(value) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Wrapper seguro pro Meta Pixel: nao quebra a pagina se o fbq nao carregou (ex: bloqueador
+// de anuncios/tracker no navegador do cliente).
+function fbqTrack(evento, params, opcoes) {
+    try {
+        if (typeof fbq === 'function') fbq('track', evento, params || {}, opcoes || {});
+    } catch (e) {
+        console.error('Erro ao disparar evento do Pixel:', e);
+    }
+}
+
 let cart = JSON.parse(localStorage.getItem('fp_fitness_cart')) || [];
 let currentCoupon = null; // Store applied coupon
 let clienteRecompensaAvaliacaoCheckout = null; // Desconto automático de "primeira avaliação" do cliente logado
@@ -34,6 +44,13 @@ function addToCart(productId, nome, price, image, stock = 999) {
 
     localStorage.setItem('fp_fitness_cart', JSON.stringify(cart));
     updateCartCount();
+    fbqTrack('AddToCart', {
+        content_ids: [String(productId)],
+        content_type: 'product',
+        content_name: nome,
+        value: price,
+        currency: 'BRL'
+    });
 
     Swal.fire({
         icon: 'success',
@@ -201,6 +218,8 @@ function removeCoupon() {
     renderCheckoutPage();
 }
 
+let initiateCheckoutTracked = false;
+
 function renderCheckoutPage() {
     const container = document.getElementById('checkoutItems');
     const subtotalEl = document.getElementById('checkoutSubtotal');
@@ -290,6 +309,19 @@ function renderCheckoutPage() {
     }
 
     if (totalEl) totalEl.textContent = `R$ ${formatBRL(total)}`;
+
+    // So dispara uma vez por carregamento da pagina (a funcao roda de novo a cada
+    // cupom/frete recalculado, o que nao deve gerar eventos duplicados de funil).
+    if (!initiateCheckoutTracked) {
+        initiateCheckoutTracked = true;
+        fbqTrack('InitiateCheckout', {
+            content_ids: cart.map(item => String(item.id)),
+            content_type: 'product',
+            num_items: cart.reduce((acc, item) => acc + item.quantity, 0),
+            value: total,
+            currency: 'BRL'
+        });
+    }
 }
 
 
@@ -589,6 +621,7 @@ function initStoreSearchBar() {
     };
 
     const irParaResultados = (termo) => {
+        fbqTrack('Search', { search_string: termo, content_type: 'product' });
         window.location.href = `/store/produtos?q=${encodeURIComponent(termo)}`;
     };
 

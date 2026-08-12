@@ -567,6 +567,15 @@
             renderProductInfo(currentProduct);
             initializeOptions();
 
+            fbqTrack('ViewContent', {
+                content_ids: [String(currentProduct.id)],
+                content_type: 'product',
+                content_name: currentProduct.nome,
+                content_category: currentProduct.categoria || undefined,
+                value: currentProduct.preco_venda,
+                currency: 'BRL'
+            });
+
         } catch (error) {
             console.error(error);
             Swal.fire({
@@ -879,6 +888,13 @@
         }
         localStorage.setItem('fp_fitness_cart', JSON.stringify(cart));
         updateCartCount();
+        fbqTrack('AddToCart', {
+            content_ids: [String(finalProduct.id)],
+            content_type: 'product',
+            content_name: finalProduct.nome,
+            value: finalProduct.preco_venda,
+            currency: 'BRL'
+        });
         Swal.fire({
             icon: 'success',
             title: 'Produto Adicionado!',
@@ -922,6 +938,13 @@
         }
         localStorage.setItem('fp_fitness_cart', JSON.stringify(cart));
         updateCartCount();
+        fbqTrack('AddToCart', {
+            content_ids: [String(finalProduct.id)],
+            content_type: 'product',
+            content_name: finalProduct.nome,
+            value: finalProduct.preco_venda,
+            currency: 'BRL'
+        });
 
         // Direct redirect to checkout
         window.location.href = '/store/checkout';

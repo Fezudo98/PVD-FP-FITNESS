@@ -17,6 +17,7 @@ from ..utils import token_required, client_token_required, validate_cpf, registr
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
 from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin, enviar_pagamento_rejeitado
+from ..services.meta_capi_service import enviar_evento_purchase
 import mercadopago
 import threading
 
@@ -154,6 +155,7 @@ def limpar_vendas_abandonadas():
                     enviar_pagamento_aprovado(venda_recuperada)
                 except Exception as e:
                     print(f"Erro ao enviar e-mail de pagamento aprovado (reconciliação) da venda {venda_recuperada.id}: {e}")
+                enviar_evento_purchase(venda_recuperada)
             print(f"[Estoque] {total_canceladas} vendas abandonadas canceladas, {total_recuperadas} recuperadas (pagamento aprovado sem webhook processado).")
     except Exception as e:
         db.session.rollback()
@@ -1025,6 +1027,7 @@ def mercadopago_webhook():
                                 enviar_pagamento_aprovado(venda)
                             except Exception as e:
                                 print(f"Erro ao enviar e-mail de pagamento aprovado da venda {venda.id}: {e}")
+                            enviar_evento_purchase(venda)
 
                         elif payment_status in ['rejected', 'cancelled']:
                             venda.atualizar_status('Cancelada', motivo=f'Pagamento {payment_status} pelo Mercado Pago.')

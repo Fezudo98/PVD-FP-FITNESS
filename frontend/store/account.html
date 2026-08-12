@@ -289,12 +289,47 @@
 
 {% block scripts %}
 <script>
+    // O Mercado Pago (Checkout Pro) redireciona de volta pra ca apos o pagamento, anexando
+    // "external_reference" (o id da venda) na URL. Usamos isso pra disparar o evento de Compra
+    // do Pixel exatamente uma vez por pedido - buscando o pedido real na API (nunca confiando
+    // em valor vindo da URL) e marcando no localStorage pra nao duplicar em reload/voltar.
+    async function trackPurchaseSeVoltandoDoMercadoPago(token) {
+        const params = new URLSearchParams(window.location.search);
+        const vendaId = params.get('external_reference');
+        if (!vendaId) return;
+
+        const chaveRastreado = `fp_purchase_tracked_${vendaId}`;
+        if (localStorage.getItem(chaveRastreado)) return;
+
+        try {
+            const res = await fetch('/api/client/orders', { headers: { 'x-client-token': token } });
+            if (!res.ok) return;
+            const orders = await res.json();
+            const pedido = orders.find(o => String(o.id) === String(vendaId));
+            if (!pedido || ['Pendente', 'Cancelada', 'Reembolsada'].includes(pedido.status)) return;
+
+            fbqTrack('Purchase', {
+                value: pedido.total,
+                currency: 'BRL',
+                content_ids: pedido.itens.map(i => String(i.id_produto)),
+                content_type: 'product',
+                num_items: pedido.itens.reduce((acc, i) => acc + i.quantidade, 0)
+            }, { eventID: `purchase_${vendaId}` });
+
+            localStorage.setItem(chaveRastreado, '1');
+        } catch (e) {
+            console.error('Erro ao rastrear compra (pixel):', e);
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
         const token = localStorage.getItem('clientToken') || sessionStorage.getItem('clientToken');
         if (!token) {
             window.location.href = '/store/login';
             return;
         }
+
+        trackPurchaseSeVoltandoDoMercadoPago(token);
 
         // --- Input Masking Functions ---
         const formatCPF = (value) => {
