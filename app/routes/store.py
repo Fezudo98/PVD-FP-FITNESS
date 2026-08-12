@@ -66,16 +66,20 @@ def _registrar_visita():
 
 def disparar_geracao_etiqueta_async(venda):
     """Gera a etiqueta do Melhor Envio em background (sem travar quem chamou), se a venda usou
-    um serviço do Melhor Envio (codigo_servico_frete começando com 'me_')."""
+    um serviço do Melhor Envio (codigo_servico_frete começando com 'me_'). Não gera de novo se
+    já existe uma etiqueta salva (evita comprar o frete duas vezes na carteira do ME)."""
     if not (venda.codigo_servico_frete and venda.codigo_servico_frete.startswith('me_')):
+        return
+    if venda.etiqueta_url:
         return
 
     def async_gerar_etiqueta(app, v_id):
         with app.app_context():
             try:
                 v_async = Venda.query.get(v_id)
-                if v_async:
+                if v_async and not v_async.etiqueta_url:
                     url_pdf, tracking_code = gerar_etiqueta_me(v_async)
+                    v_async.etiqueta_url = url_pdf
                     if tracking_code:
                         v_async.codigo_rastreio = tracking_code
                     db.session.commit()

@@ -834,6 +834,26 @@ CEP: ${venda.entrega_cep}`;
         // Store ID for save button context
         document.getElementById('trackingCodeInput').dataset.vendaId = venda.id;
 
+        // Etiqueta do Melhor Envio: só aparece se essa venda foi feita com um serviço do ME
+        // (codigo_servico_frete começa com "me_"). Se já existe etiqueta, o botão imprime a
+        // que já foi gerada (nunca gera de novo - isso recompraria o frete); senão, gera.
+        const etiquetaBox = document.getElementById('etiquetaMelhorEnvioBox');
+        const usouMelhorEnvio = venda.codigo_servico_frete && venda.codigo_servico_frete.startsWith('me_');
+        if (usouMelhorEnvio) {
+            etiquetaBox.classList.remove('d-none');
+            const btn = document.getElementById('btnEtiquetaAction');
+            const label = document.getElementById('btnEtiquetaActionLabel');
+            if (venda.etiqueta_url) {
+                label.textContent = 'Imprimir Etiqueta';
+                btn.onclick = () => window.open(`/imprimir_etiqueta.html?venda_id=${venda.id}`, '_blank');
+            } else {
+                label.textContent = 'Gerar Etiqueta';
+                btn.onclick = () => gerarEtiquetaEImprimir(venda.id, btn, label);
+            }
+        } else {
+            etiquetaBox.classList.add('d-none');
+        }
+
         // Render Actions (Also Contextual here!)
         const actionsDiv = document.getElementById('statusActions');
         actionsDiv.innerHTML = '';
@@ -856,6 +876,29 @@ CEP: ${venda.entrega_cep}`;
     } catch (error) {
         console.error(error);
         Swal.fire('Erro', 'Não foi possível carregar os detalhes.', 'error');
+    }
+}
+
+async function gerarEtiquetaEImprimir(vendaId, btn, label) {
+    const token = localStorage.getItem('authToken');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Gerando...';
+
+    try {
+        const res = await fetch(`${API_URL}/api/vendas/${vendaId}/etiqueta`, {
+            method: 'POST',
+            headers: { 'x-access-token': token }
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.erro || 'Erro ao gerar etiqueta.');
+
+        window.open(`/imprimir_etiqueta.html?venda_id=${vendaId}`, '_blank');
+    } catch (error) {
+        console.error('Erro ao gerar etiqueta:', error);
+        Swal.fire('Erro', error.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     }
 }
 

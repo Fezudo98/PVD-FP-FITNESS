@@ -8,6 +8,8 @@ from ...extensions import limiter
 import math
 import os
 import mercadopago
+import requests
+import jwt
 from datetime import datetime, timedelta
 from sqlalchemy import func
 
@@ -222,6 +224,8 @@ def get_venda_details(current_user, venda_id):
         'tipo_entrega': venda.tipo_entrega,
         'codigo_rastreio': venda.codigo_rastreio,
         'transportadora': venda.transportadora,
+        'codigo_servico_frete': venda.codigo_servico_frete,
+        'etiqueta_url': venda.etiqueta_url,
         'termos_aceitos': venda.termos_aceitos,
         'ip_comprador': venda.ip_comprador,
         'versao_termos': venda.versao_termos,
@@ -368,23 +372,68 @@ def reembolsar_venda(current_user, venda_id):
 def gerar_etiqueta(current_user, venda_id):
     if current_user.role != 'admin': return jsonify({'erro': 'Acesso negado.'}), 403
     venda = Venda.query.get_or_404(venda_id)
-    
+
+    # Já tem etiqueta gerada: nunca gera de novo (isso recompraria o frete na carteira do
+    # Melhor Envio) - só devolve a que já existe, pra reimprimir.
+    if venda.etiqueta_url:
+        return jsonify({
+            'mensagem': 'Esta venda já tem uma etiqueta gerada.',
+            'url': venda.etiqueta_url,
+            'tracking_code': venda.codigo_rastreio
+        })
+
     try:
         url_pdf, tracking_code = gerar_etiqueta_me(venda)
-        
+        venda.etiqueta_url = url_pdf
+
         if tracking_code:
             venda.codigo_rastreio = tracking_code
             registrar_log(current_user, "Rastreio Automático ME", f"ID: {venda.id} - Rastreio: {tracking_code}")
-            
+
         db.session.commit()
         return jsonify({
-            'mensagem': 'Etiqueta gerada com sucesso!', 
+            'mensagem': 'Etiqueta gerada com sucesso!',
             'url': url_pdf,
             'tracking_code': tracking_code
         })
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': str(e)}), 500
+
+@api_bp.route('/api/vendas/<int:venda_id>/etiqueta/pdf', methods=['GET'])
+def proxy_etiqueta_pdf(venda_id):
+    """Repassa o PDF da etiqueta (hospedado no Melhor Envio) através do nosso próprio domínio,
+    pra poder ser embutido num <iframe> same-origin e disparar impressão automática - um
+    <iframe src="dominio-externo"> não permite isso por segurança do navegador.
+
+    Aceita o token tanto no header (uso normal da API) quanto via querystring (?token=...),
+    porque um <iframe src> não tem como mandar headers customizados."""
+    token = request.headers.get('x-access-token') or request.args.get('token')
+    if not token:
+        return jsonify({'erro': 'Token ausente.'}), 401
+    try:
+        data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
+        current_user = Usuario.query.get(data['id'])
+        if not current_user or current_user.role != 'admin':
+            return jsonify({'erro': 'Acesso negado.'}), 403
+    except Exception:
+        return jsonify({'erro': 'Token inválido.'}), 401
+
+    venda = Venda.query.get_or_404(venda_id)
+    if not venda.etiqueta_url:
+        return jsonify({'erro': 'Esta venda ainda não tem etiqueta gerada.'}), 404
+
+    try:
+        resp = requests.get(venda.etiqueta_url, timeout=15)
+        resp.raise_for_status()
+    except Exception as e:
+        return jsonify({'erro': f'Não foi possível obter o PDF da etiqueta: {e}'}), 502
+
+    return Response(
+        resp.content,
+        mimetype='application/pdf',
+        headers={'Content-Disposition': f'inline; filename="etiqueta_pedido_{venda_id}.pdf"'}
+    )
 
 @api_bp.route('/api/vendas/online/pendentes/count', methods=['GET'])
 @token_required

@@ -211,6 +211,9 @@ class Venda(db.Model):
     # Usado para saber se a venda pode gerar etiqueta via Melhor Envio (tipo_entrega/transportadora
     # guardam só o rótulo amigável exibido ao usuário, não servem para isso).
     codigo_servico_frete = db.Column(db.String(30), nullable=True)
+    # URL do PDF da etiqueta gerada no Melhor Envio - salva pra nao precisar gerar de novo
+    # (o que recompraria o frete na carteira do ME) so pra reimprimir uma etiqueta ja emitida.
+    etiqueta_url = db.Column(db.String(500), nullable=True)
     id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     id_vendedor = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True) # Nullable para vendas online
     
