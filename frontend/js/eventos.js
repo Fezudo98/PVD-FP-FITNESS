@@ -128,7 +128,7 @@ function renderCards(data) {
                     <i class="fa-solid ${ICONES_TIPO[c.chave]} text-warning"></i>
                 </div>
                 <div class="evt-valor">${c.valor}</div>
-                ${c.sub ? `<div class="small text-muted mt-1">${c.sub}</div>` : ''}
+                ${c.sub ? `<div class="small text-white-50 mt-1">${c.sub}</div>` : ''}
             </div>
         </div>
     `).join('');
@@ -160,7 +160,7 @@ function renderFunil(data) {
             </div>
         `;
     }).join('') + `
-        <div class="text-end small text-muted mt-2">
+        <div class="text-end small text-white-50 mt-2">
             Conversão total (visualização → compra): <strong class="text-warning">${t.pageview_para_purchase}%</strong>
         </div>
     `;
@@ -168,7 +168,7 @@ function renderFunil(data) {
 
 async function carregarEventos() {
     const tbody = document.getElementById('tabelaEventos');
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">Carregando...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-white-50 py-4">Carregando...</td></tr>`;
 
     try {
         const params = new URLSearchParams({ page: paginaAtual, per_page: 25 });
@@ -182,7 +182,7 @@ async function carregarEventos() {
         totalPaginas = data.total_paginas;
 
         if (data.eventos.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">Nenhum evento encontrado.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-white-50 py-4">Nenhum evento encontrado.</td></tr>`;
         } else {
             tbody.innerHTML = data.eventos.map(e => `
                 <tr>
