@@ -60,7 +60,7 @@
             </div>
         </div>
     </di<!-- Welcome Modal -->
-<div class="modal fade" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true" data-bs-backdrop="static">
+<div class="modal fade" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden position-relative" style="background-color: #121212;">
             <!-- Background Elements for Premium Feel -->
@@ -223,6 +223,12 @@
         if (!mostrouRecompensa) {
             checkWelcomeModal();
         }
+
+        // Sem backdrop "static": o cliente pode fechar so tocando fora do modal (gesto natural
+        // no mobile). Isso garante que a flag de "ja visto" seja marcada nesse caso tambem,
+        // nao so quando clica no X ou no botao - senao o modal voltaria a aparecer.
+        document.getElementById('welcomeModal').addEventListener('hidden.bs.modal', closeWelcomeModal);
+        document.getElementById('recompensaModal').addEventListener('hidden.bs.modal', closeRecompensaModal);
     });
 
     function checkWelcomeModal() {
