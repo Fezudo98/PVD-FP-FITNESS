@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 import uuid
 import types
 from ..extensions import db
-from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, VisitaSite, current_brazil_time
+from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, VisitaSite, EventoMarketing, current_brazil_time
 from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
@@ -155,7 +155,12 @@ def limpar_vendas_abandonadas():
                     enviar_pagamento_aprovado(venda_recuperada)
                 except Exception as e:
                     print(f"Erro ao enviar e-mail de pagamento aprovado (reconciliação) da venda {venda_recuperada.id}: {e}")
-                enviar_evento_purchase(venda_recuperada)
+                enviado_ok = enviar_evento_purchase(venda_recuperada)
+                db.session.add(EventoMarketing(
+                    tipo='Purchase', valor=venda_recuperada.total_venda, id_venda=venda_recuperada.id,
+                    detalhe='Reconciliação (webhook atrasado/falhou)', enviado_meta=enviado_ok
+                ))
+            db.session.commit()
             print(f"[Estoque] {total_canceladas} vendas abandonadas canceladas, {total_recuperadas} recuperadas (pagamento aprovado sem webhook processado).")
     except Exception as e:
         db.session.rollback()
@@ -209,6 +214,41 @@ def get_public_theme():
     config = Configuracao.query.filter_by(chave='SYSTEM_THEME').first()
     theme = config.valor if config else 'original'
     return jsonify({'theme': theme})
+
+@store_bp.route('/api/public/track-event', methods=['POST'])
+def store_track_event():
+    """Espelha, no nosso banco, os eventos de funil que o navegador manda pro Pixel do Meta
+    (ViewContent, AddToCart, Search, InitiateCheckout) - alimenta o Gerenciador de Eventos do
+    painel admin. Purchase não passa por aqui: é registrado direto pelo backend (webhook do
+    Mercado Pago), fonte mais confiável. Sempre responde rápido e nunca quebra a navegação do
+    cliente, mesmo com payload malformado."""
+    dados = request.get_json(silent=True) or {}
+    tipo = dados.get('tipo')
+    if tipo not in ('ViewContent', 'AddToCart', 'Search', 'InitiateCheckout'):
+        return jsonify({'status': 'ignorado'}), 200
+
+    try:
+        id_produto = dados.get('id_produto')
+        if id_produto is not None:
+            id_produto = int(id_produto)
+    except (TypeError, ValueError):
+        id_produto = None
+
+    try:
+        valor = dados.get('valor')
+        valor = float(valor) if valor is not None else None
+    except (TypeError, ValueError):
+        valor = None
+
+    evento = EventoMarketing(
+        tipo=tipo,
+        valor=valor,
+        id_produto=id_produto,
+        detalhe=(dados.get('detalhe') or '')[:255] or None
+    )
+    db.session.add(evento)
+    db.session.commit()
+    return jsonify({'status': 'ok'}), 201
 
 @store_bp.route('/api/store/products', methods=['GET'])
 def store_get_products():
@@ -1027,7 +1067,12 @@ def mercadopago_webhook():
                                 enviar_pagamento_aprovado(venda)
                             except Exception as e:
                                 print(f"Erro ao enviar e-mail de pagamento aprovado da venda {venda.id}: {e}")
-                            enviar_evento_purchase(venda)
+                            enviado_ok = enviar_evento_purchase(venda)
+                            db.session.add(EventoMarketing(
+                                tipo='Purchase', valor=venda.total_venda, id_venda=venda.id,
+                                detalhe='Webhook Mercado Pago', enviado_meta=enviado_ok
+                            ))
+                            db.session.commit()
 
                         elif payment_status in ['rejected', 'cancelled']:
                             venda.atualizar_status('Cancelada', motivo=f'Pagamento {payment_status} pelo Mercado Pago.')

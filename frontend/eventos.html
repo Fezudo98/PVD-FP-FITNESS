@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Eventos - Sistema FP Moda Fitness</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .evt-card {
+            background-color: var(--cor-card);
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 1.25rem;
+            height: 100%;
+        }
+
+        .evt-card .evt-valor {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .evt-card .evt-label {
+            color: #aaa;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .evt-status-badge {
+            font-size: 0.75rem;
+            padding: 0.35rem 0.7rem;
+        }
+
+        .funil-etapa {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .funil-barra-wrapper {
+            flex: 1;
+            background: #333;
+            border-radius: 6px;
+            overflow: hidden;
+            height: 34px;
+            position: relative;
+        }
+
+        .funil-barra {
+            height: 100%;
+            background: linear-gradient(90deg, var(--cor-principal), #c9a22b);
+            display: flex;
+            align-items: center;
+            padding-left: 12px;
+            color: #000;
+            font-weight: 700;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            transition: width 0.4s ease;
+            min-width: 40px;
+        }
+
+        .funil-nome {
+            width: 150px;
+            flex-shrink: 0;
+            font-size: 0.85rem;
+            color: #ddd;
+            font-weight: 600;
+        }
+
+        .funil-taxa {
+            width: 90px;
+            flex-shrink: 0;
+            text-align: right;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .table-eventos tbody tr:hover {
+            background-color: rgba(224, 180, 49, 0.08);
+        }
+
+        .badge-tipo-ViewContent {
+            background-color: #3b82f6;
+        }
+
+        .badge-tipo-AddToCart {
+            background-color: #f59e0b;
+            color: #000;
+        }
+
+        .badge-tipo-Search {
+            background-color: #8b5cf6;
+        }
+
+        .badge-tipo-InitiateCheckout {
+            background-color: #ec4899;
+        }
+
+        .badge-tipo-Purchase {
+            background-color: #22c55e;
+            color: #000;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="background-container"></div>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/index.html"><img src="/logo.jpg" alt="Logo" width="100"></a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar" aria-controls="adminNavbar" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="adminNavbar">
+                <div class="d-flex flex-column flex-lg-row mt-3 mt-lg-0 w-100 justify-content-end">
+                <a href="/index.html" class="btn btn-outline-secondary me-2">Voltar ao Painel</a>
+                <a href="/manual.html" class="btn btn-outline-info me-2" title="Manual do Sistema">
+                    <i class="fas fa-book"></i> Manual
+                </a>
+                <button class="btn btn-outline-warning" id="logoutButton">Sair</button>
+            </div>
+</div>
+        </div>
+    </nav>
+
+    <main class="container main-content mt-4" style="max-width: 1100px;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h2 class="mb-0"><i class="fa-solid fa-bullseye me-2"></i>Gerenciador de Eventos</h2>
+            <div class="d-flex align-items-center gap-2">
+                <div class="btn-group" role="group" id="periodoGroup">
+                    <button type="button" class="btn btn-outline-warning btn-sm" data-periodo="1">Hoje</button>
+                    <button type="button" class="btn btn-outline-warning btn-sm active" data-periodo="7">7 dias</button>
+                    <button type="button" class="btn btn-outline-warning btn-sm" data-periodo="30">30 dias</button>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm" id="btnAtualizar" title="Atualizar">
+                    <i class="fa-solid fa-rotate"></i>
+                </button>
+            </div>
+        </div>
+
+        <p class="text-white-50 small mb-4">
+            Acompanhe aqui os eventos enviados para o Facebook/Instagram Ads (Meta Pixel + API de
+            Conversões) sem precisar abrir o Gerenciador de Eventos do Meta. "Visualizações de página"
+            conta todo mundo que acessou a loja; as demais etapas mostram quantos avançaram no funil
+            até a compra.
+        </p>
+
+        <!-- Status de configuração -->
+        <div class="d-flex flex-wrap gap-2 mb-4" id="statusBadges"></div>
+
+        <!-- Cards de resumo -->
+        <div class="row g-3 mb-4" id="cardsResumo"></div>
+
+        <!-- Funil -->
+        <div class="card bg-dark text-white border-secondary mb-4">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3"><i class="fa-solid fa-filter me-2"></i>Funil de Conversão</h5>
+                <div id="funilContainer">
+                    <div class="text-center text-muted py-4">Carregando...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de eventos -->
+        <div class="card bg-dark text-white border-secondary mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <h5 class="fw-bold mb-0"><i class="fa-solid fa-list me-2"></i>Eventos Recentes</h5>
+                    <select class="form-select form-select-sm" id="filtroTipo" style="width: auto;">
+                        <option value="todos">Todos os tipos</option>
+                        <option value="Purchase">Compra</option>
+                        <option value="InitiateCheckout">Início de Checkout</option>
+                        <option value="AddToCart">Adicionar ao Carrinho</option>
+                        <option value="ViewContent">Visualizar Produto</option>
+                        <option value="Search">Busca</option>
+                    </select>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover table-eventos align-middle">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Evento</th>
+                                <th>Detalhe</th>
+                                <th class="text-end">Valor</th>
+                                <th class="text-center">Meta</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaEventos">
+                            <tr><td colspan="5" class="text-center text-muted py-4">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <small class="text-muted" id="paginacaoInfo"></small>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary" id="btnPaginaAnterior"><i class="fa-solid fa-chevron-left"></i></button>
+                        <button class="btn btn-outline-secondary" id="btnPaginaProxima"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/js/theme_manager.js"></script>
+    <script src="/js/eventos.js"></script>
+</body>
+
+</html>

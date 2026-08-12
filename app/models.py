@@ -287,6 +287,25 @@ class VisitaSite(db.Model):
     ip_hash = db.Column(db.String(64), nullable=False, index=True)
     pagina = db.Column(db.String(100), nullable=True)
 
+class EventoMarketing(db.Model):
+    """Espelha, no nosso próprio banco, os eventos de funil enviados pro Pixel/Conversions API
+    do Meta (ViewContent, AddToCart, Search, InitiateCheckout, Purchase). Existe pra alimentar
+    o Gerenciador de Eventos do painel admin sem depender de abrir o Gerenciador de Eventos do
+    Meta - PageView não entra aqui porque já é coberto pelo contador de VisitaSite."""
+    TIPOS_VALIDOS = ('ViewContent', 'AddToCart', 'Search', 'InitiateCheckout', 'Purchase')
+
+    id = db.Column(db.Integer, primary_key=True)
+    tipo = db.Column(db.String(30), nullable=False, index=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=current_brazil_time, index=True)
+    valor = db.Column(db.Float, nullable=True)
+    id_produto = db.Column(db.Integer, db.ForeignKey('produto.id'), nullable=True)
+    id_venda = db.Column(db.Integer, db.ForeignKey('venda.id'), nullable=True)
+    detalhe = db.Column(db.String(255), nullable=True)  # ex: nome do produto, termo buscado
+    enviado_meta = db.Column(db.Boolean, nullable=False, default=True)  # False = falha confirmada no envio (só se aplica ao Purchase server-side)
+
+    produto = db.relationship('Produto')
+    venda = db.relationship('Venda')
+
 class MovimentacaoCaixa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, nullable=False, default=current_brazil_time)

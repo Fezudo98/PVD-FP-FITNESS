@@ -6,12 +6,35 @@ function formatBRL(value) {
 }
 
 // Wrapper seguro pro Meta Pixel: nao quebra a pagina se o fbq nao carregou (ex: bloqueador
-// de anuncios/tracker no navegador do cliente).
+// de anuncios/tracker no navegador do cliente). Alem de disparar pro Pixel, espelha o evento
+// no nosso backend (exceto Purchase, que o servidor ja registra com mais autoridade via
+// webhook do Mercado Pago) pra alimentar o Gerenciador de Eventos do painel admin.
+const TIPOS_EVENTO_ESPELHADOS_NO_BACKEND = ['ViewContent', 'AddToCart', 'Search', 'InitiateCheckout'];
+
 function fbqTrack(evento, params, opcoes) {
+    params = params || {};
     try {
-        if (typeof fbq === 'function') fbq('track', evento, params || {}, opcoes || {});
+        if (typeof fbq === 'function') fbq('track', evento, params, opcoes || {});
     } catch (e) {
         console.error('Erro ao disparar evento do Pixel:', e);
+    }
+
+    if (TIPOS_EVENTO_ESPELHADOS_NO_BACKEND.includes(evento)) {
+        try {
+            fetch('/api/public/track-event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                keepalive: true,
+                body: JSON.stringify({
+                    tipo: evento,
+                    valor: params.value,
+                    id_produto: params.content_ids ? params.content_ids[0] : undefined,
+                    detalhe: params.content_name || params.search_string
+                })
+            }).catch(() => {});
+        } catch (e) {
+            // Nunca deve travar a navegacao do cliente por causa disso
+        }
     }
 }
 

@@ -32,11 +32,13 @@ def _hash_telefone(telefone):
 
 def enviar_evento_purchase(venda):
     """Envia o evento Purchase pra Conversions API. Nunca levanta excecao - uma falha aqui
-    (token invalido, Meta fora do ar, etc) nao pode derrubar o processamento do pagamento."""
+    (token invalido, Meta fora do ar, etc) nao pode derrubar o processamento do pagamento.
+    Retorna True se o Meta confirmou o recebimento, False caso contrario (falha ou credenciais
+    ausentes) - usado pelo chamador pra registrar o evento no Gerenciador de Eventos do painel."""
     pixel_id = os.environ.get('META_PIXEL_ID')
     access_token = os.environ.get('META_CAPI_ACCESS_TOKEN')
     if not pixel_id or not access_token:
-        return
+        return False
 
     try:
         cliente = venda.cliente
@@ -83,5 +85,8 @@ def enviar_evento_purchase(venda):
         resp = requests.post(url, params={'access_token': access_token}, json=payload, timeout=8)
         if resp.status_code != 200:
             print(f"Meta CAPI: falha ao enviar Purchase da venda {venda.id}: {resp.status_code} {resp.text}")
+            return False
+        return True
     except Exception as e:
         print(f"Meta CAPI: erro ao enviar Purchase da venda {venda.id}: {e}")
+        return False
