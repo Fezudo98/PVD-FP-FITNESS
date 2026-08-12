@@ -723,24 +723,79 @@ def criar_preferencia_mercadopago(venda, cliente, device_id=None):
     if device_id:
         request_options = mercadopago.config.RequestOptions(custom_headers={'X-meli-session-id': device_id})
 
+    # Itens reais do carrinho (produto a produto) em vez de uma linha genérica "Pedido #123":
+    # o antifraude de cartão do Mercado Pago e dos próprios bancos usa o detalhamento do
+    # carrinho como sinal de compra legítima - uma única linha opaca com o valor total parece
+    # mais uma transferência de dinheiro do que uma compra de loja, o que pesa contra a
+    # aprovação. Frete e desconto entram como linhas separadas para o total bater exatamente
+    # com venda.total_venda.
     mp_items = [{
-        "title": f"Pedido #{venda.id} - FP Fitness",
-        "quantity": 1,
-        "unit_price": round(venda.total_venda, 2),
+        "id": str(item.id_produto),
+        "title": (item.produto.nome if item.produto else f"Produto #{item.id_produto}")[:256],
+        "category_id": "fashion",
+        "quantity": item.quantidade,
+        "unit_price": round(item.preco_unitario_momento, 2),
         "currency_id": "BRL"
-    }]
+    } for item in venda.itens]
+
+    if venda.taxa_entrega:
+        mp_items.append({
+            "title": "Frete",
+            "quantity": 1,
+            "unit_price": round(venda.taxa_entrega, 2),
+            "currency_id": "BRL"
+        })
+
+    if venda.desconto_total:
+        mp_items.append({
+            "title": "Desconto",
+            "quantity": 1,
+            "unit_price": -round(venda.desconto_total, 2),
+            "currency_id": "BRL"
+        })
+
+    # Rede de segurança: se por qualquer motivo o detalhamento não bater centavo a centavo com
+    # o valor real da venda (arredondamento, item sem produto associado etc.), volta pro
+    # comportamento antigo (uma linha só) em vez de arriscar cobrar um valor errado do cliente.
+    soma_itens = round(sum(i["unit_price"] * i["quantity"] for i in mp_items), 2)
+    if abs(soma_itens - round(venda.total_venda, 2)) >= 0.01:
+        mp_items = [{
+            "title": f"Pedido #{venda.id} - FP Fitness",
+            "quantity": 1,
+            "unit_price": round(venda.total_venda, 2),
+            "currency_id": "BRL"
+        }]
+
+    payer = {
+        "name": cliente.nome,
+        "email": cliente.email,
+        "identification": {
+            "type": "CPF",
+            "number": cliente.cpf.replace('.', '').replace('-', '') if cliente.cpf else ""
+        }
+    }
+
+    # Telefone e endereço completos: mais um sinal de compra legítima pro antifraude (perfil de
+    # pagador incompleto é um dos fatores que mais pesa contra a aprovação de cartão).
+    if cliente.telefone:
+        digitos_tel = ''.join(filter(str.isdigit, cliente.telefone))
+        if len(digitos_tel) >= 10:
+            payer["phone"] = {"area_code": digitos_tel[:2], "number": digitos_tel[2:]}
+
+    cep_entrega = ''.join(filter(str.isdigit, venda.entrega_cep or ''))
+    if cep_entrega and venda.entrega_rua:
+        endereco = {"zip_code": cep_entrega, "street_name": venda.entrega_rua}
+        try:
+            endereco["street_number"] = int(''.join(filter(str.isdigit, venda.entrega_numero or '')) or 0)
+        except ValueError:
+            pass
+        payer["address"] = endereco
 
     preference_data = {
         "items": mp_items,
-        "payer": {
-            "name": cliente.nome,
-            "email": cliente.email,
-            "identification": {
-                "type": "CPF",
-                "number": cliente.cpf.replace('.', '').replace('-', '') if cliente.cpf else ""
-            }
-        },
+        "payer": payer,
         "external_reference": str(venda.id),
+        "statement_descriptor": "FP FITNESS",
         "back_urls": {
             "success": "https://lojafpfitness.com.br/store/conta",
             "failure": "https://lojafpfitness.com.br/store/checkout",
