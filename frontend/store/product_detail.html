@@ -129,6 +129,14 @@
             </div>
         </div>
     </div>
+
+    <!-- Você Também Pode Gostar (produtos relacionados por categoria) -->
+    <div class="row mt-5" id="relatedProductsSection" style="display:none;">
+        <div class="col-12">
+            <h3 class="fw-bold mb-4 border-bottom pb-2">Você Também Pode Gostar</h3>
+            <div class="row g-4" id="relatedProductsContainer"></div>
+        </div>
+    </div>
 </div>
 
 <!-- Review Modal -->
@@ -576,12 +584,58 @@
                 currency: 'BRL'
             });
 
+            loadRelatedProducts(currentProduct.categoria, currentProduct.nome);
+
         } catch (error) {
             console.error(error);
             Swal.fire({
                 icon: 'error', title: 'Erro', text: 'Não foi possível carregar o produto.',
                 background: '#1e1e1e', color: '#fff'
             }).then(() => { window.location.href = '/store'; });
+        }
+    }
+
+    async function loadRelatedProducts(categoria, nomeAtual) {
+        const section = document.getElementById('relatedProductsSection');
+        const container = document.getElementById('relatedProductsContainer');
+        if (!section || !container) return;
+
+        try {
+            const params = new URLSearchParams({ per_page: 5 });
+            if (categoria) params.set('categoria', categoria);
+            const res = await fetch(`/api/store/products?${params.toString()}`);
+            if (!res.ok) return;
+            const data = await res.json();
+
+            const relacionados = (data.produtos || []).filter(p => p.nome !== nomeAtual).slice(0, 4);
+            if (relacionados.length === 0) return;
+
+            container.innerHTML = relacionados.map(p => {
+                let priceDisplay = `R$ ${formatBRL(p.preco_venda)}`;
+                if (p.max_price && p.max_price > p.preco_venda) {
+                    priceDisplay = `A partir de R$ ${formatBRL(p.preco_venda)}`;
+                }
+                const img = p.imagem_url ? `/uploads/${p.imagem_url}` : 'https://via.placeholder.com/300x400?text=Sem+Imagem';
+                return `
+                    <div class="col-6 col-md-3">
+                        <div class="product-card h-100 border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+                            <a href="/store/produto/${p.id}" class="d-block" style="height: 220px; overflow: hidden;">
+                                <img src="${img}" alt="${p.nome}" class="img-fluid w-100 h-100" style="object-fit: cover;">
+                            </a>
+                            <div class="card-body p-3 text-center">
+                                <h6 class="fw-bold mb-2" style="font-family: 'Outfit', sans-serif;">
+                                    <a href="/store/produto/${p.id}" class="text-dark text-decoration-none">${p.nome}</a>
+                                </h6>
+                                <div class="text-warning fw-bold">${priceDisplay}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            section.style.display = '';
+        } catch (e) {
+            console.error('Erro ao carregar produtos relacionados:', e);
         }
     }
 

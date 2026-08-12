@@ -48,6 +48,12 @@
                         </a>
                     </div>
                 </div>
+
+                <!-- Quem comprou também levou (sugestoes pra completar o pedido) -->
+                <div id="cartSuggestionsSection" class="mt-4" style="display:none;">
+                    <h5 class="fw-bold text-dark mb-3">Quem comprou, também levou</h5>
+                    <div class="row g-3" id="cartSuggestionsContainer"></div>
+                </div>
             </div>
 
             <!-- Summary -->
@@ -63,6 +69,9 @@
                         <span class="text-light text-opacity-75">Subtotal</span>
                         <span id="cartSubtotal" class="text-white fw-bold">R$ 0,00</span>
                     </div>
+
+                    <div id="freteDescontoNudgeCart" class="mb-3 position-relative z-2 d-none"></div>
+
                     <div class="d-flex justify-content-between mb-3 position-relative z-2">
                         <span class="text-light text-opacity-75">Entrega</span>
                         <span class="text-warning small fw-bold"><i class="fa-solid fa-bolt me-1"></i>Calculado no Checkout</span>

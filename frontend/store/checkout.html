@@ -193,6 +193,9 @@
                         <span>Subtotal</span>
                         <span id="checkoutSubtotal" class="text-white fw-bold">R$ 0,00</span>
                     </div>
+                    <!-- Aviso de desconto no frete por valor minimo (injetado via JS) -->
+                    <div id="freteDescontoNudge" class="mb-3 position-relative z-2 d-none"></div>
+
                     <!-- Shipping Options injected via JS -->
                     <div id="shippingOptions" class="mb-3 small border-bottom border-secondary border-opacity-50 pb-3 position-relative z-2"></div>
 
@@ -359,13 +362,38 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cep: cep, items: cart })
             });
-            const options = await res.json();
+            const data = await res.json();
 
-            renderShippingOptions(options);
+            renderDescontoFreteNudge(data.desconto_frete);
+            renderShippingOptions(data.opcoes || []);
 
         } catch (e) {
             console.error('Erro ao calcular frete:', e);
             if (container) container.innerHTML = '<span class="text-danger">Erro ao calcular frete.</span>';
+        }
+    }
+
+    function renderDescontoFreteNudge(descontoFrete) {
+        const el = document.getElementById('freteDescontoNudge');
+        if (!el || !descontoFrete) return;
+
+        const { valor_minimo, valor_desconto, subtotal, elegivel, faltam } = descontoFrete;
+        el.classList.remove('d-none');
+
+        if (elegivel) {
+            el.innerHTML = `
+                <div class="alert alert-success bg-success bg-opacity-10 border-success text-success small mb-0 py-2">
+                    <i class="fa-solid fa-circle-check me-2"></i>Você ganhou <strong>R$ ${formatBRL(valor_desconto)}</strong> de desconto no frete!
+                </div>`;
+        } else {
+            const pct = Math.min(100, Math.round((subtotal / valor_minimo) * 100));
+            el.innerHTML = `
+                <div class="small text-warning mb-1">
+                    <i class="fa-solid fa-truck-fast me-1"></i>Faltam <strong>R$ ${formatBRL(faltam)}</strong> para ganhar R$ ${formatBRL(valor_desconto)} de desconto no frete!
+                </div>
+                <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.1);">
+                    <div class="progress-bar bg-warning" style="width: ${pct}%;"></div>
+                </div>`;
         }
     }
 

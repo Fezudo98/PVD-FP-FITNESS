@@ -88,12 +88,54 @@ function addToCart(productId, nome, price, image, stock = 999) {
     });
 }
 
+// Desconto de frete por valor minimo: carregado uma vez de /api/store/config (mesma fonte
+// usada pelo backend) e cacheado, pra nao precisar hardcodar o valor no front.
+let freteDescontoConfig = null;
+
+async function carregarFreteDescontoConfig() {
+    if (freteDescontoConfig) return freteDescontoConfig;
+    try {
+        const res = await fetch('/api/store/config');
+        const data = await res.json();
+        freteDescontoConfig = data.desconto_frete || null;
+    } catch (e) {
+        freteDescontoConfig = null;
+    }
+    return freteDescontoConfig;
+}
+
+function renderFreteDescontoNudge(elementId, subtotal) {
+    const el = document.getElementById(elementId);
+    if (!el || !freteDescontoConfig) return;
+
+    const { valor_minimo, valor_desconto } = freteDescontoConfig;
+    el.classList.remove('d-none');
+
+    if (subtotal >= valor_minimo) {
+        el.innerHTML = `
+            <div class="alert alert-success bg-success bg-opacity-10 border-success text-success small mb-0 py-2">
+                <i class="fa-solid fa-circle-check me-2"></i>Você ganhou <strong>R$ ${formatBRL(valor_desconto)}</strong> de desconto no frete!
+            </div>`;
+    } else {
+        const faltam = valor_minimo - subtotal;
+        const pct = Math.min(100, Math.round((subtotal / valor_minimo) * 100));
+        el.innerHTML = `
+            <div class="small text-warning mb-1">
+                <i class="fa-solid fa-truck-fast me-1"></i>Faltam <strong>R$ ${formatBRL(faltam)}</strong> para ganhar R$ ${formatBRL(valor_desconto)} de desconto no frete!
+            </div>
+            <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.1);">
+                <div class="progress-bar bg-warning" style="width: ${pct}%;"></div>
+            </div>`;
+    }
+}
+
 function renderCartPage() {
     const container = document.getElementById('cartItemsContainer');
     const emptyMsg = document.getElementById('emptyCartMessage');
     const table = document.getElementById('cartTable');
     const subtotalEl = document.getElementById('cartSubtotal');
     const totalEl = document.getElementById('cartTotal');
+    const nudgeEl = document.getElementById('freteDescontoNudgeCart');
 
     if (!container) return; // Not on cart page
 
@@ -102,6 +144,9 @@ function renderCartPage() {
         emptyMsg.classList.remove('d-none');
         if (subtotalEl) subtotalEl.textContent = 'R$ 0,00';
         if (totalEl) totalEl.textContent = 'R$ 0,00';
+        if (nudgeEl) nudgeEl.classList.add('d-none');
+        const suggestionsSection = document.getElementById('cartSuggestionsSection');
+        if (suggestionsSection) suggestionsSection.style.display = 'none';
         return;
     }
 
@@ -149,6 +194,58 @@ function renderCartPage() {
 
     if (subtotalEl) subtotalEl.textContent = `R$ ${formatBRL(total)}`;
     if (totalEl) totalEl.textContent = `R$ ${formatBRL(total)}`;
+
+    carregarFreteDescontoConfig().then(() => renderFreteDescontoNudge('freteDescontoNudgeCart', total));
+    loadCartSuggestions();
+}
+
+async function loadCartSuggestions() {
+    const section = document.getElementById('cartSuggestionsSection');
+    const container = document.getElementById('cartSuggestionsContainer');
+    if (!section || !container) return;
+
+    try {
+        const res = await fetch('/api/store/products?per_page=8&sort=mais_vendidos');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const idsNoCarrinho = new Set(cart.map(item => item.id));
+        const sugestoes = (data.produtos || []).filter(p => !idsNoCarrinho.has(p.id)).slice(0, 4);
+        if (sugestoes.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        container.innerHTML = sugestoes.map(p => {
+            let priceDisplay = `R$ ${formatBRL(p.preco_venda)}`;
+            if (p.max_price && p.max_price > p.preco_venda) {
+                priceDisplay = `A partir de R$ ${formatBRL(p.preco_venda)}`;
+            }
+            const img = p.imagem_url ? `/uploads/${p.imagem_url}` : 'https://via.placeholder.com/200x260?text=Sem+Imagem';
+            const acaoBtn = p.tem_variacoes
+                ? `<a href="/store/produto/${p.id}" class="btn btn-outline-dark btn-sm w-100 rounded-pill fw-bold">Ver Opções</a>`
+                : `<button class="btn btn-outline-dark btn-sm w-100 rounded-pill fw-bold" onclick="addToCart(${p.id}, '${p.nome}', ${p.preco_venda}, '${p.imagem_url || ''}', ${p.total_stock})">Adicionar</button>`;
+
+            return `
+                <div class="col-6 col-md-3">
+                    <div class="border-0 shadow-sm rounded-4 overflow-hidden bg-white h-100 d-flex flex-column">
+                        <a href="/store/produto/${p.id}" class="d-block" style="height: 160px; overflow: hidden;">
+                            <img src="${img}" alt="${p.nome}" class="w-100 h-100" style="object-fit: cover;">
+                        </a>
+                        <div class="p-2 text-center d-flex flex-column flex-grow-1">
+                            <div class="small fw-bold text-dark mb-1 text-truncate" title="${p.nome}">${p.nome}</div>
+                            <div class="text-warning fw-bold small mb-2">${priceDisplay}</div>
+                            <div class="mt-auto">${acaoBtn}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        section.style.display = '';
+    } catch (e) {
+        console.error('Erro ao carregar sugestões do carrinho:', e);
+    }
 }
 
 function updateQuantity(id, change) {

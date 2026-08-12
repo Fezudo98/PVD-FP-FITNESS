@@ -23,6 +23,18 @@ import threading
 
 store_bp = Blueprint('store', __name__)
 
+# Desconto no frete por valor mínimo de compra: definido pela lojista (nao é "frete grátis" de
+# verdade - é um desconto fixo de até R$30 sobre o frete calculado, que só zera o frete quando
+# o valor calculado é menor ou igual a isso). Só se aplica a fretes pagos (Correios/
+# transportadora via Melhor Envio); retirada e motoboy já são 0 por conta própria.
+FRETE_DESCONTO_VALOR_MINIMO = 350.0
+FRETE_DESCONTO_VALOR_MAXIMO = 30.0
+
+def _aplicar_desconto_frete(valor_frete, subtotal):
+    if subtotal >= FRETE_DESCONTO_VALOR_MINIMO and valor_frete > 0:
+        return round(max(0, valor_frete - FRETE_DESCONTO_VALOR_MAXIMO), 2)
+    return valor_frete
+
 def _cpf_coluna_normalizada():
     """Expressão SQL que remove pontuação do Cliente.cpf armazenado, para comparar com um CPF
     de entrada já limpo (só dígitos) independente de como foi salvo no banco (com ou sem
@@ -702,23 +714,37 @@ def calcular_frete():
 
     cep_clean = ''.join(filter(str.isdigit, str(cep_destino)))
     opcoes = []
-    
+
+    itens_carrinho = data.get('items', [])
+    subtotal = sum(float(item.get('price', 0) or 0) * int(item.get('quantity', 0) or 0) for item in itens_carrinho)
+
     # 1. Retirada (Sempre grátis)
     opcoes.append({'id': 'retirada', 'nome': 'Retirada na Loja (Grátis)', 'valor': 0.00, 'prazo': 'Pronto em 1h (Seg-Sex, 09h às 18h)'})
-    
+
     # 2. Motoboy (A Combinar)
     opcoes.append({'id': 'motoboy', 'nome': 'Entrega Expressa (Motoboy) - Valor a combinar', 'valor': 0.00, 'prazo': '1 dia útil'})
-    
+
     # 3. Melhor Envio (Correios/Transportadoras)
     try:
-        itens_carrinho = data.get('items', [])
         opcoes_externas = calcular_melhor_envio(cep_clean, itens_carrinho)
         if opcoes_externas:
-             opcoes.extend(opcoes_externas)
+            for opt in opcoes_externas:
+                opt['valor'] = _aplicar_desconto_frete(opt['valor'], subtotal)
+            opcoes.extend(opcoes_externas)
     except Exception as e:
         print(f"Erro ao integrar Melhor Envio: {e}")
 
-    return jsonify(opcoes)
+    faltam_para_desconto = round(max(0, FRETE_DESCONTO_VALOR_MINIMO - subtotal), 2)
+    return jsonify({
+        'opcoes': opcoes,
+        'desconto_frete': {
+            'valor_minimo': FRETE_DESCONTO_VALOR_MINIMO,
+            'valor_desconto': FRETE_DESCONTO_VALOR_MAXIMO,
+            'subtotal': round(subtotal, 2),
+            'elegivel': subtotal >= FRETE_DESCONTO_VALOR_MINIMO,
+            'faltam': faltam_para_desconto
+        }
+    })
 
 @store_bp.route('/api/store/config', methods=['GET'])
 def get_store_config():
@@ -735,6 +761,10 @@ def get_store_config():
             'ativo': bool(promo_primeira_avaliacao and promo_primeira_avaliacao.ativo),
             'percent': promo_primeira_avaliacao.valor_desconto if promo_primeira_avaliacao else None,
             'tipo': promo_primeira_avaliacao.tipo_desconto if promo_primeira_avaliacao else None
+        },
+        'desconto_frete': {
+            'valor_minimo': FRETE_DESCONTO_VALOR_MINIMO,
+            'valor_desconto': FRETE_DESCONTO_VALOR_MAXIMO
         }
     })
 
@@ -990,7 +1020,9 @@ def store_checkout():
         try:
             itens_frete = [{'id': item['id_produto'], 'quantity': item['quantidade']} for item in itens_data]
             for opt in calcular_melhor_envio(cep_frete_clean, itens_frete):
-                opcoes_frete_validas[opt['id']] = round(float(opt['valor']), 2)
+                # total_venda aqui é o subtotal real dos itens (calculado com preço do banco,
+                # não confiando no que veio do cliente) - mesma base usada no preview do frete.
+                opcoes_frete_validas[opt['id']] = _aplicar_desconto_frete(round(float(opt['valor']), 2), total_venda)
         except Exception as e:
             print(f"Erro ao validar frete no checkout: {e}")
 
