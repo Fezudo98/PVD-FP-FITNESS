@@ -12,16 +12,18 @@
         <h1 class="fw-bold text-dark mb-4" style="font-family: 'Outfit', sans-serif;">Produtos</h1>
 
         <div class="row g-4">
-            <!-- Sidebar de filtros: coluna fixa em telas grandes (lg+), painel deslizante no mobile -->
+            <!-- Sidebar de filtros: coluna fixa em telas grandes (lg+), acordeao recolhivel no
+                 mobile (d-lg-block forca visivel em telas grandes, ignorando o estado do collapse).
+                 Trocado de offcanvas pra collapse simples porque o offcanvas tinha um wrapper com
+                 fundo/borda proprios do Bootstrap conflitando visualmente com o card por dentro. -->
             <div class="col-lg-3">
-                <div class="offcanvas-lg offcanvas-start bg-white" tabindex="-1" id="filtrosOffcanvas"
-                    aria-labelledby="filtrosOffcanvasLabel" style="width: 300px;">
-                    <div class="offcanvas-header border-bottom d-lg-none">
-                        <h5 class="offcanvas-title fw-bold" id="filtrosOffcanvasLabel">Filtros</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
-                            data-bs-target="#filtrosOffcanvas" aria-label="Fechar"></button>
-                    </div>
-                    <div class="offcanvas-body d-block p-4 bg-white rounded-4 shadow-sm border">
+                <button class="btn btn-outline-dark rounded-pill w-100 mb-3 d-lg-none" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#filtrosCollapse" aria-expanded="false"
+                    aria-controls="filtrosCollapse">
+                    <i class="fa-solid fa-sliders me-2"></i>Filtros
+                </button>
+                <div class="collapse d-lg-block" id="filtrosCollapse">
+                    <div class="bg-white rounded-4 shadow-sm border p-4">
                         <!-- Categorias -->
                         <div class="mb-4">
                             <h6 class="fw-bold text-uppercase small mb-3" style="letter-spacing: 1px;">Categorias</h6>
@@ -62,9 +64,9 @@
                             <i class="fa-solid fa-xmark me-1"></i>Limpar todos os filtros
                         </button>
 
-                        <!-- Aplicar (mobile) -->
-                        <button class="btn btn-warning fw-bold w-100 rounded-pill mt-4 d-lg-none" data-bs-dismiss="offcanvas"
-                            data-bs-target="#filtrosOffcanvas">Ver Resultados</button>
+                        <!-- Fechar o painel (mobile) -->
+                        <button class="btn btn-warning fw-bold w-100 rounded-pill mt-4 d-lg-none" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#filtrosCollapse">Ver Resultados</button>
                     </div>
                 </div>
             </div>
@@ -73,10 +75,6 @@
             <div class="col-lg-9">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
                     <div class="d-flex align-items-center gap-3">
-                        <button class="btn btn-outline-dark rounded-pill d-lg-none" type="button" data-bs-toggle="offcanvas"
-                            data-bs-target="#filtrosOffcanvas" aria-controls="filtrosOffcanvas">
-                            <i class="fa-solid fa-sliders me-2"></i>Filtros
-                        </button>
                         <span class="text-muted small" id="resultCount"></span>
                     </div>
 
@@ -153,11 +151,6 @@
                         color: #999;
                     }
 
-                    @media (min-width: 992px) {
-                        .offcanvas-lg .offcanvas-body {
-                            overflow-y: visible;
-                        }
-                    }
                 </style>
 
                 <div class="row g-4" id="productsContainer">
