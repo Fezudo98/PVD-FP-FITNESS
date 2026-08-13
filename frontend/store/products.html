@@ -50,9 +50,9 @@
                                 <div class="text-uppercase small text-muted fw-bold mb-2" style="letter-spacing: 1px;">Preço</div>
                                 <div class="d-flex gap-2 align-items-center mb-1">
                                     <span class="text-muted small">R$</span>
-                                    <input type="number" class="form-control form-control-sm" id="precoMinInput" placeholder="De">
+                                    <input type="number" class="form-control form-control-sm price-range-input" id="precoMinInput" placeholder="De">
                                     <span class="text-muted small">R$</span>
-                                    <input type="number" class="form-control form-control-sm" id="precoMaxInput" placeholder="Até">
+                                    <input type="number" class="form-control form-control-sm price-range-input" id="precoMaxInput" placeholder="Até">
                                 </div>
                                 <button class="btn btn-sm btn-outline-dark w-100 mt-2" id="aplicarPrecoBtn">Aplicar</button>
                             </div>
@@ -81,13 +81,13 @@
                     </div>
 
                     <div class="d-flex flex-wrap gap-2">
-                        <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white border-0" style="max-width: 260px;">
-                            <input type="text" class="form-control premium-filter border-0 py-2 px-3 text-dark" placeholder="Buscar peças..." id="searchInput" style="box-shadow: none;">
+                        <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white border-0" style="width: 260px; flex: 0 0 auto;">
+                            <input type="text" class="form-control premium-filter price-range-input border-0 py-2 px-3" placeholder="Buscar peças..." id="searchInput" style="box-shadow: none;">
                             <button class="btn btn-warning border-0 px-3 transition-scale" type="button" onclick="searchProducts()">
                                 <i class="fas fa-search"></i>
                             </button>
                         </div>
-                        <select class="form-select premium-filter rounded-pill shadow-sm border-0 py-2 px-4 text-dark fw-bold" id="sortFilter" onchange="filterBySort()" style="min-width: 190px; background-color: #ffffff;">
+                        <select class="form-select premium-filter rounded-pill shadow-sm border-0 py-2 px-4 text-dark fw-bold" id="sortFilter" onchange="filterBySort()" style="width: auto; flex: 0 0 auto; background-color: #ffffff;">
                             <option value="mais_vendidos">🔥 Mais Vendidos</option>
                             <option value="alfabetica">📝 Ordem Alfabética</option>
                             <option value="preco_crescente">🔽 Menor Preço</option>
@@ -100,6 +100,25 @@
                 <div class="d-flex flex-wrap gap-2 mb-3" id="activeFiltersChips"></div>
 
                 <style>
+                    /* /css/style.css define .form-control com tema escuro globalmente (usado no
+                       painel admin) - isolado aqui pra nao vazar pros campos de preco da loja. */
+                    .price-range-input {
+                        background-color: #ffffff !important;
+                        color: var(--text-primary) !important;
+                        border: 1px solid var(--border-color) !important;
+                    }
+
+                    .price-range-input::placeholder {
+                        color: #adb5bd;
+                    }
+
+                    .price-range-input:focus {
+                        background-color: #ffffff !important;
+                        color: var(--text-primary) !important;
+                        border-color: var(--primary-gold) !important;
+                        box-shadow: 0 0 0 0.2rem rgba(224, 180, 49, 0.25) !important;
+                    }
+
                     .premium-filter:focus {
                         border-color: #ffc107 !important;
                         box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;

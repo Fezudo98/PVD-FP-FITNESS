@@ -59,6 +59,37 @@
             color: var(--text-primary);
         }
 
+        /* /css/style.css (carregado em toda página, inclusive aqui) define .form-control com
+           tema escuro globalmente - pensado pro painel administrativo, que é escuro. Essa parte
+           do site (loja) é clara, então qualquer campo dentro dela precisa forçar o tema claro
+           por padrão, senão qualquer <input>/<select>/<textarea> novo nasce com fundo escuro e
+           texto ilegível sem que ninguém perceba até reportar. Corrige na raiz aqui, uma vez só,
+           em vez de sobrescrever campo por campo toda vez que aparece (já aconteceu 3x: busca da
+           navbar, filtro de preço da listagem, campo de busca da listagem).
+           :not([class*="bg-"]) preserva os campos que JÁ têm um fundo escolhido de propósito
+           (ex: cupomInput e os campos de perfil em account.html usam bg-dark sobre um card
+           escuro) - só força claro em quem não tem nenhuma escolha explícita de fundo. */
+        main .form-control:not([class*="bg-"]),
+        main .form-select:not([class*="bg-"]),
+        .swal2-popup .form-control:not([class*="bg-"]),
+        .swal2-popup .form-select:not([class*="bg-"]) {
+            background-color: #ffffff !important;
+            color: var(--text-primary) !important;
+        }
+
+        main .form-control:not([class*="bg-"]):focus,
+        main .form-select:not([class*="bg-"]):focus,
+        .swal2-popup .form-control:not([class*="bg-"]):focus,
+        .swal2-popup .form-select:not([class*="bg-"]):focus {
+            background-color: #ffffff !important;
+            color: var(--text-primary) !important;
+        }
+
+        main .form-control:not([class*="bg-"])::placeholder {
+            color: #adb5bd;
+            opacity: 1;
+        }
+
         .store-navbar {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
