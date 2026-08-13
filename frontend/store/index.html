@@ -6,6 +6,26 @@
     <img src="/static/img/banner_fitpro10.jpg?v=2" alt="10% de desconto em toda a loja com o cupom FITPRO10" class="w-100 d-block">
 </a>
 
+<!-- Barra de Confiança -->
+<section class="py-3 bg-white border-bottom">
+    <div class="container">
+        <div class="row g-3 text-center" id="trustBadgesRow">
+            <div class="col-4">
+                <i class="fa-solid fa-truck-fast text-warning mb-1 d-block" style="font-size: 1.3rem;"></i>
+                <span class="small fw-semibold text-dark" id="trustBadgeFrete">Desconto no frete em compras acima de R$350</span>
+            </div>
+            <div class="col-4">
+                <i class="fa-solid fa-lock text-warning mb-1 d-block" style="font-size: 1.3rem;"></i>
+                <span class="small fw-semibold text-dark">Compra 100% segura</span>
+            </div>
+            <div class="col-4">
+                <i class="fa-solid fa-credit-card text-warning mb-1 d-block" style="font-size: 1.3rem;"></i>
+                <span class="small fw-semibold text-dark" id="trustBadgeParcelamento">Parcele no cartão</span>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Featured Products -->
 <section id="featured" class="py-4 mt-3">
     <div class="container py-4">
@@ -218,6 +238,7 @@
 
     document.addEventListener('DOMContentLoaded', async function () {
         loadFeaturedProducts();
+        checkParcelamentoBadge();
         await checkPromos();
         const mostrouRecompensa = await checkRecompensaModal();
         if (!mostrouRecompensa) {
@@ -322,11 +343,36 @@
             } else {
                 banner.classList.add('d-none');
             }
+
+            // Badge de frete usa o valor minimo real configurado (nunca hardcoded, pra nao
+            // ficar desatualizado se o valor mudar).
+            const freteBadge = document.getElementById('trustBadgeFrete');
+            if (freteBadge && config.desconto_frete) {
+                freteBadge.textContent = `Desconto no frete acima de R$ ${formatBRL(config.desconto_frete.valor_minimo)}`;
+            }
         } catch (e) {
             console.error('Erro ao carregar promos:', e);
             // Hide on error
             const banner = document.getElementById('promoBanner');
             if (banner) banner.classList.add('d-none');
+        }
+    }
+
+    async function checkParcelamentoBadge() {
+        const badge = document.getElementById('trustBadgeParcelamento');
+        if (!badge) return;
+        try {
+            // Valor de amostra só pra descobrir o número máximo de parcelas que a conta aceita
+            // - o badge é genérico (não é preço de produto específico).
+            const res = await fetch('/api/public/parcelamento?valor=200');
+            const data = await res.json();
+            const opcoes = data.opcoes || [];
+            if (opcoes.length > 0) {
+                const maxParcelas = opcoes[opcoes.length - 1].parcelas;
+                badge.textContent = `Parcele em até ${maxParcelas}x no cartão`;
+            }
+        } catch (e) {
+            console.error('Erro ao carregar badge de parcelamento:', e);
         }
     }
 

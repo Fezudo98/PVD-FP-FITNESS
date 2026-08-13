@@ -51,7 +51,8 @@
                     <span class="text-muted small fw-semibold" id="ratingCount"></span>
                 </div>
 
-                <h2 class="display-6 fw-bold text-warning mb-4" id="productPrice">R$ --,--</h2>
+                <h2 class="display-6 fw-bold text-warning mb-1" id="productPrice">R$ --,--</h2>
+                <div class="text-muted small mb-4" id="productParcelamento"></div>
 
 
 
@@ -407,6 +408,43 @@
     const productId = window.location.pathname.split('/').pop();
     let currentProduct = null;
     let allVariants = [];
+
+    // Cache simples por preço - evita repetir a consulta ao Mercado Pago ao trocar de cor
+    // quando o preço da variante é o mesmo.
+    const cacheParcelamento = {};
+
+    async function carregarParcelamento(preco) {
+        const el = document.getElementById('productParcelamento');
+        if (!el || !preco) return;
+
+        if (cacheParcelamento[preco]) {
+            el.innerHTML = cacheParcelamento[preco];
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/public/parcelamento?valor=${preco}`);
+            const data = await res.json();
+            const opcoes = data.opcoes || [];
+            if (opcoes.length === 0) {
+                el.innerHTML = '';
+                return;
+            }
+
+            // Mostra a maior parcela disponível (mais atrativa pra exibir o valor mensal
+            // menor), sendo transparente quando tem juros - nunca prometer "sem juros" sem
+            // confirmar isso na propria API do Mercado Pago.
+            const melhor = opcoes[opcoes.length - 1];
+            const textoJuros = melhor.sem_juros ? 'sem juros' : 'com juros';
+            const html = `ou até <strong>${melhor.parcelas}x de R$ ${formatBRL(melhor.valor_parcela)}</strong> ${textoJuros} no cartão`;
+
+            cacheParcelamento[preco] = html;
+            el.innerHTML = html;
+        } catch (e) {
+            console.error('Erro ao carregar parcelamento:', e);
+            el.innerHTML = '';
+        }
+    }
     let selectedColor = null;
     let selectedSize = null;
     // Renamed to avoid collision with main.js or other scripts
@@ -643,6 +681,7 @@
         document.title = `${product.nome} | FP Moda Fitness`;
         document.getElementById('productName').textContent = product.nome;
         document.getElementById('productPrice').textContent = `R$ ${formatBRL(product.preco_venda)}`;
+        carregarParcelamento(product.preco_venda);
         document.getElementById('productDescription').textContent = product.descricao || 'Sem descrição disponível.';
         document.getElementById('productCategory').textContent = product.categoria || 'Geral';
 

@@ -7,6 +7,7 @@ import json
 import hmac
 import hashlib
 import urllib.request
+import requests
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta, timezone
 import uuid
@@ -749,6 +750,46 @@ def calcular_frete():
             'faltam': faltam_para_desconto
         }
     })
+
+@store_bp.route('/api/public/parcelamento', methods=['GET'])
+def consultar_parcelamento():
+    """Consulta as opções reais de parcelamento no cartão pra um valor, direto na API do
+    Mercado Pago (nunca inventa número de parcela nem promete 'sem juros' sem confirmar -
+    a conta atual cobra juros a partir de 2x, então isso precisa vir sempre da fonte real)."""
+    valor = request.args.get('valor', type=float)
+    if not valor or valor <= 0:
+        return jsonify({'opcoes': []})
+
+    config_mp = Configuracao.query.filter_by(chave='MERCADOPAGO_ACCESS_TOKEN').first()
+    mp_access_token = config_mp.valor if config_mp else os.environ.get('MERCADOPAGO_ACCESS_TOKEN')
+    if not mp_access_token:
+        return jsonify({'opcoes': []})
+
+    try:
+        resp = requests.get(
+            'https://api.mercadopago.com/v1/payment_methods/installments',
+            params={
+                'access_token': mp_access_token,
+                'amount': valor,
+                'payment_method_id': 'master',
+                'locale': 'pt-BR'
+            },
+            timeout=8
+        )
+        if not resp.ok:
+            return jsonify({'opcoes': []})
+        data = resp.json()
+        payer_costs = data[0].get('payer_costs', []) if data else []
+        opcoes = [{
+            'parcelas': pc.get('installments'),
+            'valor_parcela': round(pc.get('installment_amount', 0), 2),
+            'total': round(pc.get('total_amount', 0), 2),
+            'sem_juros': pc.get('installment_rate', 0) == 0
+        } for pc in payer_costs]
+        return jsonify({'opcoes': opcoes})
+    except Exception as e:
+        print(f"Erro ao consultar parcelamento no Mercado Pago: {e}")
+        return jsonify({'opcoes': []})
 
 @store_bp.route('/api/store/config', methods=['GET'])
 def get_store_config():
