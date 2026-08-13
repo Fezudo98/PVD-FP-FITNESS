@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const urlParams = new URLSearchParams(window.location.search);
     const categoryParam = urlParams.get('categoria');
     const searchParam = urlParams.get('q');
+    const sortParam = urlParams.get('sort');
 
     if (categoryParam) {
         currentCategory = categoryParam;
@@ -29,6 +30,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (searchParam) {
         currentSearch = searchParam;
         document.getElementById('searchInput').value = currentSearch;
+    }
+
+    if (sortParam) {
+        currentSort = sortParam;
+        const sortFilter = document.getElementById('sortFilter');
+        if (sortFilter) sortFilter.value = sortParam;
     }
 
     loadProducts();

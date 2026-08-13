@@ -702,10 +702,82 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCartCount();
     updateAuthUI();
     initStoreSearchBar();
+    initStoreMarquee();
+    initNavCategorias();
     if (window.location.pathname.includes('/checkout')) {
         autoFillCheckout();
     }
 });
+
+// Barra de promoções rolando no topo: sempre com dados reais (frete/parcelamento), nunca
+// hardcoded - se a Michele mudar o valor minimo do frete ou a conta mudar o parcelamento, o
+// texto acompanha sozinho.
+async function initStoreMarquee() {
+    const track = document.getElementById('storeMarqueeTrack');
+    if (!track) return;
+
+    const itens = [];
+    try {
+        const res = await fetch('/api/store/config');
+        const config = await res.json();
+        if (config.desconto_frete) {
+            itens.push(`Desconto no frete em compras acima de R$ ${formatBRL(config.desconto_frete.valor_minimo)}`);
+        }
+        if (config.primeira_compra && config.primeira_compra.ativo && config.primeira_compra.codigo) {
+            itens.push(`${config.primeira_compra.percent}% OFF na primeira compra com o cupom ${config.primeira_compra.codigo}`);
+        }
+    } catch (e) {
+        console.error('Erro ao carregar config da marquee:', e);
+    }
+
+    try {
+        const resParcelas = await fetch('/api/public/parcelamento?valor=200');
+        const dataParcelas = await resParcelas.json();
+        const opcoes = dataParcelas.opcoes || [];
+        if (opcoes.length > 0) {
+            const maxParcelas = opcoes[opcoes.length - 1].parcelas;
+            itens.push(`Parcelamento em até ${maxParcelas}x no cartão`);
+        }
+    } catch (e) {
+        console.error('Erro ao carregar parcelamento da marquee:', e);
+    }
+
+    if (itens.length === 0) {
+        document.getElementById('storeMarquee').style.display = 'none';
+        return;
+    }
+
+    // Duplica a lista uma vez: a animação desloca -50% do track, então a segunda cópia
+    // emenda exatamente onde a primeira termina, sem "salto" visual no loop.
+    const htmlItens = itens.map(txt => `<span class="store-marquee-item">${txt}</span>`).join('');
+    track.innerHTML = htmlItens + htmlItens;
+}
+
+// Dropdown "Categorias" da navbar: populado com as categorias reais de produto (mesma fonte
+// que a pagina de produtos usa), nunca uma lista fixa que pode ficar desatualizada.
+async function initNavCategorias() {
+    const menu = document.getElementById('navCategoriasMenu');
+    if (!menu) return;
+
+    try {
+        const res = await fetch('/api/store/products?per_page=1');
+        const data = await res.json();
+        const categorias = data.categorias || [];
+
+        if (categorias.length === 0) {
+            menu.innerHTML = '<li><span class="dropdown-item-text text-muted small">Nenhuma categoria disponível</span></li>';
+            return;
+        }
+
+        menu.innerHTML = categorias.map(cat =>
+            `<li><a class="dropdown-item" href="/store/produtos?categoria=${encodeURIComponent(cat)}">${cat}</a></li>`
+        ).join('') + '<li><hr class="dropdown-divider"></li>' +
+            '<li><a class="dropdown-item fw-bold" href="/store/produtos">Ver todos os produtos</a></li>';
+    } catch (e) {
+        console.error('Erro ao carregar categorias da navbar:', e);
+        menu.innerHTML = '<li><span class="dropdown-item-text text-muted small">Erro ao carregar</span></li>';
+    }
+}
 
 function initStoreSearchBar() {
     // Existem dois botoes de lupa (um pro layout mobile, outro pro desktop) que

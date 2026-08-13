@@ -65,6 +65,63 @@
             border-bottom: 1px solid var(--border-color);
         }
 
+        /* Barra de promoções rolando no topo (frete/parcelamento), fixa acima da navbar. */
+        .store-top-fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+        }
+
+        .store-marquee {
+            background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
+            color: #000;
+            overflow: hidden;
+            white-space: nowrap;
+            height: 34px;
+            display: flex;
+            align-items: center;
+        }
+
+        .store-marquee-track {
+            display: inline-flex;
+            width: max-content;
+            animation: store-marquee-scroll 26s linear infinite;
+        }
+
+        .store-marquee-item {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .store-marquee-item::after {
+            content: "•";
+            margin: 0 2.5rem;
+            opacity: 0.55;
+        }
+
+        @keyframes store-marquee-scroll {
+            from {
+                transform: translateX(0);
+            }
+
+            to {
+                transform: translateX(-50%);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .store-marquee-track {
+                animation: none;
+            }
+        }
+
         .store-footer {
             background-color: var(--surface-card);
             border-top: 1px solid var(--border-color);
@@ -78,7 +135,7 @@
            .form-control com tema escuro globalmente pro painel admin. */
         .store-search-bar {
             position: fixed;
-            top: 110px;
+            top: 144px;
             left: 0;
             right: 0;
             background: #ffffff;
@@ -240,8 +297,20 @@
         }
 
         @media (max-width: 768px) {
+            .store-marquee {
+                height: 28px;
+            }
+
+            .store-marquee-item {
+                font-size: 0.65rem;
+            }
+
+            .store-marquee-item::after {
+                margin: 0 1.5rem;
+            }
+
             .store-search-bar {
-                top: 64px;
+                top: 92px;
             }
 
             .store-search-bar .container {
@@ -422,8 +491,8 @@
             }
 
             main {
-                margin-top: 64px !important;
-                /* Adjust for smaller navbar */
+                margin-top: 92px !important;
+                /* Adjust for smaller navbar + marquee */
             }
 
             .container {
@@ -445,8 +514,14 @@
 
 <body>
     <div class="d-flex flex-column min-vh-100">
-        <!-- Navbar -->
-        <nav class="navbar navbar-expand-lg navbar-light store-navbar fixed-top py-1">
+        <!-- Barra de promoções + Navbar (bloco fixo no topo) -->
+        <div class="store-top-fixed">
+            <div class="store-marquee" id="storeMarquee">
+                <div class="store-marquee-track" id="storeMarqueeTrack">
+                    <!-- Itens injetados via JS (store.js) com dados reais (frete/parcelamento) -->
+                </div>
+            </div>
+            <nav class="navbar navbar-expand-lg navbar-light store-navbar py-1">
             <div class="container">
                 <a class="navbar-brand d-flex align-items-center gap-2" href="/store">
                     <img src="/static/img/logo.png?v=3" alt="FP Fitness" style="max-height: 100px;"
@@ -479,6 +554,13 @@
                     <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
                         <li class="nav-item"><a class="nav-link" href="/store">Início</a></li>
                         <li class="nav-item"><a class="nav-link" href="/store/produtos">Produtos</a></li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navCategoriasToggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">Categorias</a>
+                            <ul class="dropdown-menu" id="navCategoriasMenu" aria-labelledby="navCategoriasToggle">
+                                <li><span class="dropdown-item-text text-muted small">Carregando...</span></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item"><a class="nav-link" href="/store/produtos?sort=mais_vendidos">Mais Vendidos</a></li>
                         <li class="nav-item"><a class="nav-link" href="/store/promocoes">Promoções</a></li>
                         <li class="nav-item"><a class="nav-link" href="/store/politicas">Políticas</a></li>
                     </ul>
@@ -512,7 +594,8 @@
                     </div>
                 </div>
             </div>
-        </nav>
+            </nav>
+        </div>
 
         <!-- Painel de busca rapida (some por padrao; abre pelo icone de lupa da navbar).
              Mostra sugestoes de produto em tempo real conforme o usuario digita. -->
@@ -534,7 +617,7 @@
         </div>
 
         <!-- Main Content -->
-        <main class="flex-grow-1" style="margin-top: 110px;">
+        <main class="flex-grow-1" style="margin-top: 144px;">
             {% block content %}{% endblock %}
         </main>
 
@@ -674,7 +757,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Device ID do Mercado Pago: reduz falsos positivos do antifraude deles no checkout -->
     <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
-    <script src="/frontend/js/store.js?v=10"></script>
+    <script src="/frontend/js/store.js?v=11"></script>
     {% block scripts %}{% endblock %}
 </body>
 
