@@ -301,44 +301,66 @@ def store_track_event():
     db.session.commit()
     return jsonify({'status': 'ok'}), 201
 
+# Ordem "lógica" de tamanho pra exibir no filtro lateral (não alfabética: P antes de PP fica
+# estranho, e "Único" deve ir por último). Tamanho fora dessa lista vai pro fim, em ordem alfabética.
+_ORDEM_TAMANHOS = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XGG', 'Único', 'U']
+
+def _chave_ordenacao_tamanho(tamanho):
+    return (_ORDEM_TAMANHOS.index(tamanho), '') if tamanho in _ORDEM_TAMANHOS else (len(_ORDEM_TAMANHOS), tamanho)
+
 @store_bp.route('/api/store/products', methods=['GET'])
 def store_get_products():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 12, type=int)
     categoria = request.args.get('categoria')
     search = request.args.get('q')
-    sort_by = request.args.get('sort', 'mais_vendidos') 
-    
+    sort_by = request.args.get('sort', 'mais_vendidos')
+    tamanhos_param = request.args.get('tamanhos')
+    tamanhos_selecionados = [t.strip() for t in tamanhos_param.split(',') if t.strip()] if tamanhos_param else []
+    preco_min = request.args.get('preco_min', type=float)
+    preco_max = request.args.get('preco_max', type=float)
+
     # Best Sellers
     best_sellers_query = db.session.query(
-        Produto.nome, 
+        Produto.nome,
         func.sum(ItemVenda.quantidade).label('total_sold')
     ).join(ItemVenda, Produto.id == ItemVenda.id_produto)\
      .filter(Produto.deletado == False)\
      .group_by(Produto.nome)\
      .order_by(func.sum(ItemVenda.quantidade).desc(), Produto.nome.asc())\
      .limit(5).all()
-    
+
     best_seller_names = [r.nome for r in best_sellers_query]
+
+    # Filtros base (categoria/busca) reaproveitados tanto na listagem quanto nas facetas
+    # (tamanhos disponíveis e faixa de preço) - assim a contagem de cada filtro reflete o
+    # contexto atual (ex: "M (12)" já considera a categoria selecionada), sem depender do
+    # próprio filtro que está sendo exibido.
+    filtros_base = [Produto.online_ativo == True, Produto.quantidade > 0, Produto.deletado == False]
+    if categoria:
+        filtros_base.append(Produto.categoria == categoria)
+    if search:
+        filtros_base.append(Produto.nome.ilike(f"%{search}%"))
 
     # Base Query
     query = db.session.query(
         Produto.nome,
         func.min(Produto.preco_venda).label('min_price'),
         func.max(Produto.preco_venda).label('max_price'),
-        func.min(Produto.id).label('id'), 
-        func.max(Produto.imagem_url).label('imagem_url'), 
+        func.min(Produto.id).label('id'),
+        func.max(Produto.imagem_url).label('imagem_url'),
         func.max(Produto.categoria).label('categoria'),
         func.sum(Produto.quantidade).label('total_stock'),
         func.count(Produto.id).label('variant_count')
-    ).filter(Produto.online_ativo == True, Produto.quantidade > 0, Produto.deletado == False)
-    
-    # Filters
-    if categoria:
-        query = query.filter(Produto.categoria == categoria)
-    if search:
-        query = query.filter(Produto.nome.ilike(f"%{search}%"))
-        
+    ).filter(*filtros_base)
+
+    if tamanhos_selecionados:
+        query = query.filter(Produto.tamanho.in_(tamanhos_selecionados))
+    if preco_min is not None:
+        query = query.filter(Produto.preco_venda >= preco_min)
+    if preco_max is not None:
+        query = query.filter(Produto.preco_venda <= preco_max)
+
     # Sorting
     if sort_by == 'alfabetica':
         query = query.order_by(Produto.nome.asc())
@@ -352,7 +374,7 @@ def store_get_products():
             func.sum(ItemVenda.quantidade).label('total_sales')
         ).join(ItemVenda, Produto.id == ItemVenda.id_produto)\
          .group_by(Produto.nome).subquery()
-        
+
         query = query.outerjoin(subquery_sales, Produto.nome == subquery_sales.c.p_nome)
         query = query.order_by(subquery_sales.c.total_sales.desc().nullslast(), Produto.nome.asc())
     else:
@@ -364,10 +386,35 @@ def store_get_products():
     # Pagination
     total = query.count()
     items = query.offset((page - 1) * per_page).limit(per_page).all()
-    
+
     # Categories
     categorias_query = db.session.query(Produto.categoria).filter_by(online_ativo=True, deletado=False).distinct().order_by(Produto.categoria).all()
     categorias = [c[0] for c in categorias_query if c[0]]
+
+    # Tamanhos disponíveis com contagem de produtos distintos (respeitando categoria/busca/
+    # preço atuais, mas não o próprio filtro de tamanho - senão marcar um tamanho faria os
+    # outros sumirem da lista).
+    filtros_facetas_tamanho = list(filtros_base)
+    if preco_min is not None:
+        filtros_facetas_tamanho.append(Produto.preco_venda >= preco_min)
+    if preco_max is not None:
+        filtros_facetas_tamanho.append(Produto.preco_venda <= preco_max)
+
+    tamanhos_query = db.session.query(
+        Produto.tamanho, func.count(func.distinct(Produto.nome))
+    ).filter(*filtros_facetas_tamanho, Produto.tamanho.isnot(None), Produto.tamanho != '').group_by(Produto.tamanho).all()
+    tamanhos_disponiveis = sorted(
+        [{'tamanho': t, 'total': c} for t, c in tamanhos_query],
+        key=lambda x: _chave_ordenacao_tamanho(x['tamanho'])
+    )
+
+    # Faixa de preço (min/max) baseada em categoria/busca, sem aplicar o filtro de preço nem de
+    # tamanho - senão o slider "encolheria" conforme o próprio usuário filtra, impedindo voltar.
+    preco_bounds = db.session.query(
+        func.min(Produto.preco_venda), func.max(Produto.preco_venda)
+    ).filter(*filtros_base).first()
+    preco_min_disponivel = math.floor(preco_bounds[0]) if preco_bounds and preco_bounds[0] is not None else 0
+    preco_max_disponivel = math.ceil(preco_bounds[1]) if preco_bounds and preco_bounds[1] is not None else 0
 
     return jsonify({
         'produtos': [{
@@ -384,7 +431,10 @@ def store_get_products():
         'total_paginas': math.ceil(total / per_page),
         'pagina_atual': page,
         'total_produtos': total,
-        'categorias': categorias
+        'categorias': categorias,
+        'tamanhos_disponiveis': tamanhos_disponiveis,
+        'preco_min_disponivel': preco_min_disponivel,
+        'preco_max_disponivel': preco_max_disponivel
     })
 
 @store_bp.route('/api/public/products/suggestions', methods=['GET'])

@@ -1,66 +1,162 @@
 {% extends "store/base.html" %}
 
 {% block content %}
-<section class="py-5 bg-light" style="min-height: 80vh;">
-    <div class="container py-5">
-        <div class="text-center mb-5">
-            <h1 class="display-5 fw-bold text-dark mb-3">Nossos Produtos</h1>
-            <p class="text-muted lead">Confira nossa coleção completa.</p>
-        </div>
-        <div class="row mb-5">
-            <div class="col-12">
-                <div class="d-flex flex-column flex-md-row justify-content-center align-items-center gap-3">
-                    <!-- Category Select -->
-                    <div class="position-relative">
-                        <select class="form-select premium-filter rounded-pill shadow-sm border-0 py-2 px-4 text-dark fw-bold" id="categoryFilter" onchange="filterByCategory()" style="min-width: 220px; background-color: #ffffff;">
-                            <option value="">Todas as Categorias</option>
-                            <!-- Categories will be loaded here -->
-                        </select>
+<section class="py-4 py-md-5 bg-light" style="min-height: 80vh;">
+    <div class="container py-3 py-md-4">
+        <nav aria-label="breadcrumb" class="small mb-2">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/store" class="text-decoration-none text-muted">Início</a></li>
+                <li class="breadcrumb-item active text-dark fw-semibold" aria-current="page">Produtos</li>
+            </ol>
+        </nav>
+        <h1 class="fw-bold text-dark mb-4" style="font-family: 'Outfit', sans-serif;">Produtos</h1>
+
+        <div class="row g-4">
+            <!-- Sidebar de filtros: coluna fixa em telas grandes (lg+), painel deslizante no mobile -->
+            <div class="col-lg-3">
+                <div class="offcanvas-lg offcanvas-start bg-white" tabindex="-1" id="filtrosOffcanvas"
+                    aria-labelledby="filtrosOffcanvasLabel" style="width: 300px;">
+                    <div class="offcanvas-header border-bottom d-lg-none">
+                        <h5 class="offcanvas-title fw-bold" id="filtrosOffcanvasLabel">Filtros</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
+                            data-bs-target="#filtrosOffcanvas" aria-label="Fechar"></button>
                     </div>
-                    
-                    <!-- Sort Select -->
-                    <div class="position-relative">
-                        <select class="form-select premium-filter rounded-pill shadow-sm border-0 py-2 px-4 text-dark fw-bold" id="sortFilter" onchange="filterBySort()" style="min-width: 220px; background-color: #ffffff;">
+                    <div class="offcanvas-body d-block p-4 p-lg-0">
+                        <!-- Categorias -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-uppercase small mb-3" style="letter-spacing: 1px;">Categorias</h6>
+                            <ul class="list-unstyled mb-0" id="categoryListSidebar">
+                                <li class="mb-2">
+                                    <a href="javascript:void(0)" class="text-decoration-none category-link fw-semibold text-dark active"
+                                        data-categoria="">Todas as Categorias</a>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <hr>
+
+                        <!-- Filtrar por -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-uppercase small mb-3" style="letter-spacing: 1px;">Filtrar por</h6>
+
+                            <div class="mb-4">
+                                <div class="text-uppercase small text-muted fw-bold mb-2" style="letter-spacing: 1px;">Tamanho</div>
+                                <div id="sizeFilterList" class="d-flex flex-column gap-2">
+                                    <span class="text-muted small">Carregando...</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <div class="text-uppercase small text-muted fw-bold mb-2" style="letter-spacing: 1px;">Preço</div>
+                                <div class="d-flex gap-2 align-items-center mb-1">
+                                    <span class="text-muted small">R$</span>
+                                    <input type="number" class="form-control form-control-sm" id="precoMinInput" placeholder="De">
+                                    <span class="text-muted small">R$</span>
+                                    <input type="number" class="form-control form-control-sm" id="precoMaxInput" placeholder="Até">
+                                </div>
+                                <button class="btn btn-sm btn-outline-dark w-100 mt-2" id="aplicarPrecoBtn">Aplicar</button>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-sm btn-link text-danger p-0 text-decoration-none d-none" id="limparFiltrosBtn">
+                            <i class="fa-solid fa-xmark me-1"></i>Limpar todos os filtros
+                        </button>
+
+                        <!-- Aplicar (mobile) -->
+                        <button class="btn btn-warning fw-bold w-100 rounded-pill mt-4 d-lg-none" data-bs-dismiss="offcanvas"
+                            data-bs-target="#filtrosOffcanvas">Ver Resultados</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Produtos -->
+            <div class="col-lg-9">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <button class="btn btn-outline-dark rounded-pill d-lg-none" type="button" data-bs-toggle="offcanvas"
+                            data-bs-target="#filtrosOffcanvas" aria-controls="filtrosOffcanvas">
+                            <i class="fa-solid fa-sliders me-2"></i>Filtros
+                        </button>
+                        <span class="text-muted small" id="resultCount"></span>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white border-0" style="max-width: 260px;">
+                            <input type="text" class="form-control premium-filter border-0 py-2 px-3 text-dark" placeholder="Buscar peças..." id="searchInput" style="box-shadow: none;">
+                            <button class="btn btn-warning border-0 px-3 transition-scale" type="button" onclick="searchProducts()">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <select class="form-select premium-filter rounded-pill shadow-sm border-0 py-2 px-4 text-dark fw-bold" id="sortFilter" onchange="filterBySort()" style="min-width: 190px; background-color: #ffffff;">
                             <option value="mais_vendidos">🔥 Mais Vendidos</option>
                             <option value="alfabetica">📝 Ordem Alfabética</option>
                             <option value="preco_crescente">🔽 Menor Preço</option>
                             <option value="preco_decrescente">🔼 Maior Preço</option>
                         </select>
                     </div>
+                </div>
 
-                    <!-- Search Input -->
-                    <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white border border-0" style="max-width: 350px;">
-                        <input type="text" class="form-control premium-filter border-0 py-2 px-4 text-dark" placeholder="Buscar peças..." id="searchInput" style="box-shadow: none;">
-                        <button class="btn btn-warning border-0 px-4 transition-scale" type="button" onclick="searchProducts()">
-                            <i class="fas fa-search"></i>
-                        </button>
+                <!-- Chips de filtros ativos -->
+                <div class="d-flex flex-wrap gap-2 mb-3" id="activeFiltersChips"></div>
+
+                <style>
+                    .premium-filter:focus {
+                        border-color: #ffc107 !important;
+                        box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
+                        outline: none;
+                    }
+
+                    .category-link.active {
+                        color: var(--primary-gold) !important;
+                        font-weight: 700 !important;
+                    }
+
+                    .size-check-label {
+                        cursor: pointer;
+                    }
+
+                    .filter-chip {
+                        background: #fff;
+                        border: 1px solid var(--border-color);
+                        border-radius: 50px;
+                        padding: 0.3rem 0.9rem;
+                        font-size: 0.8rem;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                    }
+
+                    .filter-chip button {
+                        border: none;
+                        background: none;
+                        padding: 0;
+                        line-height: 1;
+                        color: #999;
+                    }
+
+                    @media (min-width: 992px) {
+                        .offcanvas-lg .offcanvas-body {
+                            overflow-y: visible;
+                        }
+                    }
+                </style>
+
+                <div class="row g-4" id="productsContainer">
+                    <!-- Products will be loaded here via JS -->
+                    <div class="col-12 text-center">
+                        <div class="spinner-border text-warning" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <style>
-            .premium-filter:focus {
-                border-color: #ffc107 !important;
-                box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
-                outline: none;
-            }
-        </style>
-
-        <div class="row g-4" id="productsContainer">
-            <!-- Products will be loaded here via JS -->
-            <div class="col-12 text-center">
-                <div class="spinner-border text-warning" role="status">
-                    <span class="visually-hidden">Carregando...</span>
+                <!-- Pagination (Simplified) -->
+                <div class="row mt-5">
+                    <div class="col-12 text-center">
+                        <button class="btn btn-outline-dark rounded-pill px-4" id="loadMoreBtn" onclick="loadMore()"
+                            style="display: none;">Carregar Mais</button>
+                    </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Pagination (Simplified) -->
-        <div class="row mt-5">
-            <div class="col-12 text-center">
-                <button class="btn btn-outline-dark rounded-pill px-4" id="loadMoreBtn" onclick="loadMore()"
-                    style="display: none;">Carregar Mais</button>
             </div>
         </div>
     </div>
