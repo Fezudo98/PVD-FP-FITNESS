@@ -79,55 +79,65 @@
                 </div>
             </div>
         </div>
-    </di<!-- Welcome Modal -->
+    </div>
+
+<!-- Welcome Modal -->
 <div class="modal fade" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden position-relative" style="background-color: #121212;">
-            <!-- Background Elements for Premium Feel -->
-            <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at top right, rgba(255, 193, 7, 0.15) 0%, transparent 50%), radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.05) 0%, transparent 50%); pointer-events: none;"></div>
-            
+    <div class="modal-dialog modal-dialog-centered welcome-modal-dialog">
+        <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
             <!-- Close Button -->
             <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 z-3" data-bs-dismiss="modal" aria-label="Close" onclick="closeWelcomeModal()"></button>
 
-            <div class="modal-body text-center p-5 position-relative z-2">
-                <!-- Eyebrow -->
-                <div class="d-inline-flex align-items-center gap-2 mb-2 animate__animated animate__fadeInDown">
-                    <i class="fa-solid fa-gift text-warning"></i>
-                    <span class="text-warning text-uppercase fw-bold small" style="letter-spacing: 2px;">Presente de boas-vindas</span>
+            <div class="d-flex flex-column flex-md-row">
+                <!-- Foto -->
+                <div class="welcome-modal-photo" style="background-image: url('/static/img/welcome_modal.jpg?v=1');"></div>
+
+                <!-- Conteúdo -->
+                <div class="welcome-modal-content flex-grow-1 text-center p-4 p-md-5 position-relative" style="background-color: #121212;">
+                    <!-- Background Elements for Premium Feel -->
+                    <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at top right, rgba(255, 193, 7, 0.15) 0%, transparent 50%), radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.05) 0%, transparent 50%); pointer-events: none;"></div>
+
+                    <div class="position-relative z-2">
+                        <!-- Eyebrow -->
+                        <div class="d-inline-flex align-items-center gap-2 mb-2 animate__animated animate__fadeInDown">
+                            <i class="fa-solid fa-gift text-warning"></i>
+                            <span class="text-warning text-uppercase fw-bold small" style="letter-spacing: 2px;">Presente de boas-vindas</span>
+                        </div>
+
+                        <!-- Hero Percent -->
+                        <h1 class="fw-bold mb-1 animate__animated animate__fadeInDown" id="welcomeCoupomPercentHero"
+                            style="font-family: 'Outfit', sans-serif; font-size: 3rem; line-height: 1; background: linear-gradient(135deg, #ffd54f, #e0b431); -webkit-background-clip: text; background-clip: text; color: transparent;"></h1>
+                        <p class="text-light mb-4" style="font-weight: 300;">de desconto na sua primeira compra na FP Fitness</p>
+
+                        <!-- Coupon Ticket -->
+                        <div class="welcome-ticket d-flex mb-4 animate__animated animate__zoomIn animate__delay-1s">
+                            <div class="welcome-ticket-code flex-grow-1 py-3 px-4 text-start">
+                                <p class="text-warning text-uppercase fw-bold small mb-1" style="letter-spacing: 1px;">Use no checkout</p>
+                                <h2 class="fw-bold text-white mb-0" id="welcomeCoupomCodigo" style="letter-spacing: 2px;"></h2>
+                            </div>
+                            <div class="welcome-ticket-stub d-flex flex-column align-items-center justify-content-center px-3 user-select-none" id="welcomeCouponClick" role="button" title="Clique para copiar">
+                                <i class="fa-regular fa-copy text-warning fs-5 mb-1"></i>
+                                <small class="text-warning fw-bold text-uppercase" style="font-size: 0.6rem; letter-spacing: 0.5px;">Copiar</small>
+                            </div>
+                        </div>
+
+                        <!-- Perks -->
+                        <div class="d-flex align-items-start justify-content-center gap-3 text-start mb-4">
+                            <div class="bg-dark bg-opacity-50 p-2 rounded-circle border border-secondary border-opacity-25 mt-1">
+                                <i class="fa-solid fa-star text-warning"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1 text-white">Mais Vantagens</h6>
+                                <small class="text-light text-opacity-75">Após a primeira compra, avalie seus produtos e ganhe <span class="text-warning fw-bold" id="welcomePerkAvaliacaoPercent">+10% OFF</span> na próxima visita!</small>
+                            </div>
+                        </div>
+
+                        <!-- Action Button -->
+                        <button type="button" class="btn btn-warning btn-lg rounded-pill w-100 fw-bold shadow-lg welcome-cta py-3 text-uppercase" style="letter-spacing: 1px;" data-bs-dismiss="modal" onclick="closeWelcomeModal()">
+                            Resgatar Meu Desconto
+                        </button>
+                    </div>
                 </div>
-
-                <!-- Hero Percent -->
-                <h1 class="fw-bold mb-1 animate__animated animate__fadeInDown" id="welcomeCoupomPercentHero"
-                    style="font-family: 'Outfit', sans-serif; font-size: 3.5rem; line-height: 1; background: linear-gradient(135deg, #ffd54f, #e0b431); -webkit-background-clip: text; background-clip: text; color: transparent;"></h1>
-                <p class="text-light mb-4" style="font-weight: 300;">de desconto na sua primeira compra na FP Fitness</p>
-
-                <!-- Coupon Ticket -->
-                <div class="welcome-ticket d-flex mb-4 animate__animated animate__zoomIn animate__delay-1s">
-                    <div class="welcome-ticket-code flex-grow-1 py-3 px-4 text-start">
-                        <p class="text-warning text-uppercase fw-bold small mb-1" style="letter-spacing: 1px;">Use no checkout</p>
-                        <h2 class="fw-bold text-white mb-0" id="welcomeCoupomCodigo" style="letter-spacing: 2px;"></h2>
-                    </div>
-                    <div class="welcome-ticket-stub d-flex flex-column align-items-center justify-content-center px-3 user-select-none" id="welcomeCouponClick" role="button" title="Clique para copiar">
-                        <i class="fa-regular fa-copy text-warning fs-5 mb-1"></i>
-                        <small class="text-warning fw-bold text-uppercase" style="font-size: 0.6rem; letter-spacing: 0.5px;">Copiar</small>
-                    </div>
-                </div>
-
-                <!-- Perks -->
-                <div class="d-flex align-items-start justify-content-center gap-3 text-start mb-4">
-                    <div class="bg-dark bg-opacity-50 p-2 rounded-circle border border-secondary border-opacity-25 mt-1">
-                        <i class="fa-solid fa-star text-warning"></i>
-                    </div>
-                    <div>
-                        <h6 class="fw-bold mb-1 text-white">Mais Vantagens</h6>
-                        <small class="text-light text-opacity-75">Após a primeira compra, avalie seus produtos e ganhe <span class="text-warning fw-bold" id="welcomePerkAvaliacaoPercent">+10% OFF</span> na próxima visita!</small>
-                    </div>
-                </div>
-
-                <!-- Action Button -->
-                <button type="button" class="btn btn-warning btn-lg rounded-pill w-100 fw-bold shadow-lg welcome-cta py-3 text-uppercase" style="letter-spacing: 1px;" data-bs-dismiss="modal" onclick="closeWelcomeModal()">
-                    Resgatar Meu Desconto
-                </button>
             </div>
         </div>
     </div>
@@ -162,6 +172,36 @@
 </div>
 
 <style>
+    /* Welcome modal: layout dividido (foto + conteudo), inspirado em popups de e-commerce
+       premium - foto vira faixa no topo em telas pequenas, coluna lateral em telas maiores. */
+    .welcome-modal-dialog {
+        max-width: 640px;
+    }
+
+    .welcome-modal-photo {
+        width: 100%;
+        height: 180px;
+        background-size: cover;
+        background-position: center 15%;
+        flex-shrink: 0;
+    }
+
+    .welcome-modal-content {
+        min-width: 0;
+    }
+
+    @media (min-width: 768px) {
+        .welcome-modal-dialog {
+            max-width: 760px;
+        }
+
+        .welcome-modal-photo {
+            width: 260px;
+            height: auto;
+            background-position: center top;
+        }
+    }
+
     /* Welcome modal: cupom em formato de ticket com recorte lateral e friso picotado */
     .welcome-ticket {
         position: relative;
