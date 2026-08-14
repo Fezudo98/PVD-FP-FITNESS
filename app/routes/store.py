@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta, timezone
 import uuid
 import types
-from ..extensions import db
+from ..extensions import db, limiter
 from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, VisitaSite, EventoMarketing, current_brazil_time
 from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html
 from ..services.frete_service import calcular_melhor_envio
@@ -1100,15 +1100,27 @@ def store_checkout():
         produto = Produto.query.get(item['id_produto'])
         if not produto or not produto.online_ativo:
             return jsonify({'erro': f'Produto ID {item["id_produto"]} indisponível.'}), 400
-        if produto.quantidade < item['quantidade']:
+
+        qtd = item['quantidade']
+        # Decremento atômico e condicional (em vez de checar e depois escrever em dois passos):
+        # evita a corrida clássica de e-commerce onde duas compras simultâneas do último item
+        # em estoque passam ambas na checagem antes de qualquer uma escrever, vendendo o mesmo
+        # item duas vezes. affected==0 significa que o estoque não é mais suficiente agora,
+        # mesmo que fosse no instante da leitura acima.
+        affected = db.session.query(Produto).filter(
+            Produto.id == produto.id,
+            Produto.quantidade >= qtd
+        ).update({Produto.quantidade: Produto.quantidade - qtd}, synchronize_session=False)
+
+        if affected == 0:
             return jsonify({'erro': f'Estoque insuficiente para {produto.nome}.'}), 400
-            
-        produto.quantidade -= item['quantidade']
-        total_venda += produto.preco_venda * item['quantidade']
-        
+
+        db.session.refresh(produto)
+        total_venda += produto.preco_venda * qtd
+
         itens_venda_objs.append(ItemVenda(
             id_produto=produto.id,
-            quantidade=item['quantidade'],
+            quantidade=qtd,
             preco_unitario_momento=produto.preco_venda,
             preco_custo_momento=produto.preco_custo
         ))
@@ -1302,6 +1314,8 @@ def _validar_assinatura_webhook_mp(webhook_secret):
     return hmac.compare_digest(assinatura_esperada, v1)
 
 @store_bp.route('/api/store/webhook/mercadopago', methods=['POST'])
+@limiter.exempt  # webhook de pagamento - IPs do MP sao compartilhados entre varios lojistas,
+                 # e um evento de aprovacao/estorno perdido por rate limit tem custo real
 def mercadopago_webhook():
     webhook_secret = os.environ.get('MERCADOPAGO_WEBHOOK_SECRET')
     if not _validar_assinatura_webhook_mp(webhook_secret):

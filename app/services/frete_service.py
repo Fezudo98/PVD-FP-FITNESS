@@ -65,35 +65,41 @@ def calcular_melhor_envio(cep_destino, itens_carrinho):
         response.raise_for_status()
         options = response.json()
         
-        # 4. Tratamento da Resposta
+        # 4. Tratamento da Resposta - cada opção é processada isoladamente: uma transportadora
+        # com campo faltando/malformado não pode derrubar as outras opções válidas e deixar
+        # o cliente sem nenhum frete pago pra escolher no checkout.
         frete_options = []
         for opt in options:
-            # Filtra erros individuais da API (ex: dimensões inválidas para transportadora X)
-            if 'error' in opt:
-                continue
-                
-            # Renomeação e Formatação
-            nome_servico = opt['name']
-            nome_upper = nome_servico.upper()
-            
-            if nome_upper == '.PACKAGE':
-                nome_final = "Jadlog Package"
-            elif nome_upper == '.COM':
-                nome_final = "Jadlog .Com"
-            else:
-                nome_final = nome_servico
+            try:
+                # Filtra erros individuais da API (ex: dimensões inválidas para transportadora X)
+                if 'error' in opt:
+                    continue
 
-            prazo_dias = opt.get('delivery_time', 0)
-            prazo_formatado = f"{prazo_dias} dias úteis"
-            
-            frete_options.append({
-                'id': f"me_{opt['id']}", 
-                'nome': nome_final,
-                'valor': float(opt['price']),
-                'prazo': prazo_formatado,
-                'imagem_url': opt['company']['picture'] # Mantendo para UI, apesar do 'estritamente'
-            })
-            
+                # Renomeação e Formatação
+                nome_servico = opt['name']
+                nome_upper = nome_servico.upper()
+
+                if nome_upper == '.PACKAGE':
+                    nome_final = "Jadlog Package"
+                elif nome_upper == '.COM':
+                    nome_final = "Jadlog .Com"
+                else:
+                    nome_final = nome_servico
+
+                prazo_dias = opt.get('delivery_time', 0)
+                prazo_formatado = f"{prazo_dias} dias úteis"
+
+                frete_options.append({
+                    'id': f"me_{opt['id']}",
+                    'nome': nome_final,
+                    'valor': float(opt['price']),
+                    'prazo': prazo_formatado,
+                    'imagem_url': opt.get('company', {}).get('picture')
+                })
+            except Exception as e:
+                print(f" [FreteService] Opção de frete ignorada por erro ao processar: {e}")
+                continue
+
         return frete_options
         
     except Exception as e:

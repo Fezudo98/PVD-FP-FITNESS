@@ -341,9 +341,13 @@ def reembolsar_venda(current_user, venda_id):
             )
             db.session.add(mov_reembolso)
 
-        # Integração de Estorno Mercado Pago
+        # Integração de Estorno Mercado Pago - identifica pagamento vindo do MP pelo
+        # transacao_id (só é preenchido pelo webhook/reconciliação online), não por
+        # p.forma == 'mercadopago': esse valor nunca é gravado assim na prática, pois
+        # forma guarda o payment_method_id real retornado pelo MP (ex: "pix", "master",
+        # "elo"), fazendo esse estorno nunca disparar de fato pra vendas online.
         for p in venda.pagamentos:
-            if p.forma == 'mercadopago' and p.transacao_id:
+            if p.transacao_id:
                 config_mp = Configuracao.query.filter_by(chave='MERCADOPAGO_ACCESS_TOKEN').first()
                 mp_access_token = config_mp.valor if config_mp else os.environ.get('MERCADOPAGO_ACCESS_TOKEN')
                 if not mp_access_token:

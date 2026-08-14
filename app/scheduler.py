@@ -1,8 +1,10 @@
 import os
 import requests
+import mercadopago
+from datetime import timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from .extensions import db
-from .models import Venda
+from .models import Venda, Configuracao, current_brazil_time
 from .utils import registrar_log
 
 def init_scheduler(app):
@@ -92,6 +94,54 @@ def init_scheduler(app):
             except Exception as e:
                 print(f"[Scheduler] Erro ao atualizar rastreios: {e}")
 
+    def job_reconciliar_estornos_mp():
+        """Rede de segurança pro webhook do Mercado Pago: se a chamada pra buscar o status do
+        pagamento falhar de forma transitória (rede, timeout) dentro do webhook, um evento de
+        estorno/chargeback pode ser perdido de vez - o MP considera o 200 de resposta do
+        webhook como "recebido" e não reenvia. Aqui a gente reconfere direto na API do MP o
+        status de pagamentos recentes que ainda constam como pagos no nosso banco, pra pegar
+        qualquer estorno/chargeback que passou batido."""
+        with app.app_context():
+            try:
+                config_mp = Configuracao.query.filter_by(chave='MERCADOPAGO_ACCESS_TOKEN').first()
+                mp_access_token = config_mp.valor if config_mp else os.environ.get('MERCADOPAGO_ACCESS_TOKEN')
+                if not mp_access_token:
+                    return
+
+                sdk = mercadopago.SDK(mp_access_token)
+                limite = current_brazil_time() - timedelta(days=45)
+                vendas = Venda.query.filter(
+                    Venda.status.in_(['Concluída', 'Em Transporte', 'Entregue']),
+                    Venda.id_vendedor == None,
+                    Venda.data_pagamento != None,
+                    Venda.data_pagamento >= limite
+                ).all()
+
+                for venda in vendas:
+                    pagamento_mp = next((p for p in venda.pagamentos if p.transacao_id), None)
+                    if not pagamento_mp:
+                        continue
+                    try:
+                        resultado = sdk.payment().get(pagamento_mp.transacao_id)
+                        if resultado.get('status') != 200:
+                            continue
+                        status_mp = resultado['response'].get('status')
+                    except Exception:
+                        continue
+
+                    if status_mp in ['refunded', 'charged_back', 'in_mediation']:
+                        status_antigo = venda.status
+                        novo_status = 'Cancelada' if status_mp != 'refunded' else 'Reembolsada'
+                        venda.atualizar_status(novo_status, motivo=f'Mercado Pago reportou status "{status_mp}" (reconciliação).')
+                        if status_antigo == 'Concluída':
+                            for item in venda.itens:
+                                if item.produto:
+                                    item.produto.quantidade += item.quantidade
+                        registrar_log(None, f"Venda {novo_status} (Reconciliação MP)", f"ID: {venda.id} - Status anterior: {status_antigo} -> {status_mp}.")
+                        db.session.commit()
+            except Exception as e:
+                print(f"[Scheduler] Erro na reconciliação de pagamentos MP: {e}")
+
     # Roda a limpeza de vendas a cada 15 minutos
     scheduler.add_job(func=job_limpar_abandonadas, trigger="interval", minutes=15)
 
@@ -101,6 +151,10 @@ def init_scheduler(app):
     
     # Roda a atualização de rastreios a cada 3 horas (para não estourar limite de requisições)
     scheduler.add_job(func=job_atualizar_rastreio, trigger="interval", hours=3)
-    
+
+    # Roda a reconciliação de estornos/chargebacks 1x por dia - não é tão sensível a tempo
+    # quanto aprovação de pagamento, então não precisa de intervalo curto
+    scheduler.add_job(func=job_reconciliar_estornos_mp, trigger="interval", hours=24)
+
     scheduler.start()
     return scheduler
