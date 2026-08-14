@@ -63,23 +63,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             html += `
                 <tr>
-                    <td class="px-4 py-3"><small class="text-muted">${a.data_criacao}</small></td>
+                    <td class="px-4 py-3"><small class="text-muted">${escapeHtml(a.data_criacao)}</small></td>
                     <td>
                         <a href="/store/produto/${a.id_produto}" class="text-decoration-none fw-bold text-dark" target="_blank">
-                            <i class="fas fa-box me-1"></i> ${a.produto_nome} <small class="text-muted">(#${a.id_produto})</small>
+                            <i class="fas fa-box me-1"></i> ${escapeHtml(a.produto_nome)} <small class="text-muted">(#${a.id_produto})</small>
                         </a>
                     </td>
                     <td>
                         <div class="d-flex align-items-center">
                             <img src="${a.cliente_foto || '/static/img/default_avatar.png'}" class="rounded-circle me-2" width="30" height="30" style="object-fit: cover;">
-                            <span>${a.cliente_nome}</span>
+                            <span>${escapeHtml(a.cliente_nome)}</span>
                         </div>
                     </td>
                     <td class="text-warning text-nowrap">
                         ${'<i class="fas fa-star"></i>'.repeat(a.nota)}${'<i class="far fa-star"></i>'.repeat(5 - a.nota)}
                     </td>
                     <td class="text-muted text-wrap" style="max-width: 300px;">
-                        ${a.comentario || '<em>Sem comentário</em>'}
+                        ${a.comentario ? escapeHtml(a.comentario) : '<em>Sem comentário</em>'}
                         ${mediasHtml}
                     </td>
                 </tr>

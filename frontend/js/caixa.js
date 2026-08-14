@@ -59,11 +59,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tipoBadge = m.tipo.toLowerCase().includes('venda') ? 'bg-primary' : (m.tipo.toLowerCase().includes('reembolso') ? 'bg-warning text-dark' : 'bg-info text-dark');
 
                 tr.innerHTML = `
-                    <td>${m.timestamp}</td>
-                    <td><span class="badge ${tipoBadge}">${m.tipo}</span></td>
+                    <td>${escapeHtml(m.timestamp)}</td>
+                    <td><span class="badge ${tipoBadge}">${escapeHtml(m.tipo)}</span></td>
                     <td class="${valorClasse}"><strong>${valorFormatado}</strong></td>
-                    <td>${m.usuario_nome}</td>
-                    <td>${m.observacao || 'N/A'}</td>
+                    <td>${escapeHtml(m.usuario_nome)}</td>
+                    <td>${escapeHtml(m.observacao) || 'N/A'}</td>
                 `;
                 movimentacoesTableBody.appendChild(tr);
             });

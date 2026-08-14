@@ -35,11 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${cliente.id}</td>
-                <td>${cliente.nome}</td>
-                <td>${cliente.telefone || 'N/A'}</td>
-                <td>${cliente.cpf || 'N/A'}</td>
+                <td>${escapeHtml(cliente.nome)}</td>
+                <td>${escapeHtml(cliente.telefone) || 'N/A'}</td>
+                <td>${escapeHtml(cliente.cpf) || 'N/A'}</td>
                 <td>
-                    <button class="btn btn-sm btn-info edit-btn" data-id="${cliente.id}" data-nome="${cliente.nome}" data-telefone="${cliente.telefone || ''}" data-cpf="${cliente.cpf || ''}">Editar</button>
+                    <button class="btn btn-sm btn-info edit-btn" data-id="${cliente.id}" data-nome="${escapeHtml(cliente.nome)}" data-telefone="${escapeHtml(cliente.telefone) || ''}" data-cpf="${escapeHtml(cliente.cpf) || ''}">Editar</button>
                     <button class="btn btn-sm btn-danger delete-btn" data-id="${cliente.id}">Excluir</button>
                 </td>
             `;

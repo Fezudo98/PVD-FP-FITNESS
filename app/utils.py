@@ -49,6 +49,10 @@ def token_required(f):
         if not token: return jsonify({'message': 'Token está faltando!'}), 401
         try:
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
+            # Sem o claim 'type', um token de cliente (mesma SECRET_KEY, mesmo formato de
+            # payload) seria aceito aqui se o id colidisse com o de um usuario admin/vendedor -
+            # cliente comum ganhando acesso total de administrador. Ver client_token_required.
+            if data.get('type') != 'admin': raise Exception('Token nao e de administrador')
             current_user = Usuario.query.get(data['id'])
             if not current_user: raise Exception('Usuário não encontrado')
         except Exception as e:
@@ -63,6 +67,7 @@ def client_token_required(f):
         if not token: return jsonify({'message': 'Token está faltando!'}), 401
         try:
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
+            if data.get('type') != 'client': raise Exception('Token nao e de cliente')
             current_client = Cliente.query.get(data['id'])
             if not current_client: raise Exception('Cliente não encontrado')
         except Exception: return jsonify({'message': 'Token é inválido!'}), 401

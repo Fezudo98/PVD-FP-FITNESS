@@ -18,9 +18,18 @@ def manage_specific_user(current_user, user_id):
     user = Usuario.query.get_or_404(user_id)
     if request.method == 'PUT':
         dados = request.get_json()
+        novo_role = dados.get('role', user.role)
+        if novo_role not in ('admin', 'vendedor'):
+            return jsonify({'erro': 'Cargo inválido. Use "admin" ou "vendedor".'}), 400
+        # Impede o admin de rebaixar a si mesmo se for o único admin restante - sem essa
+        # checagem, é possível travar o acesso administrativo do sistema por engano.
+        if user.id == current_user.id and user.role == 'admin' and novo_role != 'admin':
+            outros_admins = Usuario.query.filter(Usuario.role == 'admin', Usuario.id != user.id).first()
+            if not outros_admins:
+                return jsonify({'erro': 'Você é o único admin do sistema - não é possível remover seu próprio cargo de admin.'}), 400
         user.nome = dados.get('nome', user.nome)
         user.email = dados.get('email', user.email)
-        user.role = dados.get('role', user.role)
+        user.role = novo_role
         registrar_log(current_user, "Usuário Atualizado", f"ID: {user_id}, Cargo: {user.role}")
         db.session.commit()
         return jsonify(user.to_dict())

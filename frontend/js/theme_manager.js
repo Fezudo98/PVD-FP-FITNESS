@@ -3,6 +3,20 @@
  * Handles dynamic loading of theme resources (CSS/JS)
  */
 
+// Escapa texto de origem externa (nome de cliente, comentário de avaliação, motivo de
+// cancelamento etc.) antes de interpolar em innerHTML - sem isso, um cliente mal-intencionado
+// pode gravar um payload de script no próprio cadastro/avaliação e ele roda no navegador da
+// lojista assim que ela abre a tela correspondente no painel (XSS armazenado).
+window.escapeHtml = function (str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+};
+
 window.ThemeManager = {
     themes: {
         'original': {

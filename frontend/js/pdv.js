@@ -561,7 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const client = allClients.find(c => c.id === parseInt(clientId));
         if (client) {
             selectedClientId.value = client.id;
-            let nomeExibido = client.nome;
+            let nomeExibido = escapeHtml(client.nome);
             if (client.recompensa_avaliacao_disponivel) {
                 clienteRecompensaAvaliacao = { percentual: client.desconto_avaliacao_percentual, tipo: client.desconto_avaliacao_tipo };
                 const desconto = client.desconto_avaliacao_tipo === 'percentual' ? `${client.desconto_avaliacao_percentual}%` : `R$ ${client.desconto_avaliacao_percentual.toFixed(2)}`;

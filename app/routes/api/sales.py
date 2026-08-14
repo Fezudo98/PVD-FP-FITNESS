@@ -5,7 +5,6 @@ from ...models import Venda, ItemVenda, Pagamento, Cupom, MovimentacaoCaixa, Pro
 from ...utils import token_required, registrar_log, salvar_recibo_html, gerar_recibo_html
 from ...services.etiqueta_service import gerar_etiqueta_me
 from ...extensions import limiter
-import math
 import os
 import mercadopago
 from datetime import datetime, timedelta
@@ -21,6 +20,17 @@ def registrar_venda(current_user):
 
     if not itens_venda_data: return jsonify({'erro': 'Itens não podem estar vazios.'}), 400
     if not pagamentos_data: return jsonify({'erro': 'Pagamentos não podem estar vazios.'}), 400
+
+    # Sem essa checagem, a validação que segue só confere se a SOMA dos pagamentos bate com o
+    # total da venda - um valor negativo disfarçado (ex: Cartão +200 e Dinheiro -100 numa venda
+    # de R$100) passaria pela soma e geraria uma saída de caixa disfarçada de venda legítima.
+    for p in pagamentos_data:
+        try:
+            valor_pg = float(p.get('valor', 0))
+        except (TypeError, ValueError):
+            return jsonify({'erro': 'Valor de pagamento inválido.'}), 400
+        if valor_pg <= 0:
+            return jsonify({'erro': 'Todo pagamento deve ter valor maior que zero.'}), 400
 
     try:
         subtotal_produtos = 0
@@ -97,7 +107,9 @@ def registrar_venda(current_user):
         if total_pago < total_venda_final - 0.01:
              return jsonify({'erro': f'Pagamento insuficiente. Faltam R$ {total_venda_final - total_pago:.2f}.'}), 400
 
-        if not tem_pagamento_dinheiro and not math.isclose(total_pago, total_venda_final, rel_tol=1e-2):
+        # Tolerância absoluta (não relativa): rel_tol deixaria passar até ~R$10 de sobra numa
+        # venda de R$1000 sem detectar, já que é 1% do maior valor entre os dois comparados.
+        if not tem_pagamento_dinheiro and abs(total_pago - total_venda_final) > 0.02:
              return jsonify({'erro': f'Soma dos pagamentos (R$ {total_pago:.2f}) difere do total da venda (R$ {total_venda_final:.2f}).'}), 400
 
         nova_venda = Venda(
@@ -131,10 +143,16 @@ def registrar_venda(current_user):
                 return jsonify({'erro': 'Quantidade do item deve ser maior que zero.'}), 400
                 
             produto = produtos_map.get(item_data['id_produto'])
-            if produto.quantidade < quantidade_venda:
+            # Decremento atômico e condicional (mesmo padrão do checkout online em store.py):
+            # evita que duas vendas simultâneas do último item em estoque (ex: dois caixas, ou
+            # duplo-clique) passem ambas na checagem antes de qualquer uma escrever.
+            affected = db.session.query(Produto).filter(
+                Produto.id == produto.id,
+                Produto.quantidade >= quantidade_venda
+            ).update({Produto.quantidade: Produto.quantidade - quantidade_venda}, synchronize_session=False)
+            if affected == 0:
                 db.session.rollback()
                 return jsonify({'erro': f'Estoque insuficiente para {produto.nome}.'}), 400
-            produto.quantidade -= quantidade_venda
             nova_venda.itens.append(ItemVenda(
                 id_produto=produto.id, 
                 quantidade=quantidade_venda, 
@@ -322,15 +340,19 @@ def update_venda_rastreio(current_user, venda_id):
 def reembolsar_venda(current_user, venda_id):
     if current_user.role != 'admin': return jsonify({'erro': 'Apenas admins podem reembolsar.'}), 403
     venda = Venda.query.get_or_404(venda_id)
-    if venda.status == 'Reembolsada': return jsonify({'erro': 'Venda já reembolsada.'}), 400
+    # Bloqueia tambem sobre venda ja 'Cancelada' (nao so 'Reembolsada'): sem isso, reembolsar
+    # uma venda ja cancelada devolve o estoque de novo e lanca outra saida de caixa duplicada,
+    # ja que o cancelamento em si tambem devolve estoque.
+    if venda.status in Venda.ESTADOS_CANCELAMENTO:
+        return jsonify({'erro': f'Venda já está com status "{venda.status}" - não é possível reembolsar de novo.'}), 400
     dados = request.get_json(silent=True) or {}
     motivo = (dados.get('motivo') or '').strip()
     if not motivo:
         return jsonify({'erro': 'Informe o motivo do reembolso.'}), 400
     try:
-        valor_reembolso_caixa = sum(
+        valor_reembolso_caixa = round(sum(
             p.valor for p in venda.pagamentos if p.forma == 'Dinheiro'
-        )
+        ), 2)
         if valor_reembolso_caixa > 0:
             mov_reembolso = MovimentacaoCaixa(
                 tipo='REEMBOLSO',

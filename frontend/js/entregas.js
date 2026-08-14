@@ -91,10 +91,10 @@ if (!token || !userData) {
                     : `<span class="badge bg-success">${entrega.status_entrega}</span>`;
 
                 tr.innerHTML = `
-                    <td>${entrega.data_hora}</td>
-                    <td>${entrega.cliente}</td>
-                    <td>${entrega.endereco}</td>
-                    <td>${entrega.cidade}</td>
+                    <td>${escapeHtml(entrega.data_hora)}</td>
+                    <td>${escapeHtml(entrega.cliente)}</td>
+                    <td>${escapeHtml(entrega.endereco)}</td>
+                    <td>${escapeHtml(entrega.cidade)}</td>
                     <td>R$ ${entrega.taxa_entrega.toFixed(2).replace('.', ',')}</td>
                     <td>${statusBadge}</td>
                 `;

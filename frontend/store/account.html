@@ -685,15 +685,15 @@
                             <div class="card border-0 shadow-sm h-100">
                                 <div class="card-body">
                                     <div class="d-flex align-items-center mb-3">
-                                        <img src="${r.produto_img || '/static/img/no-image.png'}" alt="${r.produto_nome}" class="rounded me-3 border" width="60" height="60" style="object-fit: cover;">
+                                        <img src="${r.produto_img || '/static/img/no-image.png'}" alt="${escapeHtml(r.produto_nome)}" class="rounded me-3 border" width="60" height="60" style="object-fit: cover;">
                                         <div>
-                                            <h6 class="fw-bold mb-1">${r.produto_nome}</h6>
+                                            <h6 class="fw-bold mb-1">${escapeHtml(r.produto_nome)}</h6>
                                             <div class="text-warning small">
                                                 ${Array.from({length: 5}, (_, i) => `<i class="${i < r.nota ? 'fas' : 'far'} fa-star"></i>`).join('')}
                                             </div>
                                         </div>
                                 </div>
-                                <p class="card-text text-muted mb-0">"${r.comentario || ''}"</p>
+                                <p class="card-text text-muted mb-0">"${escapeHtml(r.comentario || '')}"</p>
                                 ${r.midias && r.midias.length > 0 ? `
                                     <div class="d-flex gap-2 mt-3 overflow-auto pb-2" style="scrollbar-width: thin;">
                                         ${r.midias.map(m => m.tipo === 'foto' 

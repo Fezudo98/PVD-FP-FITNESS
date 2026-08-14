@@ -1,5 +1,18 @@
 // Store Logic
 
+// Escapa texto de origem externa (nome/comentário de avaliação, digitado por qualquer cliente)
+// antes de interpolar em innerHTML - sem isso, um comentário malicioso roda no navegador de
+// QUALQUER visitante que abrir a página do produto (XSS armazenado com alcance público).
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Formata valores monetários no padrão brasileiro (vírgula decimal, ponto de milhar)
 function formatBRL(value) {
     return (Number(value) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

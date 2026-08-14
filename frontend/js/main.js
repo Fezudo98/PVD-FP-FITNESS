@@ -667,26 +667,26 @@ async function viewOrderDetails(id) {
                 waBtn = `<a href="https://wa.me/55${cleanPhone}?text=${encodeURIComponent(rawMessage)}" target="_blank" class="ms-2 text-success text-decoration-none" title="Enviar Detalhes no WhatsApp"><i class="fab fa-whatsapp fs-5"></i></a>`;
             }
             if (venda.cliente_email) {
-                emailBtn = `<a href="mailto:${venda.cliente_email}?subject=Atualização do Pedido #${venda.id}&body=${encodeURIComponent(rawMessage)}" target="_blank" class="ms-2 text-primary text-decoration-none" title="Enviar E-mail"><i class="fas fa-envelope fs-5"></i></a>`;
+                emailBtn = `<a href="mailto:${encodeURIComponent(venda.cliente_email)}?subject=Atualização do Pedido #${venda.id}&body=${encodeURIComponent(rawMessage)}" target="_blank" class="ms-2 text-primary text-decoration-none" title="Enviar E-mail"><i class="fas fa-envelope fs-5"></i></a>`;
             }
         }
 
         clientInfoDiv.innerHTML = `
             <div class="col-md-6">
                 <small class="text-white-50 d-block">Nome</small>
-                <span class="fw-bold text-white">${venda.cliente_nome}</span>
+                <span class="fw-bold text-white">${escapeHtml(venda.cliente_nome)}</span>
             </div>
              <div class="col-md-6">
                 <small class="text-white-50 d-block">Telefone</small>
-                <span class="text-white">${venda.cliente_telefone || 'Não informado'}</span> ${waBtn}
+                <span class="text-white">${escapeHtml(venda.cliente_telefone) || 'Não informado'}</span> ${waBtn}
             </div>
              <div class="col-md-6">
                 <small class="text-white-50 d-block">Email</small>
-                <span class="text-white">${venda.cliente_email || 'Não informado'}</span> ${emailBtn}
+                <span class="text-white">${escapeHtml(venda.cliente_email) || 'Não informado'}</span> ${emailBtn}
             </div>
              <div class="col-md-6">
                 <small class="text-white-50 d-block">CPF</small>
-                <span class="text-white">${venda.cliente_cpf || 'Não informado'}</span>
+                <span class="text-white">${escapeHtml(venda.cliente_cpf) || 'Não informado'}</span>
             </div>
         `;
 
@@ -700,12 +700,12 @@ async function viewOrderDetails(id) {
         ];
         let timelineHtml = marcos
             .filter(m => m.data)
-            .map(m => `<strong>${m.label}:</strong> ${m.data}`)
+            .map(m => `<strong>${m.label}:</strong> ${escapeHtml(m.data)}`)
             .join('<br>');
         if (venda.data_cancelamento) {
-            timelineHtml += `<br><strong class="text-danger">${venda.status === 'Reembolsada' ? 'Reembolsada' : 'Cancelada'} em:</strong> ${venda.data_cancelamento}`;
+            timelineHtml += `<br><strong class="text-danger">${venda.status === 'Reembolsada' ? 'Reembolsada' : 'Cancelada'} em:</strong> ${escapeHtml(venda.data_cancelamento)}`;
             if (venda.motivo_cancelamento) {
-                timelineHtml += `<br><strong>Motivo:</strong> ${venda.motivo_cancelamento}`;
+                timelineHtml += `<br><strong>Motivo:</strong> ${escapeHtml(venda.motivo_cancelamento)}`;
             }
         }
         timelineText.innerHTML = timelineHtml || 'Sem marcos registrados.';
@@ -716,11 +716,11 @@ async function viewOrderDetails(id) {
         if (venda.termos_aceitos && venda.ip_comprador) {
             legalCard.classList.remove('d-none');
             const dataAceite = venda.data_hora;
-            legalText.innerHTML = `O cliente <strong>${venda.cliente_nome || 'Não informado'}</strong>, portador do CPF <strong>${venda.cliente_cpf || 'Não informado'}</strong>, declarou explicitamente ter lido e concordado com as Políticas de Troca, Prazos e Termos de Uso.<br><br>
-            <strong>Registrado em:</strong> ${dataAceite}<br>
-            <strong>Versão dos Termos aceita:</strong> ${venda.versao_termos || 'Não registrada'}<br>
-            <strong>Assinatura Digital (IP):</strong> ${venda.ip_comprador}<br>
-            <strong>Dispositivo/Navegador:</strong> ${venda.user_agent_comprador || 'Não registrado'}`;
+            legalText.innerHTML = `O cliente <strong>${escapeHtml(venda.cliente_nome) || 'Não informado'}</strong>, portador do CPF <strong>${escapeHtml(venda.cliente_cpf) || 'Não informado'}</strong>, declarou explicitamente ter lido e concordado com as Políticas de Troca, Prazos e Termos de Uso.<br><br>
+            <strong>Registrado em:</strong> ${escapeHtml(dataAceite)}<br>
+            <strong>Versão dos Termos aceita:</strong> ${escapeHtml(venda.versao_termos) || 'Não registrada'}<br>
+            <strong>Assinatura Digital (IP):</strong> ${escapeHtml(venda.ip_comprador)}<br>
+            <strong>Dispositivo/Navegador:</strong> ${escapeHtml(venda.user_agent_comprador) || 'Não registrado'}`;
         } else {
             legalCard.classList.add('d-none');
             legalText.innerHTML = '';

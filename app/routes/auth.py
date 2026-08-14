@@ -57,7 +57,7 @@ def login():
     registrar_log(user, "Login Realizado")
     db.session.commit()
     
-    token = jwt.encode({'id': user.id, 'exp': datetime.now(timezone.utc) + timedelta(hours=24)}, current_app.config['SECRET_KEY'], algorithm="HS256")
+    token = jwt.encode({'id': user.id, 'type': 'admin', 'exp': datetime.now(timezone.utc) + timedelta(hours=24)}, current_app.config['SECRET_KEY'], algorithm="HS256")
     
     return jsonify({'token': token, 'user': user.to_dict()})
 
@@ -89,18 +89,12 @@ def get_client_by_cpf(cpf):
     cliente = Cliente.query.filter((Cliente.cpf == cpf) | (Cliente.cpf == cpf_limpo) | (Cliente.cpf == cpf_formatado)).first()
     
     if cliente:
-        # Avoid sending password hash
-        return jsonify({
-            'nome': cliente.nome,
-            'email': cliente.email,
-            'telefone': cliente.telefone,
-            'rua': cliente.endereco_rua,
-            'numero': cliente.endereco_numero,
-            'bairro': cliente.endereco_bairro,
-            'cidade': cliente.endereco_cidade,
-            'estado': cliente.endereco_estado,
-            'cep': cliente.endereco_cep
-        })
+        # Devolve só o nome pro autopreenchimento do checkout - email/telefone/endereço
+        # completos não vão mais aqui: esse endpoint é público (sem login, só pelo CPF
+        # digitado), e CPF não é segredo no Brasil. Devolver PII completa por CPF permitia
+        # a qualquer um colher nome+email+telefone+endereço de qualquer cliente da loja
+        # bastando saber o CPF dele.
+        return jsonify({'nome': cliente.nome})
     return jsonify({'erro': 'Cliente não encontrado'}), 404
 
 @auth_bp.route('/api/client/register', methods=['POST'])
@@ -137,7 +131,7 @@ def register_client():
     db.session.add(novo_cliente)
     db.session.commit()
     
-    token = jwt.encode({'id': novo_cliente.id, 'exp': datetime.now(timezone.utc) + timedelta(days=7)}, current_app.config['SECRET_KEY'], algorithm="HS256")
+    token = jwt.encode({'id': novo_cliente.id, 'type': 'client', 'exp': datetime.now(timezone.utc) + timedelta(days=7)}, current_app.config['SECRET_KEY'], algorithm="HS256")
     return jsonify({'token': token, 'cliente': novo_cliente.to_dict()}), 201
 
 @auth_bp.route('/api/client/login', methods=['POST'])
@@ -151,5 +145,5 @@ def login_client():
     if not cliente or not cliente.senha_hash or not bcrypt.check_password_hash(cliente.senha_hash, auth['senha']):
         return jsonify({'message': 'Credenciais inválidas!'}), 401
         
-    token = jwt.encode({'id': cliente.id, 'exp': datetime.now(timezone.utc) + timedelta(days=7)}, current_app.config['SECRET_KEY'], algorithm="HS256")
+    token = jwt.encode({'id': cliente.id, 'type': 'client', 'exp': datetime.now(timezone.utc) + timedelta(days=7)}, current_app.config['SECRET_KEY'], algorithm="HS256")
     return jsonify({'token': token, 'cliente': cliente.to_dict()})

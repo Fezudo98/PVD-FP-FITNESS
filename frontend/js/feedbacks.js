@@ -34,14 +34,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             html += `
                 <tr>
-                    <td class="px-4 py-3"><small class="text-muted">${f.data_criacao}</small></td>
-                    <td class="fw-bold">${f.cliente_nome}</td>
+                    <td class="px-4 py-3"><small class="text-muted">${escapeHtml(f.data_criacao)}</small></td>
+                    <td class="fw-bold">${escapeHtml(f.cliente_nome)}</td>
                     <td><a href="/loja_online.html" class="text-decoration-none">#${f.id_venda}</a></td>
                     <td class="text-warning">
                         ${'<i class="fas fa-star"></i>'.repeat(f.nota)}${'<i class="far fa-star"></i>'.repeat(5 - f.nota)}
                     </td>
                     <td class="text-muted text-wrap" style="max-width: 300px;">
-                        ${f.comentario || '<em>Sem comentário</em>'}
+                        ${f.comentario ? escapeHtml(f.comentario) : '<em>Sem comentário</em>'}
                     </td>
                 </tr>
             `;
