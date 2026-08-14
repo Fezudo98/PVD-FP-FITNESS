@@ -55,6 +55,7 @@
             <h2 class="mb-0">Gerenciar Produtos</h2>
             <div class="d-flex flex-column flex-sm-row gap-2">
                 <button class="btn btn-outline-light" id="manageCategoriesBtn">Gerenciar Categorias</button>
+                <button class="btn btn-outline-warning" id="addVariacaoBtn"><i class="fas fa-palette me-1"></i>Nova Variação (cor/tamanho)</button>
                 <button class="btn btn-custom" id="addProdutoBtn">Adicionar Novo Produto</button>
             </div>
         </div>
@@ -136,10 +137,18 @@
                             <img id="barcodePreview" src="" alt="Código de Barras" class="img-fluid">
                         </div>
 
+                        <div class="alert alert-warning py-2 px-3 small d-none" id="variacaoHint">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Escolha o produto na lista abaixo - categoria, descrição e dimensões vêm preenchidas
+                            automaticamente (e valem pra todas as variações dessa peça). Preencha só cor, tamanho,
+                            quantidade e SKU. Preço pode ser ajustado se essa variação custar diferente.
+                        </div>
+                        <div class="alert alert-info py-2 px-3 small d-none" id="variacaoEditNotice"></div>
                         <div class="mb-3">
                             <label for="nome" class="form-label">Nome do Produto</label>
                             <input type="text" class="form-control" id="nome" name="nome" list="nomesProdutos" required>
                             <datalist id="nomesProdutos"></datalist>
+                            <small class="text-warning d-none" id="nomeNovoAviso">Esse nome ainda não existe - isso vai criar um produto novo, não uma variação.</small>
                         </div>
 
                         <div class="mb-3">
@@ -320,7 +329,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/theme_manager.js?v=2"></script>
-    <script src="/js/produtos.js?v=2"></script>
+    <script src="/js/produtos.js?v=3"></script>
 </body>
 
 </html>

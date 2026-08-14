@@ -376,6 +376,36 @@ def gerenciar_produto_especifico(current_user, produto_id):
             # renomear uma variação a desvinculava do grupo antigo.
             produto.produto_base_id = obter_ou_criar_produto_base(produto.nome, produto).id
 
+            # Propaga os campos compartilhados (categoria, descrição, peso/dimensões, ativo,
+            # destaque) pras outras variações da mesma peça e atualiza a base - sem isso, editar
+            # só essa variação faria ela divergir silenciosamente do resto do grupo (o mesmo
+            # problema de inconsistência que a migração pra produto_base foi criada pra evitar).
+            # Preço fica de fora de propósito: continua podendo variar por variação.
+            base = ProdutoBase.query.get(produto.produto_base_id)
+            if base:
+                base.categoria = produto.categoria
+                base.descricao = produto.descricao
+                base.peso = produto.peso
+                base.altura = produto.altura
+                base.largura = produto.largura
+                base.comprimento = produto.comprimento
+                base.online_ativo = produto.online_ativo
+                base.destaque = produto.destaque
+
+                db.session.query(Produto).filter(
+                    Produto.produto_base_id == base.id,
+                    Produto.id != produto.id
+                ).update({
+                    Produto.categoria: produto.categoria,
+                    Produto.descricao: produto.descricao,
+                    Produto.peso: produto.peso,
+                    Produto.altura: produto.altura,
+                    Produto.largura: produto.largura,
+                    Produto.comprimento: produto.comprimento,
+                    Produto.online_ativo: produto.online_ativo,
+                    Produto.destaque: produto.destaque,
+                }, synchronize_session=False)
+
             imagens_files = request.files.getlist('imagem')
             if imagens_files:
                 uploads_dir = os.path.join(base_dir, 'uploads')

@@ -10,11 +10,18 @@ let currentPage = 1;
 let totalPages = 1; // Nova variável global para o total de páginas
 let currentSearch = '';
 let selectedFiles = []; // Array to store selected files
+let modoNovaVariacao = false; // true = reaproveitando um produto existente (Fase 3 de variações)
+let produtosPorNomeCache = {}; // nome exato -> dados completos do produto (pra pré-preencher a nova variação)
 
 document.addEventListener('DOMContentLoaded', () => {
     // Referências aos elementos do DOM
     const produtosTableBody = document.getElementById('produtosTableBody');
     const addProdutoBtn = document.getElementById('addProdutoBtn');
+    const addVariacaoBtn = document.getElementById('addVariacaoBtn');
+    const variacaoHint = document.getElementById('variacaoHint');
+    const nomeInput = document.getElementById('nome');
+    const nomeNovoAviso = document.getElementById('nomeNovoAviso');
+    const descricaoInput = document.getElementById('descricao');
     const productSearchInput = document.getElementById('productSearchInput'); // Campo de busca
     const categoryFilterSelect = document.getElementById('categoryFilterSelect'); // Filtro de categoria
     const produtoModal = new bootstrap.Modal(document.getElementById('produtoModal'));
@@ -638,13 +645,92 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- Nova Variação: reaproveita categoria/descrição/preço de um produto já cadastrado,
+    // em vez de digitar tudo de novo pra cada cor/tamanho. ---
+
+    function alternarModoNovaVariacao(ativo) {
+        modoNovaVariacao = ativo;
+        variacaoHint.classList.toggle('d-none', !ativo);
+        if (!ativo) {
+            nomeNovoAviso.classList.add('d-none');
+            categoriaSelect.disabled = false;
+            descricaoInput.readOnly = false;
+        }
+    }
+
+    async function buscarProdutoExistentePorNome(nome) {
+        if (produtosPorNomeCache[nome]) return produtosPorNomeCache[nome];
+        try {
+            const res = await fetch(`${API_URL}/api/produtos?q=${encodeURIComponent(nome)}&per_page=50`, {
+                headers: { 'x-access-token': token }
+            });
+            if (!res.ok) return null;
+            const data = await res.json();
+            const match = (data.produtos || []).find(p => p.nome === nome);
+            if (match) produtosPorNomeCache[nome] = match;
+            return match || null;
+        } catch (error) {
+            console.error('Erro ao buscar produto existente:', error);
+            return null;
+        }
+    }
+
+    async function handleNomeInputEmModoVariacao() {
+        if (!modoNovaVariacao) return;
+        const nomeAtual = nomeInput.value.trim();
+        if (!nomeAtual) {
+            nomeNovoAviso.classList.add('d-none');
+            return;
+        }
+
+        const produtoExistente = await buscarProdutoExistentePorNome(nomeAtual);
+        if (produtoExistente) {
+            nomeNovoAviso.classList.add('d-none');
+
+            // Pré-preenche os campos compartilhados a partir da variação encontrada
+            if (produtoExistente.categoria) {
+                categoriaSelect.value = produtoExistente.categoria;
+            }
+            descricaoInput.value = produtoExistente.descricao || '';
+            document.getElementById('preco_custo').value = produtoExistente.preco_custo ?? '';
+            document.getElementById('preco_venda').value = produtoExistente.preco_venda ?? '';
+
+            // Trava categoria/descrição pra não uma variação nova divergir do resto do grupo
+            // sem querer - preço continua editável (pode legitimamente mudar por tamanho).
+            categoriaSelect.disabled = true;
+            descricaoInput.readOnly = true;
+        } else {
+            nomeNovoAviso.classList.remove('d-none');
+            categoriaSelect.disabled = false;
+            descricaoInput.readOnly = false;
+        }
+    }
+
     async function openEditModal(produtoId) {
+        alternarModoNovaVariacao(false); // edição é um fluxo separado, nunca deve herdar o modo de nova variação
         await loadCategories(); // Garante que as categorias estejam carregadas
         const response = await fetch(`${API_URL}/api/produtos/${produtoId}?t=${Date.now()}`, { headers: { 'x-access-token': token } });
         const produto = await response.json();
         document.getElementById('produtoId').value = produto.id;
         document.getElementById('sku').value = produto.sku;
         document.getElementById('nome').value = produto.nome;
+
+        // Avisa quando editar aqui vai afetar outras variações da mesma peça (categoria/
+        // descrição são compartilhadas e propagam pras irmãs ao salvar)
+        const notice = document.getElementById('variacaoEditNotice');
+        try {
+            const resIrmas = await fetch(`${API_URL}/api/produtos?q=${encodeURIComponent(produto.nome)}&per_page=50`, { headers: { 'x-access-token': token } });
+            const dataIrmas = await resIrmas.json();
+            const totalIrmas = (dataIrmas.produtos || []).filter(p => p.nome === produto.nome).length;
+            if (totalIrmas > 1) {
+                notice.textContent = `Essa peça tem ${totalIrmas} variações (cor/tamanho). Categoria, descrição e dimensões são compartilhadas - alterá-las aqui atualiza todas de uma vez. Preço e estoque valem só pra essa variação.`;
+                notice.classList.remove('d-none');
+            } else {
+                notice.classList.add('d-none');
+            }
+        } catch (error) {
+            notice.classList.add('d-none');
+        }
 
         // Lógica para selecionar a categoria correta ou mostrar input se não existir na lista (caso raro)
         if (produto.categoria && Array.from(categoriaSelect.options).some(opt => opt.value === produto.categoria)) {
@@ -923,17 +1009,17 @@ document.addEventListener('DOMContentLoaded', () => {
         produtoModal.show();
     }
 
-    addProdutoBtn.addEventListener('click', () => {
-        document.getElementById('modalTitle').textContent = 'Adicionar Produto';
+    function abrirModalCadastroLimpo(tituloModal, novaVariacao) {
+        document.getElementById('modalTitle').textContent = tituloModal;
         produtoForm.reset();
         document.getElementById('produtoId').value = '';
         document.getElementById('cor_hex').value = '#000000';
-        
+
         tamanhoSelect.value = '';
         tamanhoInput.value = '';
         tamanhoInput.style.display = 'none';
         tamanhoInput.required = false;
-        
+
         document.getElementById('barcodePreviewContainer').style.display = 'none';
         document.getElementById('imagePreviewContainer').innerHTML = ''; // Limpa previews
         selectedFiles = []; // Clear selected files
@@ -944,10 +1030,24 @@ document.addEventListener('DOMContentLoaded', () => {
         categoriaInput.required = false;
         categoriaSelect.required = true;
 
+        alternarModoNovaVariacao(novaVariacao);
         loadProductNames(); // Carrega sugestões de nomes
 
         produtoModal.show();
+        if (novaVariacao) {
+            setTimeout(() => nomeInput.focus(), 300); // depois da animação do modal abrir
+        }
+    }
+
+    addProdutoBtn.addEventListener('click', () => {
+        abrirModalCadastroLimpo('Adicionar Produto', false);
     });
+
+    addVariacaoBtn.addEventListener('click', () => {
+        abrirModalCadastroLimpo('Nova Variação (cor/tamanho)', true);
+    });
+
+    nomeInput.addEventListener('input', handleNomeInputEmModoVariacao);
 
     produtoForm.addEventListener('submit', async (event) => {
         event.preventDefault();
