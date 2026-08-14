@@ -244,7 +244,7 @@ def sitemap_xml():
         func.min(Produto.id).label('id')
     ).filter(
         Produto.online_ativo == True, Produto.quantidade > 0, Produto.deletado == False
-    ).group_by(Produto.nome).all()
+    ).group_by(Produto.produto_base_id).all()
     for p in produtos:
         urls.append({'loc': f'{base_url}/store/produto/{p.id}', 'changefreq': 'weekly', 'priority': '0.8'})
 
@@ -389,12 +389,12 @@ def store_get_products():
 
     # Best Sellers
     best_sellers_query = db.session.query(
-        Produto.nome,
+        func.max(Produto.nome).label('nome'),
         func.sum(ItemVenda.quantidade).label('total_sold')
     ).join(ItemVenda, Produto.id == ItemVenda.id_produto)\
      .filter(Produto.deletado == False)\
-     .group_by(Produto.nome)\
-     .order_by(func.sum(ItemVenda.quantidade).desc(), Produto.nome.asc())\
+     .group_by(Produto.produto_base_id)\
+     .order_by(func.sum(ItemVenda.quantidade).desc(), func.max(Produto.nome).asc())\
      .limit(5).all()
 
     best_seller_names = [r.nome for r in best_sellers_query]
@@ -411,7 +411,7 @@ def store_get_products():
 
     # Base Query
     query = db.session.query(
-        Produto.nome,
+        func.max(Produto.nome).label('nome'),
         func.min(Produto.preco_venda).label('min_price'),
         func.max(Produto.preco_venda).label('max_price'),
         func.min(Produto.id).label('id'),
@@ -430,25 +430,25 @@ def store_get_products():
 
     # Sorting
     if sort_by == 'alfabetica':
-        query = query.order_by(Produto.nome.asc())
+        query = query.order_by(func.max(Produto.nome).asc())
     elif sort_by == 'preco_crescente':
         query = query.order_by(func.min(Produto.preco_venda).asc())
     elif sort_by == 'preco_decrescente':
         query = query.order_by(func.min(Produto.preco_venda).desc())
     elif sort_by == 'mais_vendidos':
         subquery_sales = db.session.query(
-            Produto.nome.label('p_nome'),
+            Produto.produto_base_id.label('p_base_id'),
             func.sum(ItemVenda.quantidade).label('total_sales')
         ).join(ItemVenda, Produto.id == ItemVenda.id_produto)\
-         .group_by(Produto.nome).subquery()
+         .group_by(Produto.produto_base_id).subquery()
 
-        query = query.outerjoin(subquery_sales, Produto.nome == subquery_sales.c.p_nome)
-        query = query.order_by(subquery_sales.c.total_sales.desc().nullslast(), Produto.nome.asc())
+        query = query.outerjoin(subquery_sales, Produto.produto_base_id == subquery_sales.c.p_base_id)
+        query = query.order_by(subquery_sales.c.total_sales.desc().nullslast(), func.max(Produto.nome).asc())
     else:
-        query = query.order_by(Produto.nome.asc())
+        query = query.order_by(func.max(Produto.nome).asc())
 
     # Grouping
-    query = query.group_by(Produto.nome)
+    query = query.group_by(Produto.produto_base_id)
 
     # Pagination
     total = query.count()
@@ -508,12 +508,12 @@ def store_get_products():
 def store_get_suggestions():
     # Helper to randomize
     query = db.session.query(
-        Produto.nome,
+        func.max(Produto.nome).label('nome'),
         func.min(Produto.preco_venda).label('min_price'),
         func.max(Produto.imagem_url).label('imagem_url'),
         func.min(Produto.id).label('id')
     ).filter(Produto.online_ativo == True, Produto.quantidade > 0)\
-     .group_by(Produto.nome)\
+     .group_by(Produto.produto_base_id)\
      .order_by(func.random())\
      .limit(3).all()
     
@@ -581,7 +581,7 @@ def store_validate_coupon(codigo):
     })
 
 def get_variant_ids(produto_id):
-    """Retorna os ids de todas as variações (cor/tamanho) do mesmo produto (mesmo nome).
+    """Retorna os ids de todas as variações (cor/tamanho) do mesmo produto (mesmo produto_base).
 
     Cada variação é uma linha própria em Produto, mas avaliações devem ser
     compartilhadas entre todas as variações do mesmo produto, já que o cliente
@@ -591,13 +591,20 @@ def get_variant_ids(produto_id):
     produto = Produto.query.get(produto_id)
     if not produto:
         return [produto_id]
-    ids = db.session.query(Produto.id).filter_by(nome=produto.nome).all()
+    if not produto.produto_base_id:
+        return [produto_id]
+    ids = db.session.query(Produto.id).filter_by(produto_base_id=produto.produto_base_id).all()
     return [i[0] for i in ids] or [produto_id]
 
 @store_bp.route('/api/store/products/<int:produto_id>', methods=['GET'])
 def store_get_product_detail(produto_id):
     produto = Produto.query.filter_by(id=produto_id, online_ativo=True, deletado=False).first_or_404()
-    variants = Produto.query.filter_by(nome=produto.nome, online_ativo=True, deletado=False).filter(Produto.quantidade > 0).all()
+    variants_query = Produto.query.filter_by(online_ativo=True, deletado=False).filter(Produto.quantidade > 0)
+    if produto.produto_base_id:
+        variants_query = variants_query.filter_by(produto_base_id=produto.produto_base_id)
+    else:
+        variants_query = variants_query.filter_by(nome=produto.nome)
+    variants = variants_query.all()
     
     # Rating Info (Adding if missing in original snippet but good to have)
     # The original didn't allow getting reviews here?

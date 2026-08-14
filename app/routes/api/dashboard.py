@@ -34,7 +34,7 @@ def get_dashboard_data(current_user):
     pagamentos_forma = db.session.query(Pagamento.forma, func.sum(Pagamento.valor).label('total')).join(Venda).filter(Venda.id.in_([v.id for v in vendas_concluidas])).group_by(Pagamento.forma).all()
     grafico_forma_pagamento = [{'forma': r.forma, 'total': r.total} for r in pagamentos_forma]
 
-    ranking_produtos = db.session.query(Produto.nome, func.sum(ItemVenda.quantidade).label('total_qtd')).join(ItemVenda).join(Venda).filter(Venda.id.in_([v.id for v in vendas_concluidas])).group_by(Produto.nome).order_by(func.sum(ItemVenda.quantidade).desc()).limit(10).all()
+    ranking_produtos = db.session.query(func.max(Produto.nome).label('nome'), func.sum(ItemVenda.quantidade).label('total_qtd')).join(ItemVenda).join(Venda).filter(Venda.id.in_([v.id for v in vendas_concluidas])).group_by(Produto.produto_base_id).order_by(func.sum(ItemVenda.quantidade).desc()).limit(10).all()
     ranking_produtos_list = [{'produto': r.nome, 'quantidade': int(r.total_qtd)} for r in ranking_produtos]
     
     ranking_vendedores = db.session.query(Usuario.nome, func.sum(Venda.total_venda).label('total_valor')).join(Venda).filter(Venda.id.in_([v.id for v in vendas_concluidas])).group_by(Usuario.nome).order_by(func.sum(Venda.total_venda).desc()).all()

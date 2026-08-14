@@ -2,7 +2,7 @@
 from flask import request, jsonify, current_app
 from . import api_bp
 from ...extensions import db
-from ...models import Produto, ProdutoImagem
+from ...models import Produto, ProdutoImagem, ProdutoBase
 from ...utils import token_required, registrar_log, generate_standard_sku
 from ...extensions import limiter
 # pyrefly: ignore [missing-import]
@@ -18,6 +18,36 @@ ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 def allowed_image_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+
+
+def obter_ou_criar_produto_base(nome, produto):
+    """Vincula um produto (variação) ao produto_base do mesmo nome, criando a base se essa for
+    a primeira variação com esse nome. Sem isso, qualquer produto cadastrado depois da Fase 1
+    da migração de variações ficaria sem produto_base_id e cairia fora do agrupamento (loja,
+    ranking de mais vendidos, avaliações), que passou a depender do vínculo real em vez de
+    comparar o texto do nome.
+
+    Se a base já existe (outra variação com esse nome já cadastrada), reaproveita ela como
+    está - não sobrescreve categoria/descrição/etc pelos valores dessa variação nova, pra não
+    uma variação recém-cadastrada mudar silenciosamente o dado compartilhado do grupo inteiro."""
+    base = ProdutoBase.query.filter_by(nome=nome).first()
+    if base:
+        return base
+
+    base = ProdutoBase(
+        nome=nome,
+        categoria=produto.categoria,
+        descricao=produto.descricao,
+        peso=produto.peso,
+        altura=produto.altura,
+        largura=produto.largura,
+        comprimento=produto.comprimento,
+        online_ativo=produto.online_ativo,
+        destaque=produto.destaque,
+    )
+    db.session.add(base)
+    db.session.flush()
+    return base
 
 @api_bp.route('/api/produtos/nomes', methods=['GET'])
 @token_required
@@ -155,6 +185,7 @@ def gerenciar_produtos(current_user):
         produto_alvo.quantidade = quantidade_val
         produto_alvo.descricao = dados.get('descricao')
         produto_alvo.online_ativo = True
+        produto_alvo.produto_base_id = obter_ou_criar_produto_base(produto_alvo.nome, produto_alvo).id
 
         imagens_files = request.files.getlist('imagem')
         if imagens_files:
@@ -340,7 +371,11 @@ def gerenciar_produto_especifico(current_user, produto_id):
                 return jsonify({'erro': 'A quantidade não pode ser negativa'}), 400
             produto.quantidade = quantidade_val
             produto.descricao = dados.get('descricao', produto.descricao)
-            
+            # Se o nome mudou, reagrupa com a base correspondente (cria uma nova se for a
+            # primeira variação com esse nome) - mesmo comportamento de antes da migração, onde
+            # renomear uma variação a desvinculava do grupo antigo.
+            produto.produto_base_id = obter_ou_criar_produto_base(produto.nome, produto).id
+
             imagens_files = request.files.getlist('imagem')
             if imagens_files:
                 uploads_dir = os.path.join(base_dir, 'uploads')
