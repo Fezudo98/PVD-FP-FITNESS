@@ -475,6 +475,7 @@ def update_venda_status(current_user, venda_id):
 
     status_anterior = venda.status
     avisar_enviado = novo_status in Venda.ESTADOS_ENVIADO and status_anterior not in Venda.ESTADOS_ENVIADO
+    avisar_entregue = novo_status == 'Entregue' and status_anterior != 'Entregue'
 
     try:
         if novo_status == 'Cancelada' and venda.status != 'Cancelada':
@@ -493,6 +494,13 @@ def update_venda_status(current_user, venda_id):
                 enviar_pedido_enviado(venda)
             except Exception as e:
                 print(f"Erro ao enviar e-mail de pedido enviado da venda {venda.id}: {e}")
+
+        if avisar_entregue:
+            try:
+                from ...services.email_service import enviar_pedido_entregue
+                enviar_pedido_entregue(venda)
+            except Exception as e:
+                print(f"Erro ao enviar e-mail de pedido entregue da venda {venda.id}: {e}")
 
         return jsonify({'mensagem': f'Status atualizado para {novo_status}'})
         

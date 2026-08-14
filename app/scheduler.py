@@ -56,6 +56,7 @@ def init_scheduler(app):
                 if not isinstance(tracking_data, dict): return
                 
                 vendas_recem_enviadas = []
+                vendas_recem_entregues = []
                 for venda in vendas:
                     t_info = tracking_data.get(venda.codigo_rastreio)
                     if t_info and isinstance(t_info, dict):
@@ -69,6 +70,7 @@ def init_scheduler(app):
                             if venda.status != 'Entregue':
                                 venda.atualizar_status('Entregue')
                                 registrar_log(None, "Venda Entregue (Rastreio Automático)", f"ID: {venda.id}")
+                                vendas_recem_entregues.append(venda)
 
                 db.session.commit()
 
@@ -79,6 +81,14 @@ def init_scheduler(app):
                             enviar_pedido_enviado(venda)
                         except Exception as e:
                             print(f"[Scheduler] Erro ao enviar e-mail de pedido enviado da venda {venda.id}: {e}")
+
+                if vendas_recem_entregues:
+                    from .services.email_service import enviar_pedido_entregue
+                    for venda in vendas_recem_entregues:
+                        try:
+                            enviar_pedido_entregue(venda)
+                        except Exception as e:
+                            print(f"[Scheduler] Erro ao enviar e-mail de pedido entregue da venda {venda.id}: {e}")
             except Exception as e:
                 print(f"[Scheduler] Erro ao atualizar rastreios: {e}")
 

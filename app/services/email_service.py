@@ -197,6 +197,20 @@ def enviar_pedido_enviado(venda):
     return _enviar_email(venda.cliente.email, f'Seu pedido #{venda.id} foi enviado! - FP Moda Fitness', html)
 
 
+def enviar_pedido_entregue(venda):
+    if not venda.cliente or not venda.cliente.email:
+        return False
+
+    corpo = f'''
+        <p>Olá, {venda.cliente.nome}!</p>
+        <p>Seu pedido <strong>#{venda.id}</strong> foi entregue! 🎉</p>
+        <p>Esperamos que você ame as suas novas peças. Se puder, deixe uma avaliação em "Minha Conta" &mdash; isso ajuda muito a loja!</p>
+    '''
+
+    html = _template_base(f'Pedido #{venda.id} entregue!', corpo)
+    return _enviar_email(venda.cliente.email, f'Seu pedido #{venda.id} foi entregue! - FP Moda Fitness', html)
+
+
 def enviar_aviso_novo_pedido_admin(venda):
     """Avisa a lojista por e-mail que um novo pedido online chegou (independente do cliente ter
     e-mail cadastrado ou não). Vai para ADMIN_NOTIFICATION_EMAIL, ou MAIL_USERNAME se não
