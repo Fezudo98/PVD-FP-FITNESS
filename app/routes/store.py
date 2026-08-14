@@ -269,6 +269,8 @@ def robots_txt():
     paginas da loja corretamente."""
     conteudo = """User-agent: *
 Disallow: /
+Allow: /sitemap.xml
+Allow: /robots.txt
 Allow: /store$
 Allow: /store/produtos
 Allow: /store/produto/
