@@ -130,8 +130,8 @@ async function imprimirEtiquetasSelecionadas() {
 
     if (sucesso.length > 0) {
         try {
-            const config = qz.configs.create(impressora, { rasterize: false });
-            const dados = sucesso.map(r => ({ type: 'raw', format: 'plain', data: r.zpl }));
+            const config = qz.configs.create(impressora);
+            const dados = sucesso.map(r => ({ type: 'raw', format: 'command', flavor: 'plain', data: r.zpl }));
             await qz.print(config, dados);
         } catch (error) {
             console.error('Erro ao imprimir via QZ Tray:', error);
