@@ -11,10 +11,125 @@
     <title>Gerenciar Produtos - Sistema FP Moda Fitness</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+    <style>
+        @media (min-width: 992px) {
+            .col-lg-2-4 { flex: 0 0 auto; width: 20%; }
+        }
+
+        .dash-card {
+            background: linear-gradient(145deg, #24272c 0%, #15171a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .dash-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: var(--card-accent, transparent);
+        }
+
+        .produto-grupo-card {
+            background: linear-gradient(145deg, #24272c 0%, #1a1c20 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            margin-bottom: 14px;
+            overflow: hidden;
+            transition: border-color 0.2s ease;
+        }
+
+        .produto-grupo-card:hover {
+            border-color: rgba(224, 180, 49, 0.35);
+        }
+
+        .produto-grupo-header {
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .produto-grupo-thumb {
+            width: 56px;
+            height: 56px;
+            border-radius: 10px;
+            object-fit: cover;
+            background: #2b2e33;
+            flex-shrink: 0;
+        }
+
+        .produto-grupo-chevron {
+            transition: transform 0.25s ease;
+            color: #8a8f98;
+            flex-shrink: 0;
+        }
+
+        .produto-grupo-card.aberto .produto-grupo-chevron {
+            transform: rotate(90deg);
+            color: #e0b431;
+        }
+
+        .produto-grupo-variantes {
+            display: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            background: #1a1c20;
+        }
+
+        .produto-grupo-card.aberto .produto-grupo-variantes {
+            display: block;
+        }
+
+        .badge-estoque-ok { background: rgba(25, 135, 84, 0.18); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); }
+        .badge-estoque-baixo { background: rgba(255, 193, 7, 0.15); color: #ffc107; border: 1px solid rgba(255, 193, 7, 0.35); }
+        .badge-estoque-zero { background: rgba(220, 53, 69, 0.15); color: #ff6b7a; border: 1px solid rgba(255, 107, 122, 0.35); }
+
+        .cor-swatch {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: inline-block;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        .variante-row {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .variante-row:last-child { border-bottom: none; }
+
+        .form-section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #e0b431;
+            font-weight: 700;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(224, 180, 49, 0.2);
+        }
+
+        .skeleton-line {
+            background: linear-gradient(90deg, #2a2d32 25%, #34383e 37%, #2a2d32 63%);
+            background-size: 400% 100%;
+            animation: skeleton-loading 1.4s ease infinite;
+            border-radius: 6px;
+        }
+
+        @keyframes skeleton-loading {
+            0% { background-position: 100% 50%; }
+            100% { background-position: 0 50%; }
+        }
+    </style>
 </head>
 
 <body>
@@ -24,28 +139,28 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="/index.html"><img src="/logo.jpg" alt="Logo" width="100"></a>
-            
+
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar" aria-controls="adminNavbar" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse justify-content-end" id="adminNavbar">
                 <div class="d-flex flex-column flex-lg-row mt-3 mt-lg-0 w-100 justify-content-end">
-                <div class="dropdown me-2">
-                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="themeDropdown"
-                        data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-palette"></i> Temas
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="themeDropdown" id="themeSelector">
-                        <!-- Populated by JS -->
-                    </ul>
+                    <div class="dropdown me-2">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="themeDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-palette"></i> Temas
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="themeDropdown" id="themeSelector">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                    <a href="/index.html" class="btn btn-outline-secondary me-2">Voltar ao Painel</a>
+                    <a href="/manual.html" class="btn btn-outline-info me-2" title="Manual do Sistema">
+                        <i class="fas fa-book"></i> Manual
+                    </a>
+                    <button class="btn btn-outline-warning" id="logoutButton">Sair</button>
                 </div>
-                <a href="/index.html" class="btn btn-outline-secondary me-2">Voltar ao Painel</a>
-                <a href="/manual.html" class="btn btn-outline-info me-2" title="Manual do Sistema">
-                    <i class="fas fa-book"></i> Manual
-                </a>
-                <button class="btn btn-outline-warning" id="logoutButton">Sair</button>
             </div>
-</div>
         </div>
     </nav>
 
@@ -56,13 +171,60 @@
             <div class="d-flex flex-column flex-sm-row gap-2">
                 <button class="btn btn-outline-light" id="manageCategoriesBtn">Gerenciar Categorias</button>
                 <button class="btn btn-outline-warning" id="addVariacaoBtn"><i class="fas fa-palette me-1"></i>Nova Variação (cor/tamanho)</button>
-                <button class="btn btn-custom" id="addProdutoBtn">Adicionar Novo Produto</button>
+                <button class="btn btn-custom" id="addProdutoBtn"><i class="fas fa-plus me-1"></i>Adicionar Novo Produto</button>
             </div>
         </div>
 
-        <div class="row mb-4 g-2">
+        <!-- Cards de Estatísticas -->
+        <div class="row g-3 mb-4" id="statsRow">
+            <div class="col-6 col-lg-2-4">
+                <div class="dash-card text-white h-100" style="--card-accent: #e0b431;">
+                    <div class="p-3">
+                        <h6 class="text-white-50 small mb-1"><i class="fas fa-tshirt me-1 text-warning"></i>Peças</h6>
+                        <h3 class="mb-0 fw-bold" id="statPecas"><span class="skeleton-line d-inline-block" style="width:40px;height:26px;"></span></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-2-4">
+                <div class="dash-card text-white h-100" style="--card-accent: #0dcaf0;">
+                    <div class="p-3">
+                        <h6 class="text-white-50 small mb-1"><i class="fas fa-layer-group me-1 text-info"></i>Variações</h6>
+                        <h3 class="mb-0 fw-bold" id="statVariantes"><span class="skeleton-line d-inline-block" style="width:40px;height:26px;"></span></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-2-4">
+                <div class="dash-card text-white h-100" style="--card-accent: #ffc107;">
+                    <div class="p-3">
+                        <h6 class="text-white-50 small mb-1"><i class="fas fa-triangle-exclamation me-1 text-warning"></i>Estoque baixo</h6>
+                        <h3 class="mb-0 fw-bold" id="statEstoqueBaixo"><span class="skeleton-line d-inline-block" style="width:40px;height:26px;"></span></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-2-4">
+                <div class="dash-card text-white h-100" style="--card-accent: #dc3545;">
+                    <div class="p-3">
+                        <h6 class="text-white-50 small mb-1"><i class="fas fa-box-open me-1 text-danger"></i>Sem estoque</h6>
+                        <h3 class="mb-0 fw-bold" id="statSemEstoque"><span class="skeleton-line d-inline-block" style="width:40px;height:26px;"></span></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-2-4">
+                <div class="dash-card text-white h-100" style="--card-accent: #198754;">
+                    <div class="p-3">
+                        <h6 class="text-white-50 small mb-1"><i class="fas fa-sack-dollar me-1 text-success"></i>Valor em estoque (custo)</h6>
+                        <h3 class="mb-0 fw-bold" id="statValorEstoque"><span class="skeleton-line d-inline-block" style="width:80px;height:26px;"></span></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3 g-2">
             <div class="col-md-6">
-                <input type="text" id="productSearchInput" class="form-control" placeholder="Buscar por nome ou SKU...">
+                <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-white-50"><i class="fas fa-search"></i></span>
+                    <input type="text" id="productSearchInput" class="form-control" placeholder="Buscar por nome ou SKU...">
+                </div>
             </div>
             <div class="col-md-4">
                 <select class="form-select" id="categoryFilterSelect">
@@ -70,12 +232,17 @@
                     <!-- Opções carregadas via JS -->
                 </select>
             </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-light w-100" id="toggleAllGroupsBtn" title="Expandir/recolher todos">
+                    <i class="fas fa-expand"></i> Expandir tudo
+                </button>
+            </div>
         </div>
-        
+
         <!-- Barra de Ações em Massa (Oculta por padrão) -->
-        <div id="bulkActionsBar" class="bg-dark border border-secondary rounded p-3 mb-4 d-none flex-column flex-md-row justify-content-between align-items-center shadow-lg gap-3" style="transition: all 0.3s ease;">
+        <div id="bulkActionsBar" class="bg-dark border border-secondary rounded p-3 mb-3 d-none flex-column flex-md-row justify-content-between align-items-center shadow-lg gap-3" style="transition: all 0.3s ease;">
             <div class="d-flex flex-column flex-sm-row align-items-center text-center text-sm-start gap-2 w-100">
-                <span class="text-white fw-bold me-sm-3 mb-2 mb-sm-0"><span id="selectedCount">0</span> itens selecionados</span>
+                <span class="text-white fw-bold me-sm-3 mb-2 mb-sm-0"><span id="selectedCount">0</span> variações selecionadas</span>
                 <button class="btn btn-sm btn-outline-danger w-100 w-sm-auto" id="bulkDeleteBtn"><i class="fas fa-trash-alt me-1"></i> Excluir</button>
                 <button class="btn btn-sm btn-outline-warning w-100 w-sm-auto" id="bulkZeroStockBtn"><i class="fas fa-box-open me-1"></i> Zerar Estoque</button>
             </div>
@@ -83,26 +250,12 @@
             <button class="btn btn-sm btn-close btn-close-white d-none d-md-block" id="closeBulkBtn"></button>
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-dark table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th style="width: 40px;"><input class="form-check-input" type="checkbox" id="selectAllCheckbox"></th>
-                        <th>Imagem</th>
-                        <th>SKU</th>
-                        <th>Nome</th>
-                        <th>Categoria</th>
-                        <th>Preço Venda</th>
-                        <th>Qtd.</th>
-                        <th class="text-end">Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="produtosTableBody">
-                    <!-- Linhas da tabela serão inseridas aqui pelo JavaScript -->
-                </tbody>
-            </table>
+        <!-- Lista agrupada por peça -->
+        <div id="produtosGruposContainer">
+            <!-- Grupos inseridos via JS -->
         </div>
-        
+        <div id="paginationContainer" class="d-flex justify-content-center mt-4"></div>
+
         <!-- Toast Container para Mensagens e Undo -->
         <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
             <!-- Toasts serão injetados via JS -->
@@ -111,7 +264,7 @@
 
     <!-- Modal para Adicionar/Editar Produto -->
     <div class="modal fade" id="produtoModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content bg-dark text-white">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalTitle">Adicionar Produto</h5>
@@ -121,22 +274,6 @@
                     <form id="produtoForm" enctype="multipart/form-data">
                         <input type="hidden" id="produtoId">
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="sku" class="form-label">SKU (Código Único)</label>
-                                <input type="text" class="form-control" id="sku" required>
-                            </div>
-                            <div class="col-md-6 mb-3 d-flex align-items-end">
-                                <button type="button" class="btn btn-outline-info w-100" id="generateBarcodeBtn"
-                                    disabled>Gerar/Atualizar Código de Barras</button>
-                            </div>
-                        </div>
-
-                        <!-- Área de Preview do Código de Barras -->
-                        <div class="text-center my-3" id="barcodePreviewContainer" style="display: none;">
-                            <img id="barcodePreview" src="" alt="Código de Barras" class="img-fluid">
-                        </div>
-
                         <div class="alert alert-warning py-2 px-3 small d-none" id="variacaoHint">
                             <i class="fas fa-info-circle me-1"></i>
                             Escolha o produto na lista abaixo - categoria, descrição e dimensões vêm preenchidas
@@ -144,20 +281,42 @@
                             quantidade e SKU. Preço pode ser ajustado se essa variação custar diferente.
                         </div>
                         <div class="alert alert-info py-2 px-3 small d-none" id="variacaoEditNotice"></div>
+
+                        <!-- Seção: dados compartilhados da peça -->
+                        <div class="form-section-title">Dados da peça (compartilhados entre as variações)</div>
                         <div class="mb-3">
                             <label for="nome" class="form-label">Nome do Produto</label>
                             <input type="text" class="form-control" id="nome" name="nome" list="nomesProdutos" autocomplete="off" required>
                             <datalist id="nomesProdutos"></datalist>
                             <small class="text-warning d-none" id="nomeNovoAviso">Esse nome ainda não existe - isso vai criar um produto novo, não uma variação.</small>
                         </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="categoria" class="form-label">Categoria</label>
+                                <div class="input-group">
+                                    <select class="form-select" id="categoriaSelect">
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                    <input type="text" class="form-control" id="categoriaInput" style="display: none;"
+                                        placeholder="Nova Categoria">
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleCategoriaInput"
+                                        title="Nova Categoria">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
+                        </div>
 
+                        <!-- Seção: dados desta variação -->
+                        <div class="form-section-title">Cor / Tamanho desta variação</div>
                         <div class="mb-3">
-                            <label for="imagem" class="form-label">Imagens do Produto</label>
+                            <label for="imagem" class="form-label">Imagens (dessa cor)</label>
                             <input type="file" class="form-control" id="imagem" name="imagem"
                                 accept="image/*, .heic, .heif" multiple>
                             <div id="imagePreviewContainer" class="d-flex flex-wrap gap-2 mt-2"></div>
                         </div>
-
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="cor" class="form-label">Cor</label>
@@ -209,23 +368,11 @@
                                 </div>
                             </div>
                         </div>
-
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="categoria" class="form-label">Categoria</label>
-                                <div class="input-group">
-                                    <select class="form-select" id="categoriaSelect">
-                                        <option value="">Selecione...</option>
-                                    </select>
-                                    <input type="text" class="form-control" id="categoriaInput" style="display: none;"
-                                        placeholder="Nova Categoria">
-                                    <button class="btn btn-outline-secondary" type="button" id="toggleCategoriaInput"
-                                        title="Nova Categoria">+</button>
-                                </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="sku" class="form-label">SKU (Código Único)</label>
+                                <input type="text" class="form-control" id="sku" required>
                             </div>
-                        </div>
-
-                        <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="preco_custo" class="form-label">Preço de Custo (R$)</label>
                                 <input type="number" step="0.01" class="form-control" id="preco_custo" required>
@@ -234,18 +381,22 @@
                                 <label for="preco_venda" class="form-label">Preço de Venda (R$)</label>
                                 <input type="number" step="0.01" class="form-control" id="preco_venda" required>
                             </div>
-                            <div class="col-md-4 mb-3">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
                                 <label for="quantidade" class="form-label">Quantidade</label>
                                 <input type="number" class="form-control" id="quantidade" min="0" required>
                             </div>
+                            <div class="col-md-6 mb-3 d-flex align-items-end">
+                                <button type="button" class="btn btn-outline-info w-100" id="generateBarcodeBtn"
+                                    disabled><i class="fas fa-barcode me-1"></i>Gerar/Atualizar Código de Barras</button>
+                            </div>
+                        </div>
+                        <div class="text-center my-3" id="barcodePreviewContainer" style="display: none;">
+                            <img id="barcodePreview" src="" alt="Código de Barras" class="img-fluid">
                         </div>
 
-                        <div class="mb-3">
-                            <label for="descricao" class="form-label">Descrição</label>
-                            <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
-                        </div>
-
-                        <div class="modal-footer">
+                        <div class="modal-footer px-0 pb-0">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                             <button type="submit" class="btn btn-primary">Salvar</button>
                         </div>
@@ -329,7 +480,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/theme_manager.js?v=2"></script>
-    <script src="/js/produtos.js?v=3"></script>
+    <script src="/js/produtos.js?v=4"></script>
 </body>
 
 </html>

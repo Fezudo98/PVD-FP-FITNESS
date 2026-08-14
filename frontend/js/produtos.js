@@ -7,28 +7,29 @@ if (!token) {
 
 // Variáveis globais para controlar o estado da página
 let currentPage = 1;
-let totalPages = 1; // Nova variável global para o total de páginas
+let totalPages = 1;
 let currentSearch = '';
 let selectedFiles = []; // Array to store selected files
 let modoNovaVariacao = false; // true = reaproveitando um produto existente (Fase 3 de variações)
 let produtosPorNomeCache = {}; // nome exato -> dados completos do produto (pra pré-preencher a nova variação)
+let todosExpandidos = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Referências aos elementos do DOM
-    const produtosTableBody = document.getElementById('produtosTableBody');
+    const gruposContainer = document.getElementById('produtosGruposContainer');
     const addProdutoBtn = document.getElementById('addProdutoBtn');
     const addVariacaoBtn = document.getElementById('addVariacaoBtn');
+    const toggleAllGroupsBtn = document.getElementById('toggleAllGroupsBtn');
     const variacaoHint = document.getElementById('variacaoHint');
     const nomeInput = document.getElementById('nome');
     const nomeNovoAviso = document.getElementById('nomeNovoAviso');
     const descricaoInput = document.getElementById('descricao');
-    const productSearchInput = document.getElementById('productSearchInput'); // Campo de busca
-    const categoryFilterSelect = document.getElementById('categoryFilterSelect'); // Filtro de categoria
+    const productSearchInput = document.getElementById('productSearchInput');
+    const categoryFilterSelect = document.getElementById('categoryFilterSelect');
     const produtoModal = new bootstrap.Modal(document.getElementById('produtoModal'));
     const produtoForm = document.getElementById('produtoForm');
     const modalTitle = document.getElementById('modalTitle');
     const imagemInput = document.getElementById('imagem');
-    const imagePreview = document.getElementById('imagePreview'); // Mantido para compatibilidade, mas usaremos container
     const generateBarcodeBtn = document.getElementById('generateBarcodeBtn');
     const barcodePreviewContainer = document.getElementById('barcodePreviewContainer');
     const barcodePreview = document.getElementById('barcodePreview');
@@ -46,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteContainer = document.getElementById('deleteContainer');
     const confirmCategoryActionBtn = document.getElementById('confirmCategoryActionBtn');
     const targetCategorySelect = document.getElementById('targetCategorySelect');
-    
+
     const tamanhoSelect = document.getElementById('tamanhoSelect');
     const tamanhoInput = document.getElementById('tamanhoInput');
 
@@ -82,88 +83,139 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    /**
-     * Busca os produtos da API, aplicando paginação e filtro de busca.
-     * @param {number} page - O número da página a ser buscada.
-     * @param {string} searchQuery - O termo de busca a ser enviado para a API.
-     */
+    // --- Cards de estatísticas ---
+    async function fetchStats() {
+        try {
+            const res = await fetch(`${API_URL}/api/produtos/stats`, { headers: { 'x-access-token': token } });
+            if (!res.ok) return;
+            const s = await res.json();
+            document.getElementById('statPecas').textContent = s.total_pecas;
+            document.getElementById('statVariantes').textContent = s.total_variantes;
+            document.getElementById('statEstoqueBaixo').textContent = s.estoque_baixo;
+            document.getElementById('statSemEstoque').textContent = s.sem_estoque;
+            document.getElementById('statValorEstoque').textContent = `R$ ${s.valor_estoque_custo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        } catch (error) {
+            console.error('Erro ao buscar estatísticas:', error);
+        }
+    }
+
+    // --- Lista agrupada por peça ---
+    function renderVarianteRow(v) {
+        const corSwatch = v.cor_hex ? `<span class="cor-swatch" style="background:${v.cor_hex}"></span>` : '';
+        return `
+            <tr class="variante-row" data-id="${v.id}">
+                <td><input type="checkbox" class="form-check-input row-checkbox" value="${v.id}"></td>
+                <td><img src="${v.imagem_url ? API_URL + '/uploads/' + v.imagem_url : '/static/img/no-image.png'}" width="40" height="40" class="rounded" style="object-fit:cover;"></td>
+                <td class="text-white-50 small">${escapeHtml(v.sku)}</td>
+                <td>${corSwatch}${escapeHtml(v.cor) || '-'}</td>
+                <td>${escapeHtml(v.tamanho) || '-'}</td>
+                <td>
+                    <div class="input-group input-group-sm" style="width: 115px;">
+                        <span class="input-group-text bg-dark text-white border-secondary">R$</span>
+                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary inline-edit-price" value="${v.preco_venda.toFixed(2)}" data-id="${v.id}" data-original="${v.preco_venda}">
+                    </div>
+                </td>
+                <td>
+                    <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary inline-edit-qty" style="width: 70px;" value="${v.quantidade}" data-id="${v.id}" data-original="${v.quantidade}">
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-info rounded-circle me-1 edit-btn" title="Editar" data-id="${v.id}" style="width: 32px; height: 32px; padding: 0;"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-outline-danger rounded-circle me-1 delete-btn" title="Excluir" data-id="${v.id}" style="width: 32px; height: 32px; padding: 0;"><i class="fas fa-trash-alt"></i></button>
+                    ${v.codigo_barras_url ? `<a href="/barcodes/${v.codigo_barras_url}" target="_blank" class="btn btn-sm btn-outline-light rounded-circle" title="Ver Cód. Barras" style="width: 32px; height: 32px; padding: 0; line-height: 30px;"><i class="fas fa-barcode"></i></a>` : ''}
+                </td>
+            </tr>
+        `;
+    }
+
+    function renderGrupos(produtos) {
+        gruposContainer.innerHTML = '';
+        if (produtos.length === 0) {
+            gruposContainer.innerHTML = '<div class="text-center text-white-50 py-5"><i class="fas fa-box-open fa-2x mb-3 d-block"></i>Nenhum produto encontrado.</div>';
+            return;
+        }
+
+        produtos.forEach(grupo => {
+            const card = document.createElement('div');
+            card.className = 'produto-grupo-card';
+            card.dataset.baseId = grupo.base_id;
+            card.dataset.nome = grupo.nome;
+
+            const estoqueBadge = grupo.sem_estoque
+                ? `<span class="badge badge-estoque-zero">Sem estoque</span>`
+                : grupo.estoque_baixo
+                    ? `<span class="badge badge-estoque-baixo">Estoque baixo</span>`
+                    : `<span class="badge badge-estoque-ok">Em estoque</span>`;
+
+            const precoTexto = grupo.min_price === grupo.max_price
+                ? `R$ ${grupo.min_price.toFixed(2)}`
+                : `R$ ${grupo.min_price.toFixed(2)} - R$ ${grupo.max_price.toFixed(2)}`;
+
+            card.innerHTML = `
+                <div class="produto-grupo-header">
+                    <i class="fas fa-chevron-right produto-grupo-chevron"></i>
+                    <img class="produto-grupo-thumb" src="${grupo.imagem_url ? API_URL + '/uploads/' + grupo.imagem_url : '/static/img/no-image.png'}" alt="${escapeHtml(grupo.nome)}">
+                    <div class="flex-grow-1" style="min-width:0;">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="fw-bold text-white">${escapeHtml(grupo.nome)}</span>
+                            <span class="badge bg-secondary bg-opacity-50">${escapeHtml(grupo.categoria) || 'Sem categoria'}</span>
+                            <span class="badge bg-dark border border-secondary">${grupo.variant_count} variaç${grupo.variant_count === 1 ? 'ão' : 'ões'}</span>
+                            ${estoqueBadge}
+                        </div>
+                        <div class="text-white-50 small mt-1">${precoTexto} &middot; ${grupo.total_stock} unid. no total</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-warning add-variante-grupo-btn" data-nome="${escapeHtml(grupo.nome)}" title="Adicionar variação a essa peça">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div class="produto-grupo-variantes">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-sm align-middle mb-0">
+                            <thead>
+                                <tr class="text-white-50 small">
+                                    <th style="width:36px;"><input type="checkbox" class="form-check-input select-grupo-checkbox"></th>
+                                    <th>Img</th><th>SKU</th><th>Cor</th><th>Tam.</th><th>Preço</th><th>Qtd.</th><th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>${grupo.variantes.map(v => renderVarianteRow(v)).join('')}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            gruposContainer.appendChild(card);
+        });
+    }
+
     async function fetchProdutos(page = 1, searchQuery = '') {
         try {
             const category = categoryFilterSelect.value;
-            const url = `${API_URL}/api/produtos?page=${page}&q=${searchQuery}&categoria=${category}&t=${Date.now()}`;
-            const response = await fetch(url, {
-                headers: { 'x-access-token': token }
-            });
+            const url = `${API_URL}/api/produtos/agrupados?page=${page}&q=${encodeURIComponent(searchQuery)}&categoria=${encodeURIComponent(category)}&t=${Date.now()}`;
+            const response = await fetch(url, { headers: { 'x-access-token': token } });
             if (response.status === 401) {
                 window.location.href = '/login.html';
                 return;
             }
-            if (!response.ok) {
-                throw new Error('Falha ao buscar produtos.');
-            }
+            if (!response.ok) throw new Error('Falha ao buscar produtos.');
 
             const data = await response.json();
-
-            produtosTableBody.innerHTML = '';
-            if (data.produtos.length === 0) {
-                produtosTableBody.innerHTML = '<tr><td colspan="8" class="text-center">Nenhum produto encontrado.</td></tr>';
-            } else {
-                data.produtos.forEach(produto => {
-                    const tr = document.createElement('tr');
-                    tr.dataset.id = produto.id;
-                    tr.innerHTML = `
-                        <td><input class="form-check-input row-checkbox" type="checkbox" value="${produto.id}"></td>
-                        <td><img src="${produto.imagem_url ? API_URL + '/uploads/' + produto.imagem_url : '/static/img/no-image.png'}" alt="${produto.nome}" width="50" class="rounded"></td>
-                        <td>${produto.sku}</td>
-                        <td class="text-truncate" style="max-width: 150px;" title="${produto.nome}">${produto.nome}</td>
-                        <td>${produto.categoria || 'N/A'}</td>
-                        <td>
-                            <div class="input-group input-group-sm" style="width: 110px;">
-                                <span class="input-group-text bg-dark text-white border-secondary">R$</span>
-                                <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary inline-edit-price" value="${produto.preco_venda.toFixed(2)}" data-id="${produto.id}" data-original="${produto.preco_venda}">
-                            </div>
-                        </td>
-                        <td>
-                            <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary inline-edit-qty" style="width: 70px;" value="${produto.quantidade}" data-id="${produto.id}" data-original="${produto.quantidade}">
-                        </td>
-                        <td class="text-end">
-                            <button class="btn btn-sm btn-outline-info rounded-circle me-1 edit-btn" title="Editar Completo" data-id="${produto.id}" style="width: 32px; height: 32px; padding: 0;">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger rounded-circle me-1 delete-btn" title="Excluir" data-id="${produto.id}" style="width: 32px; height: 32px; padding: 0;">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                            ${produto.codigo_barras_url ? `<a href="/barcodes/${produto.codigo_barras_url}" target="_blank" class="btn btn-sm btn-outline-light rounded-circle" title="Ver Cód. Barras" style="width: 32px; height: 32px; padding: 0; line-height: 30px;"><i class="fas fa-barcode"></i></a>` : ''}
-                        </td>
-                    `;
-                    produtosTableBody.appendChild(tr);
-                });
-            }
+            renderGrupos(data.produtos);
             updateBulkActionBar();
-
             renderPagination(data.pagina_atual, data.total_paginas);
             currentPage = data.pagina_atual;
-            totalPages = data.total_paginas; // Atualiza o total de páginas globalmente
+            totalPages = data.total_paginas;
             currentSearch = searchQuery;
-
         } catch (error) {
             console.error('Erro ao buscar produtos:', error);
-            produtosTableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Erro ao carregar produtos.</td></tr>';
+            gruposContainer.innerHTML = '<div class="text-center text-danger py-5">Erro ao carregar produtos.</div>';
         }
     }
 
-    /**
-     * Cria e exibe os botões de navegação da paginação.
-     */
     function renderPagination(paginaAtual, totalPaginas) {
-        const oldPagination = document.querySelector('.pagination-nav');
-        if (oldPagination) oldPagination.remove();
+        const container = document.getElementById('paginationContainer');
+        container.innerHTML = '';
         if (totalPaginas <= 1) return;
 
         const nav = document.createElement('nav');
-        nav.className = 'pagination-nav d-flex justify-content-center mt-4';
         nav.setAttribute('aria-label', 'Navegação de produtos');
-
         const ul = document.createElement('ul');
         ul.className = 'pagination';
 
@@ -172,22 +224,19 @@ document.addEventListener('DOMContentLoaded', () => {
         prevLi.innerHTML = `<a class="page-link" href="#" data-page="${paginaAtual - 1}">Anterior</a>`;
         ul.appendChild(prevLi);
 
-        // Lógica para mostrar um número razoável de páginas
         let startPage, endPage;
         if (totalPaginas <= 5) {
             startPage = 1;
             endPage = totalPaginas;
+        } else if (paginaAtual <= 3) {
+            startPage = 1;
+            endPage = 5;
+        } else if (paginaAtual + 2 >= totalPaginas) {
+            startPage = totalPaginas - 4;
+            endPage = totalPaginas;
         } else {
-            if (paginaAtual <= 3) {
-                startPage = 1;
-                endPage = 5;
-            } else if (paginaAtual + 2 >= totalPaginas) {
-                startPage = totalPaginas - 4;
-                endPage = totalPaginas;
-            } else {
-                startPage = paginaAtual - 2;
-                endPage = paginaAtual + 2;
-            }
+            startPage = paginaAtual - 2;
+            endPage = paginaAtual + 2;
         }
 
         for (let i = startPage; i <= endPage; i++) {
@@ -203,16 +252,38 @@ document.addEventListener('DOMContentLoaded', () => {
         ul.appendChild(nextLi);
 
         nav.appendChild(ul);
-        document.querySelector('.table-responsive').after(nav);
+        container.appendChild(nav);
     }
 
+    function recarregarLista() {
+        fetchProdutos(currentPage, currentSearch);
+        fetchStats();
+    }
+
+    // Expandir/recolher grupo ao clicar no cabeçalho
+    gruposContainer.addEventListener('click', (e) => {
+        const header = e.target.closest('.produto-grupo-header');
+        if (header && !e.target.closest('.add-variante-grupo-btn')) {
+            header.closest('.produto-grupo-card').classList.toggle('aberto');
+        }
+    });
+
+    toggleAllGroupsBtn.addEventListener('click', () => {
+        todosExpandidos = !todosExpandidos;
+        document.querySelectorAll('.produto-grupo-card').forEach(card => {
+            card.classList.toggle('aberto', todosExpandidos);
+        });
+        toggleAllGroupsBtn.innerHTML = todosExpandidos
+            ? '<i class="fas fa-compress"></i> Recolher tudo'
+            : '<i class="fas fa-expand"></i> Expandir tudo';
+    });
+
     // --- EVENT LISTENERS ---
-    
+
     // --- LÓGICA DE BULK ACTIONS & INLINE EDIT & UNDO ---
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
     const bulkActionsBar = document.getElementById('bulkActionsBar');
     const selectedCountSpan = document.getElementById('selectedCount');
-    let pendingDeletes = {}; // Armazena timeouts de exclusão pendentes
+    let pendingDeletes = {};
 
     function showToast(message, undoCallback = null, duration = 5000) {
         const toastContainer = document.querySelector('.toast-container');
@@ -232,12 +303,11 @@ document.addEventListener('DOMContentLoaded', () => {
         toastContainer.insertAdjacentHTML('beforeend', toastHtml);
         const toastEl = document.getElementById(toastId);
         const toast = new bootstrap.Toast(toastEl);
-        
+
         if (undoCallback) {
-            // Animação da barra de progresso
             setTimeout(() => {
                 const bar = toastEl.querySelector('.progress-bar');
-                if(bar) bar.style.width = '0%';
+                if (bar) bar.style.width = '0%';
             }, 50);
 
             const undoBtn = toastEl.querySelector('.undo-btn');
@@ -246,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 toast.hide();
             });
         }
-        
+
         toast.show();
         toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
     }
@@ -256,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return Array.from(checkboxes).map(cb => parseInt(cb.value));
     }
 
-    window.updateBulkActionBar = function() {
+    window.updateBulkActionBar = function () {
         const selected = getSelectedIds();
         if (selected.length > 0) {
             selectedCountSpan.textContent = selected.length;
@@ -264,34 +334,26 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             bulkActionsBar.classList.add('d-none');
         }
-        
-        if(selectAllCheckbox) {
-            const allBoxes = document.querySelectorAll('.row-checkbox');
-            selectAllCheckbox.checked = allBoxes.length > 0 && selected.length === allBoxes.length;
-        }
     };
 
-    if(selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', (e) => {
-            const checkboxes = document.querySelectorAll('.row-checkbox');
-            checkboxes.forEach(cb => cb.checked = e.target.checked);
+    gruposContainer.addEventListener('change', (e) => {
+        if (e.target.classList.contains('select-grupo-checkbox')) {
+            const tbody = e.target.closest('.produto-grupo-variantes').querySelector('tbody');
+            tbody.querySelectorAll('.row-checkbox').forEach(cb => { cb.checked = e.target.checked; });
             updateBulkActionBar();
-        });
-    }
-
-    document.addEventListener('change', (e) => {
+            return;
+        }
         if (e.target.classList.contains('row-checkbox')) {
             updateBulkActionBar();
         }
     });
 
     const closeBulk = () => {
-        const checkboxes = document.querySelectorAll('.row-checkbox');
-        checkboxes.forEach(cb => cb.checked = false);
+        document.querySelectorAll('.row-checkbox, .select-grupo-checkbox').forEach(cb => cb.checked = false);
         updateBulkActionBar();
     };
     document.getElementById('closeBulkBtn').addEventListener('click', closeBulk);
-    if(document.getElementById('closeBulkBtnMobile')) {
+    if (document.getElementById('closeBulkBtnMobile')) {
         document.getElementById('closeBulkBtnMobile').addEventListener('click', closeBulk);
     }
 
@@ -300,9 +362,6 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const body = {};
             body[field] = value;
-            // Manda o valor que a tela mostrava antes da edição - o backend só grava se o
-            // estoque no banco ainda bater com isso, evitando sobrescrever por cima de uma
-            // venda/ajuste concorrente que mudou o estoque nesse meio-tempo.
             if (field === 'quantidade') body.quantidade_esperada = originalValue;
 
             const res = await fetch(`${API_URL}/api/produtos/${id}/quick`, {
@@ -318,14 +377,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 inputEl.dataset.original = data.quantidade_atual ?? originalValue;
                 return;
             }
-            if(!res.ok) throw new Error("Erro ao salvar");
+            if (!res.ok) throw new Error("Erro ao salvar");
 
             inputEl.dataset.original = value;
             inputEl.classList.add('border-success');
             setTimeout(() => inputEl.classList.remove('border-success'), 1000);
+            fetchStats();
 
             showToast(`${field === 'quantidade' ? 'Estoque' : 'Preço'} atualizado.`, async () => {
-                // Undo Logic
                 const undoBody = {};
                 undoBody[field] = originalValue;
                 await fetch(`${API_URL}/api/produtos/${id}/quick`, {
@@ -335,19 +394,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 inputEl.value = originalValue;
                 inputEl.dataset.original = originalValue;
+                fetchStats();
             });
-        } catch(e) {
+        } catch (e) {
             showToast(`Erro ao atualizar: ${e.message}`);
-            inputEl.value = originalValue; // Revert visually
+            inputEl.value = originalValue;
         }
     }
 
-    produtosTableBody.addEventListener('change', (e) => {
-        if(e.target.classList.contains('inline-edit-qty')) {
+    gruposContainer.addEventListener('change', (e) => {
+        if (e.target.classList.contains('inline-edit-qty')) {
             const id = e.target.dataset.id;
             const original = e.target.dataset.original;
             quickUpdate(id, 'quantidade', e.target.value, original, e.target);
-        } else if(e.target.classList.contains('inline-edit-price')) {
+        } else if (e.target.classList.contains('inline-edit-price')) {
             const id = e.target.dataset.id;
             const original = e.target.dataset.original;
             quickUpdate(id, 'preco_venda', e.target.value, original, e.target);
@@ -357,20 +417,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bulk Delete Logic (Delay Delete)
     document.getElementById('bulkDeleteBtn').addEventListener('click', () => {
         const ids = getSelectedIds();
-        if(ids.length === 0) return;
-        
-        // Hide rows instantly
+        if (ids.length === 0) return;
+
         ids.forEach(id => {
-            const row = document.querySelector(`tr[data-id="${id}"]`);
-            if(row) row.style.display = 'none';
+            const row = document.querySelector(`tr.variante-row[data-id="${id}"]`);
+            if (row) row.style.display = 'none';
         });
-        
-        // Uncheck all so bar hides
-        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+
+        document.querySelectorAll('.row-checkbox, .select-grupo-checkbox').forEach(cb => cb.checked = false);
         updateBulkActionBar();
 
         const timeoutId = setTimeout(async () => {
-            // Actual delete
             try {
                 await fetch(`${API_URL}/api/produtos/bulk`, {
                     method: 'DELETE',
@@ -378,83 +435,56 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({ ids: ids })
                 });
                 delete pendingDeletes[timeoutId];
-            } catch(e) { console.error("Falha ao excluir bulk:", e); }
+                fetchStats();
+            } catch (e) { console.error("Falha ao excluir bulk:", e); }
         }, 5000);
-        
+
         pendingDeletes[timeoutId] = ids;
-        
-        showToast(`${ids.length} produto(s) excluído(s).`, () => {
-            // Undo
+
+        showToast(`${ids.length} variação(ões) excluída(s).`, () => {
             clearTimeout(timeoutId);
             delete pendingDeletes[timeoutId];
             ids.forEach(id => {
-                const row = document.querySelector(`tr[data-id="${id}"]`);
-                if(row) row.style.display = '';
+                const row = document.querySelector(`tr.variante-row[data-id="${id}"]`);
+                if (row) row.style.display = '';
             });
         }, 5000);
     });
 
     document.getElementById('bulkZeroStockBtn').addEventListener('click', async () => {
         const ids = getSelectedIds();
-        if(ids.length === 0) return;
+        if (ids.length === 0) return;
 
         let errorCount = 0;
-        
+
         for (const id of ids) {
             try {
-                const inputEl = document.querySelector(`tr[data-id="${id}"] .inline-edit-qty`);
-                const originalValue = inputEl.dataset.original;
-                
+                const inputEl = document.querySelector(`tr.variante-row[data-id="${id}"] .inline-edit-qty`);
                 await fetch(`${API_URL}/api/produtos/${id}/quick`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', 'x-access-token': token },
                     body: JSON.stringify({ quantidade: 0 })
                 });
-                
+
                 if (inputEl) {
                     inputEl.value = 0;
                     inputEl.dataset.original = 0;
                     inputEl.classList.add('border-success');
                     setTimeout(() => inputEl.classList.remove('border-success'), 1000);
                 }
-            } catch(e) {
+            } catch (e) {
                 errorCount++;
             }
         }
-        
-        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+
+        document.querySelectorAll('.row-checkbox, .select-grupo-checkbox').forEach(cb => cb.checked = false);
         updateBulkActionBar();
-        
+        fetchStats();
+
         if (errorCount === 0) {
-            showToast(`${ids.length} produto(s) zerados com sucesso.`);
+            showToast(`${ids.length} variação(ões) zerada(s) com sucesso.`);
         } else {
             showToast(`Concluído, porém ${errorCount} erro(s) ao zerar.`);
-        }
-    });
-
-    // Single Delete Override (Delay Delete)
-    produtosTableBody.addEventListener('click', (e) => {
-        const deleteBtn = e.target.closest('.delete-btn');
-        if (deleteBtn) {
-            e.preventDefault();
-            e.stopPropagation();
-            const id = parseInt(deleteBtn.dataset.id);
-            const row = deleteBtn.closest('tr');
-            row.style.display = 'none';
-            
-            const timeoutId = setTimeout(async () => {
-                try {
-                    await fetch(`${API_URL}/api/produtos/${id}`, {
-                        method: 'DELETE',
-                        headers: { 'x-access-token': token }
-                    });
-                } catch(err) { console.error(err); }
-            }, 5000);
-            
-            showToast(`Produto excluído.`, () => {
-                clearTimeout(timeoutId);
-                row.style.display = '';
-            }, 5000);
         }
     });
 
@@ -478,7 +508,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (target.matches('.page-link') && target.dataset.page) {
             event.preventDefault();
             const pageNumber = parseInt(target.dataset.page);
-            // Correção: Valida contra o totalPages real, não contra o número de botões visíveis
             if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
                 fetchProdutos(pageNumber, currentSearch);
             }
@@ -492,7 +521,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_URL}/api/categorias`, { headers: { 'x-access-token': token } });
             const categories = await response.json();
 
-            // Popula select do modal de produto
             categoriaSelect.innerHTML = '<option value="">Selecione...</option>';
             categories.forEach(cat => {
                 const option = document.createElement('option');
@@ -501,7 +529,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 categoriaSelect.appendChild(option);
             });
 
-            // Popula filtro de categorias
             const currentFilter = categoryFilterSelect.value;
             categoryFilterSelect.innerHTML = '<option value="">Todas as Categorias</option>';
             categories.forEach(cat => {
@@ -512,19 +539,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             categoryFilterSelect.value = currentFilter;
 
-            // Popula lista do modal de gerenciamento
             categoriasList.innerHTML = '';
             categories.forEach(cat => {
                 const li = document.createElement('li');
                 li.className = 'list-group-item bg-dark text-white d-flex justify-content-between align-items-center border-secondary';
                 li.innerHTML = `
-                    ${cat}
-                    <button class="btn btn-sm btn-outline-info edit-category-btn" data-category="${cat}">Editar</button>
+                    ${escapeHtml(cat)}
+                    <button class="btn btn-sm btn-outline-info edit-category-btn" data-category="${escapeHtml(cat)}">Editar</button>
                 `;
                 categoriasList.appendChild(li);
             });
 
-            // Popula select de destino na exclusão
             targetCategorySelect.innerHTML = '<option value="">Selecione...</option>';
             categories.forEach(cat => {
                 const option = document.createElement('option');
@@ -567,7 +592,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('newCategoryName').value = category;
             document.getElementById('acaoCategoriaTitle').textContent = `Editar Categoria: ${category}`;
 
-            // Reset modal state
             categoriaActionSelect.value = 'rename';
             renameContainer.style.display = 'block';
             deleteContainer.style.display = 'none';
@@ -613,8 +637,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 alert(result.mensagem);
                 acaoCategoriaModal.hide();
-                loadCategories(); // Recarrega categorias
-                fetchProdutos(currentPage, currentSearch); // Atualiza lista de produtos
+                loadCategories();
+                recarregarLista();
             } else {
                 alert(`Erro: ${result.erro}`);
             }
@@ -687,7 +711,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (produtoExistente) {
             nomeNovoAviso.classList.add('d-none');
 
-            // Pré-preenche os campos compartilhados a partir da variação encontrada
             if (produtoExistente.categoria) {
                 categoriaSelect.value = produtoExistente.categoria;
             }
@@ -695,8 +718,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('preco_custo').value = produtoExistente.preco_custo ?? '';
             document.getElementById('preco_venda').value = produtoExistente.preco_venda ?? '';
 
-            // Trava categoria/descrição pra não uma variação nova divergir do resto do grupo
-            // sem querer - preço continua editável (pode legitimamente mudar por tamanho).
             categoriaSelect.disabled = true;
             descricaoInput.readOnly = true;
         } else {
@@ -707,16 +728,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function openEditModal(produtoId) {
-        alternarModoNovaVariacao(false); // edição é um fluxo separado, nunca deve herdar o modo de nova variação
-        await loadCategories(); // Garante que as categorias estejam carregadas
+        alternarModoNovaVariacao(false);
+        await loadCategories();
         const response = await fetch(`${API_URL}/api/produtos/${produtoId}?t=${Date.now()}`, { headers: { 'x-access-token': token } });
         const produto = await response.json();
         document.getElementById('produtoId').value = produto.id;
         document.getElementById('sku').value = produto.sku;
         document.getElementById('nome').value = produto.nome;
 
-        // Avisa quando editar aqui vai afetar outras variações da mesma peça (categoria/
-        // descrição são compartilhadas e propagam pras irmãs ao salvar)
         const notice = document.getElementById('variacaoEditNotice');
         try {
             const resIrmas = await fetch(`${API_URL}/api/produtos?q=${encodeURIComponent(produto.nome)}&per_page=50`, { headers: { 'x-access-token': token } });
@@ -732,7 +751,6 @@ document.addEventListener('DOMContentLoaded', () => {
             notice.classList.add('d-none');
         }
 
-        // Lógica para selecionar a categoria correta ou mostrar input se não existir na lista (caso raro)
         if (produto.categoria && Array.from(categoriaSelect.options).some(opt => opt.value === produto.categoria)) {
             categoriaSelect.value = produto.categoria;
             isNewCategory = false;
@@ -740,7 +758,6 @@ document.addEventListener('DOMContentLoaded', () => {
             categoriaInput.style.display = 'none';
             toggleCategoriaInputBtn.textContent = '+';
         } else {
-            // Se a categoria do produto não estiver na lista (ou for nova), mostra no input
             categoriaSelect.value = "";
             categoriaInput.value = produto.categoria || "";
             isNewCategory = true;
@@ -751,7 +768,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('cor').value = produto.cor;
         document.getElementById('cor_hex').value = produto.cor_hex || '#000000';
-        
+
         const optionsTamanho = Array.from(tamanhoSelect.options).map(opt => opt.value);
         if (produto.tamanho && optionsTamanho.includes(produto.tamanho) && produto.tamanho !== 'Outro') {
             tamanhoSelect.value = produto.tamanho;
@@ -769,18 +786,16 @@ document.addEventListener('DOMContentLoaded', () => {
             tamanhoInput.value = '';
             tamanhoInput.required = false;
         }
-        
+
         document.getElementById('preco_custo').value = produto.preco_custo;
         document.getElementById('preco_venda').value = produto.preco_venda;
         document.getElementById('quantidade').value = produto.quantidade;
         document.getElementById('descricao').value = produto.descricao || '';
 
-        // Limpa e reseta arquivos selecionados
         selectedFiles = [];
         const previewContainer = document.getElementById('imagePreviewContainer');
         previewContainer.innerHTML = '';
 
-        // Função auxiliar para criar elemento de imagem
         const createImageElement = (url, id = null) => {
             const div = document.createElement('div');
             div.className = 'position-relative d-inline-block me-2 mb-2';
@@ -802,10 +817,8 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.onclick = async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // Remove from array
                 if (confirm('Remover esta imagem?')) {
                     if (id) {
-                        // Deletar via API se tiver ID (imagem extra)
                         try {
                             const res = await fetch(`${API_URL}/api/produtos/imagem/${id}`, {
                                 method: 'DELETE',
@@ -820,12 +833,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             console.error(err);
                         }
                     } else {
-                        // Se for a imagem principal (url no produto), precisamos tratar diferente ou apenas remover visualmente se for upload novo (mas aqui é edit)
-                        // Para imagem principal antiga, a API de delete imagem não funciona pois ela deleta da tabela ProdutoImagem.
-                        // Mas agora todas as imagens estão em ProdutoImagem também?
-                        // O backend salva a primeira em ProdutoImagem também.
-                        // Então podemos deletar pelo ID da imagem se tivermos.
-                        // O objeto produto retornado deve ter a lista de imagens com IDs.
                         alert('Para remover a imagem de capa, delete-a da lista de imagens adicionais ou substitua enviando uma nova.');
                     }
                 }
@@ -851,10 +858,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (confirm('Definir esta imagem como capa e mover para primeira posição?')) {
                     try {
-                        // 1. Mover visualmente para o topo
                         div.parentElement.prepend(div);
 
-                        // 2. Chamar API de Capa
                         await fetch(`${API_URL}/api/produtos/${produto.id}/imagem_capa`, {
                             method: 'PUT',
                             headers: {
@@ -864,12 +869,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             body: JSON.stringify({ imagem_url: url })
                         });
 
-                        // 3. Salvar ordem
                         await saveImageOrder(produto.id);
 
-                        if (true) { // Sempre recarrega para garantir
-                            openEditModal(produto.id);
-                        }
+                        openEditModal(produto.id);
                     } catch (err) {
                         console.error(err);
                         alert('Erro ao atualizar imagem de capa.');
@@ -881,20 +883,17 @@ document.addEventListener('DOMContentLoaded', () => {
             div.appendChild(btn);
             div.appendChild(starBtn);
             div.dataset.id = id;
-            div.dataset.filename = url; // Store filename for cover update
+            div.dataset.filename = url;
             previewContainer.appendChild(div);
         };
 
-        // Init Sortable
         if (!previewContainer.classList.contains('sortable-initialized')) {
             new Sortable(previewContainer, {
                 animation: 150,
                 ghostClass: 'bg-light',
                 onEnd: async function (evt) {
-                    // 1. Salvar nova ordem primeiro
                     await saveImageOrder(produto.id);
 
-                    // 2. Se o item foi movido para a primeira posição (index 0), torna-se Capa
                     if (evt.newIndex === 0) {
                         const firstDiv = previewContainer.children[0];
                         const filename = firstDiv.dataset.filename;
@@ -909,7 +908,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                     },
                                     body: JSON.stringify({ imagem_url: filename })
                                 });
-                                // Recarrega para atualizar estrelas
                                 openEditModal(produto.id);
                             } catch (err) {
                                 console.error('Erro ao definir capa após reordenar:', err);
@@ -939,13 +937,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // Renderiza imagens da lista 'imagens' retornada pela API
         if (produto.imagens && produto.imagens.length > 0) {
             produto.imagens.forEach(img => {
                 createImageElement(img.imagem_url, img.id);
             });
         } else if (produto.imagem_url) {
-            // Fallback para produtos antigos que só têm imagem_url na tabela produto
             const div = document.createElement('div');
             div.className = 'position-relative d-inline-block me-2 mb-2';
             div.style.width = '100px';
@@ -984,7 +980,6 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             const starBtn = document.createElement('button');
-            const isCover = true;
             starBtn.className = 'btn bg-white btn-sm position-absolute top-0 start-0 p-0 d-flex align-items-center justify-content-center rounded-circle shadow-sm m-1';
             starBtn.style.width = '30px';
             starBtn.style.height = '30px';
@@ -1004,7 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
         barcodePreview.src = produto.codigo_barras_url ? `${API_URL}/barcodes/${produto.codigo_barras_url}` : '';
         barcodePreviewContainer.style.display = produto.codigo_barras_url ? 'block' : 'none';
 
-        loadProductNames(); // Carrega sugestões de nomes
+        loadProductNames();
 
         produtoModal.show();
     }
@@ -1021,8 +1016,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tamanhoInput.required = false;
 
         document.getElementById('barcodePreviewContainer').style.display = 'none';
-        document.getElementById('imagePreviewContainer').innerHTML = ''; // Limpa previews
-        selectedFiles = []; // Clear selected files
+        document.getElementById('imagePreviewContainer').innerHTML = '';
+        selectedFiles = [];
         toggleCategoriaInputBtn.textContent = '+';
         toggleCategoriaInputBtn.title = 'Nova Categoria';
         categoriaSelect.style.display = 'block';
@@ -1031,11 +1026,11 @@ document.addEventListener('DOMContentLoaded', () => {
         categoriaSelect.required = true;
 
         alternarModoNovaVariacao(novaVariacao);
-        loadProductNames(); // Carrega sugestões de nomes
+        loadProductNames();
 
         produtoModal.show();
         if (novaVariacao) {
-            setTimeout(() => nomeInput.focus(), 300); // depois da animação do modal abrir
+            setTimeout(() => nomeInput.focus(), 300);
         }
     }
 
@@ -1045,6 +1040,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     addVariacaoBtn.addEventListener('click', () => {
         abrirModalCadastroLimpo('Nova Variação (cor/tamanho)', true);
+    });
+
+    // Botão "+" no cabeçalho de um grupo: já abre a Nova Variação com o nome pré-selecionado
+    gruposContainer.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.add-variante-grupo-btn');
+        if (!btn) return;
+        e.stopPropagation();
+        const nome = btn.dataset.nome;
+        abrirModalCadastroLimpo('Nova Variação (cor/tamanho)', true);
+        nomeInput.value = nome;
+        await handleNomeInputEmModoVariacao();
     });
 
     nomeInput.addEventListener('input', handleNomeInputEmModoVariacao);
@@ -1058,22 +1064,20 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('sku', document.getElementById('sku').value);
         formData.append('nome', document.getElementById('nome').value);
 
-        // Envia a categoria correta (Select ou Input)
         const categoriaValue = isNewCategory ? categoriaInput.value : categoriaSelect.value;
         formData.append('categoria', categoriaValue);
 
         formData.append('cor', document.getElementById('cor').value);
         formData.append('cor_hex', document.getElementById('cor_hex').value);
-        
+
         const tamanhoValue = tamanhoSelect.value === 'Outro' ? tamanhoInput.value : tamanhoSelect.value;
         formData.append('tamanho', tamanhoValue);
-        
+
         formData.append('preco_custo', document.getElementById('preco_custo').value);
         formData.append('preco_venda', document.getElementById('preco_venda').value);
         formData.append('quantidade', document.getElementById('quantidade').value);
         formData.append('descricao', document.getElementById('descricao').value);
 
-        // Envia múltiplos arquivos do array acumulado
         for (let i = 0; i < selectedFiles.length; i++) {
             formData.append('imagem', selectedFiles[i]);
         }
@@ -1083,7 +1087,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             if (response.ok) {
                 produtoModal.hide();
-                fetchProdutos(id ? currentPage : 1, currentSearch);
+                recarregarLista();
             } else {
                 alert(`Erro: ${result.erro || result.message}`);
             }
@@ -1092,9 +1096,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Novo Renderizador de Previews Locais
     const renderSelectedPreviews = () => {
-        // Remover previews locais existentes
         const existingPreviews = document.querySelectorAll('.local-preview');
         existingPreviews.forEach(el => el.remove());
 
@@ -1111,7 +1113,6 @@ document.addEventListener('DOMContentLoaded', () => {
             img.className = 'img-thumbnail w-100 h-100';
             img.style.objectFit = 'cover';
 
-            // Botão Remover
             const btn = document.createElement('button');
             btn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center';
             btn.style.width = '20px';
@@ -1122,19 +1123,11 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // Remove from array and redraw
                 selectedFiles.splice(index, 1);
                 renderSelectedPreviews();
             };
 
-            // Botão Star (Capa) - Para uploads pendentes, mostrar apenas estrela vazia indicando que será adicionado.
-            // O backend define a primeira imagem como capa SE não houver capa.
-            // Para evitar confusão visual (duas estrelas douradas), vamos mostrar sempre vazia ou um ícone diferente.
-            // Se o usuário clicar, movemos para o topo (index 0), garantindo que SE for a primeira imagem do produto, será capa.
-
             const starBtn = document.createElement('button');
-            const isCover = false; // Pending uploads never show as "Current Cover" visually to avoid conflict with existing cover.
-
             starBtn.className = 'btn bg-white btn-sm position-absolute top-0 start-0 p-0 d-flex align-items-center justify-content-center rounded-circle shadow-sm m-1 opacity-75';
             starBtn.style.width = '30px';
             starBtn.style.height = '30px';
@@ -1151,7 +1144,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.stopPropagation();
                 if (index === 0) return;
 
-                // Mover para o início do array
                 const item = selectedFiles.splice(index, 1)[0];
                 selectedFiles.unshift(item);
                 renderSelectedPreviews();
@@ -1189,17 +1181,34 @@ document.addEventListener('DOMContentLoaded', () => {
         imagemInput.value = '';
     });
 
-    produtosTableBody.addEventListener('click', async (event) => {
+    gruposContainer.addEventListener('click', async (event) => {
         const target = event.target;
-        const id = target.dataset.id;
-        if (target.classList.contains('edit-btn')) {
-            openEditModal(id);
+        const editBtn = target.closest('.edit-btn');
+        const deleteBtn = target.closest('.delete-btn');
+
+        if (editBtn) {
+            openEditModal(editBtn.dataset.id);
+            return;
         }
-        if (target.classList.contains('delete-btn')) {
-            if (confirm('Tem certeza que deseja excluir este produto?')) {
-                await fetch(`${API_URL}/api/produtos/${id}`, { method: 'DELETE', headers: { 'x-access-token': token } });
-                fetchProdutos(currentPage, currentSearch);
-            }
+
+        if (deleteBtn) {
+            event.preventDefault();
+            event.stopPropagation();
+            const id = parseInt(deleteBtn.dataset.id);
+            const row = deleteBtn.closest('tr');
+            row.style.display = 'none';
+
+            const timeoutId = setTimeout(async () => {
+                try {
+                    await fetch(`${API_URL}/api/produtos/${id}`, { method: 'DELETE', headers: { 'x-access-token': token } });
+                    fetchStats();
+                } catch (err) { console.error(err); }
+            }, 5000);
+
+            showToast(`Variação excluída.`, () => {
+                clearTimeout(timeoutId);
+                row.style.display = '';
+            }, 5000);
         }
     });
 
@@ -1215,7 +1224,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(result.mensagem);
                 barcodePreview.src = `${API_URL}/barcodes/${result.url}?t=${new Date().getTime()}`;
                 barcodePreviewContainer.style.display = 'block';
-                fetchProdutos(currentPage, currentSearch);
+                recarregarLista();
             } else {
                 alert(`Erro: ${result.erro || 'Ocorreu um problema.'}`);
             }
@@ -1231,5 +1240,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Carrega a primeira página de produtos ao iniciar.
     fetchProdutos(1, '');
-    loadCategories(); // Carrega categorias para o filtro
+    fetchStats();
+    loadCategories();
 });

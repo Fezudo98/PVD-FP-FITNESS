@@ -6,7 +6,7 @@ from ...models import Produto, ProdutoImagem, ProdutoBase
 from ...utils import token_required, registrar_log, generate_standard_sku
 from ...extensions import limiter
 # pyrefly: ignore [missing-import]
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 import os
 # pyrefly: ignore [missing-import]
 from werkzeug.utils import secure_filename
@@ -120,6 +120,95 @@ def manage_categorias(current_user):
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': str(e)}), 500
+
+@api_bp.route('/api/produtos/stats', methods=['GET'])
+@token_required
+def estatisticas_produtos(current_user):
+    if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
+
+    total_pecas = db.session.query(func.count(func.distinct(Produto.produto_base_id)))\
+        .filter(Produto.deletado == False).scalar() or 0
+    total_variantes = Produto.query.filter_by(deletado=False).count()
+    estoque_baixo = Produto.query.filter(
+        Produto.deletado == False, Produto.quantidade > 0, Produto.quantidade <= Produto.limite_estoque_baixo
+    ).count()
+    sem_estoque = Produto.query.filter(Produto.deletado == False, Produto.quantidade == 0).count()
+    valor_estoque_custo = db.session.query(func.sum(Produto.preco_custo * Produto.quantidade))\
+        .filter(Produto.deletado == False).scalar() or 0
+
+    return jsonify({
+        'total_pecas': total_pecas,
+        'total_variantes': total_variantes,
+        'estoque_baixo': estoque_baixo,
+        'sem_estoque': sem_estoque,
+        'valor_estoque_custo': round(valor_estoque_custo, 2)
+    })
+
+@api_bp.route('/api/produtos/agrupados', methods=['GET'])
+@token_required
+def listar_produtos_agrupados(current_user):
+    """Lista produtos agrupados por peça (produto_base) em vez de uma linha por SKU - uma peça
+    com 26 variações de cor/tamanho vira 1 grupo expansível, não 26 linhas soltas na tela de
+    gerenciamento. Cada grupo traz o agregado (estoque total, faixa de preço) e a lista das
+    variações completas pra expandir."""
+    if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
+
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 15, type=int)
+    search_query = request.args.get('q', '', type=str)
+    category_filter = request.args.get('categoria', '', type=str)
+
+    base_query = db.session.query(ProdutoBase.id).join(
+        Produto, Produto.produto_base_id == ProdutoBase.id
+    ).filter(Produto.deletado == False)
+
+    if search_query:
+        termo_busca = f"%{search_query}%"
+        base_query = base_query.filter(or_(ProdutoBase.nome.ilike(termo_busca), Produto.sku.ilike(termo_busca)))
+    if category_filter:
+        base_query = base_query.filter(ProdutoBase.categoria == category_filter)
+
+    base_query = base_query.distinct().order_by(ProdutoBase.nome)
+    paginacao = base_query.paginate(page=page, per_page=per_page, error_out=False)
+    base_ids_pagina = [b.id for b in paginacao.items]
+
+    # Recarrega os objetos completos na ordem certa (a paginação acima trouxe só os ids)
+    bases_map = {b.id: b for b in ProdutoBase.query.filter(ProdutoBase.id.in_(base_ids_pagina)).all()}
+
+    resultado = []
+    for base_id in base_ids_pagina:
+        base = bases_map.get(base_id)
+        if not base:
+            continue
+        variantes = Produto.query.filter_by(produto_base_id=base.id, deletado=False)\
+            .order_by(Produto.cor, Produto.tamanho).all()
+        if not variantes:
+            continue
+        precos = [v.preco_venda for v in variantes]
+        imagem = next((v.imagem_url for v in variantes if v.imagem_url), None)
+        resultado.append({
+            'base_id': base.id,
+            'nome': base.nome,
+            'categoria': base.categoria,
+            'descricao': base.descricao,
+            'online_ativo': base.online_ativo,
+            'destaque': base.destaque,
+            'imagem_url': imagem,
+            'total_stock': sum(v.quantidade or 0 for v in variantes),
+            'variant_count': len(variantes),
+            'min_price': min(precos) if precos else 0,
+            'max_price': max(precos) if precos else 0,
+            'estoque_baixo': any(0 < (v.quantidade or 0) <= (v.limite_estoque_baixo or 5) for v in variantes),
+            'sem_estoque': all((v.quantidade or 0) == 0 for v in variantes),
+            'variantes': [v.to_dict() for v in variantes]
+        })
+
+    return jsonify({
+        'produtos': resultado,
+        'total_paginas': paginacao.pages,
+        'pagina_atual': paginacao.page,
+        'total_produtos': paginacao.total
+    })
 
 @api_bp.route('/api/produtos', methods=['GET', 'POST'])
 @token_required
