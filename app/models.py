@@ -6,6 +6,32 @@ def current_brazil_time():
 
 # 2. MODELOS DE DADOS
 # ----------------------------------------------------
+
+class ProdutoBase(db.Model):
+    """Representa o "produto pai" que agrupa as variações (cor/tamanho) de uma mesma peça.
+
+    Fase 1 da migração pra modelo de variações: essa tabela nasce como espelho dos campos que
+    hoje são compartilhados entre as variações de uma mesma peça (nome, categoria, descrição,
+    peso/dimensões, ativo, destaque), preenchida a partir da variação de menor ID de cada grupo
+    (mesmo critério que o resto do sistema já usa como "variação canônica"). Por enquanto é uma
+    estrutura em paralelo, sem nenhuma tela ainda lendo/escrevendo por aqui - os campos
+    equivalentes continuam existindo em Produto intactos, pra nada quebrar. Preço de
+    custo/venda propositalmente NÃO entra aqui: fica só na variação, já que pode legitimamente
+    divergir por tamanho/cor (ex: peça G custa mais que P)."""
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False)
+    categoria = db.Column(db.String(80))
+    descricao = db.Column(db.Text, nullable=True)
+    peso = db.Column(db.Float, nullable=True)
+    altura = db.Column(db.Integer, nullable=True)
+    largura = db.Column(db.Integer, nullable=True)
+    comprimento = db.Column(db.Integer, nullable=True)
+    online_ativo = db.Column(db.Boolean, default=False)
+    destaque = db.Column(db.Boolean, default=False)
+
+    variantes = db.relationship('Produto', backref='base', lazy=True)
+
+
 class Produto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sku = db.Column(db.String(50), unique=True, nullable=False)
@@ -20,22 +46,26 @@ class Produto(db.Model):
     imagem_url = db.Column(db.String(200), nullable=True)
     limite_estoque_baixo = db.Column(db.Integer, default=5)
     codigo_barras_url = db.Column(db.String(200), nullable=True)
-    
+    # Vínculo com o produto-base (Fase 1 da migração pra modelo de variações) - nullable por
+    # enquanto porque é preenchido por um script de backfill após a migração criar a coluna,
+    # não pela migração em si. Passa a ser obrigatório só depois do backfill confirmado.
+    produto_base_id = db.Column(db.Integer, db.ForeignKey('produto_base.id'), nullable=True)
+
     # Campos para E-commerce
     online_ativo = db.Column(db.Boolean, default=False)
     descricao = db.Column(db.Text, nullable=True)
     destaque = db.Column(db.Boolean, default=False)
     deletado = db.Column(db.Boolean, default=False)
-    
+
     # Campos para Frete (Correios/Transportadora)
     peso = db.Column(db.Float, default=0.3, nullable=True) # em kg
     altura = db.Column(db.Integer, default=5, nullable=True) # em cm
     largura = db.Column(db.Integer, default=20, nullable=True) # em cm
     comprimento = db.Column(db.Integer, default=20, nullable=True) # em cm
-    
+
     # Relacionamento com imagens adicionais
     imagens = db.relationship('ProdutoImagem', backref='produto', lazy=True, cascade="all, delete-orphan")
-    
+
     def to_dict(self):
         return { 
             'id': self.id, 'sku': self.sku, 'nome': self.nome, 'categoria': self.categoria, 
