@@ -247,11 +247,33 @@ def edicao_rapida_produto(current_user, produto_id):
         if 'quantidade' in dados:
             nova_qtd = int(dados['quantidade'])
             if nova_qtd < 0: return jsonify({'erro': 'A quantidade não pode ser negativa'}), 400
-            produto.quantidade = nova_qtd
-            
+
+            # Checagem otimista: se o cliente informou o valor que estava vendo na tela
+            # (quantidade_esperada), só grava se o banco ainda estiver com esse valor. Sem
+            # isso, editar a quantidade "perde" silenciosamente qualquer venda/ajuste que
+            # tenha mexido no estoque desse produto entre a tela abrir e o admin salvar
+            # (ex: uma venda no PDV decrementou de 10 para 9 nesse meio-tempo, e o admin
+            # sobrescreve de volta para o 10 que via na tela desatualizada).
+            if 'quantidade_esperada' in dados and dados['quantidade_esperada'] is not None:
+                qtd_esperada = int(dados['quantidade_esperada'])
+                affected = db.session.query(Produto).filter(
+                    Produto.id == produto_id,
+                    Produto.quantidade == qtd_esperada
+                ).update({Produto.quantidade: nova_qtd}, synchronize_session=False)
+                if affected == 0:
+                    db.session.rollback()
+                    db.session.refresh(produto)
+                    return jsonify({
+                        'erro': 'O estoque desse produto mudou desde que a tela foi carregada (outra venda ou ajuste). Atualize a página e tente de novo.',
+                        'quantidade_atual': produto.quantidade
+                    }), 409
+                db.session.refresh(produto)
+            else:
+                produto.quantidade = nova_qtd
+
         if 'preco_venda' in dados:
             produto.preco_venda = float(dados['preco_venda'])
-            
+
         registrar_log(current_user, "Produto Edição Rápida", f"SKU: {produto.sku}")
         db.session.commit()
         return jsonify(produto.to_dict()), 200

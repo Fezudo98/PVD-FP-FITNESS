@@ -293,13 +293,26 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const body = {};
             body[field] = value;
+            // Manda o valor que a tela mostrava antes da edição - o backend só grava se o
+            // estoque no banco ainda bater com isso, evitando sobrescrever por cima de uma
+            // venda/ajuste concorrente que mudou o estoque nesse meio-tempo.
+            if (field === 'quantidade') body.quantidade_esperada = originalValue;
+
             const res = await fetch(`${API_URL}/api/produtos/${id}/quick`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'x-access-token': token },
                 body: JSON.stringify(body)
             });
+
+            if (res.status === 409) {
+                const data = await res.json();
+                showToast(data.erro || 'O estoque mudou desde que a página carregou.');
+                inputEl.value = data.quantidade_atual ?? originalValue;
+                inputEl.dataset.original = data.quantidade_atual ?? originalValue;
+                return;
+            }
             if(!res.ok) throw new Error("Erro ao salvar");
-            
+
             inputEl.dataset.original = value;
             inputEl.classList.add('border-success');
             setTimeout(() => inputEl.classList.remove('border-success'), 1000);
