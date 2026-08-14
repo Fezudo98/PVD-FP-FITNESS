@@ -7,6 +7,7 @@ import json
 import hmac
 import hashlib
 import urllib.request
+import urllib.parse
 import requests
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta, timezone
@@ -221,6 +222,69 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'mp4', 'mov', 'avi'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@store_bp.route('/sitemap.xml')
+def sitemap_xml():
+    """Sitemap dinamico pro Google indexar a loja - so paginas publicas de verdade (nunca
+    carrinho/checkout/conta/login, que sao paginas pessoais/transacionais sem valor de busca).
+    Um produto por nome (mesma agrupacao usada na listagem), usando o menor id de cada grupo -
+    e o mesmo link que a loja usa pra apontar pra aquele produto."""
+    base_url = 'https://lojafpfitness.com.br'
+    agora = current_brazil_time().strftime('%Y-%m-%d')
+
+    urls = [
+        {'loc': f'{base_url}/store', 'changefreq': 'daily', 'priority': '1.0'},
+        {'loc': f'{base_url}/store/produtos', 'changefreq': 'daily', 'priority': '0.9'},
+        {'loc': f'{base_url}/store/promocoes', 'changefreq': 'weekly', 'priority': '0.7'},
+        {'loc': f'{base_url}/store/politicas', 'changefreq': 'monthly', 'priority': '0.3'},
+    ]
+
+    produtos = db.session.query(
+        func.min(Produto.id).label('id')
+    ).filter(
+        Produto.online_ativo == True, Produto.quantidade > 0, Produto.deletado == False
+    ).group_by(Produto.nome).all()
+    for p in produtos:
+        urls.append({'loc': f'{base_url}/store/produto/{p.id}', 'changefreq': 'weekly', 'priority': '0.8'})
+
+    categorias = db.session.query(Produto.categoria).filter_by(online_ativo=True, deletado=False).distinct().all()
+    for c in categorias:
+        if c[0]:
+            categoria_encoded = urllib.parse.quote(c[0])
+            urls.append({'loc': f'{base_url}/store/produtos?categoria={categoria_encoded}', 'changefreq': 'weekly', 'priority': '0.6'})
+
+    xml_urls = '\n'.join(
+        f'  <url>\n    <loc>{u["loc"]}</loc>\n    <lastmod>{agora}</lastmod>\n    <changefreq>{u["changefreq"]}</changefreq>\n    <priority>{u["priority"]}</priority>\n  </url>'
+        for u in urls
+    )
+    xml = f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{xml_urls}\n</urlset>'
+
+    return Response(xml, mimetype='application/xml')
+
+@store_bp.route('/robots.txt')
+def robots_txt():
+    """Bloqueia tudo por padrao e libera so as paginas publicas da loja - mais seguro que
+    manter uma lista de paginas do painel admin pra bloquear (cresce e alguem esquece de
+    atualizar). CSS/JS/imagens precisam ficar liberados pro Google conseguir renderizar as
+    paginas da loja corretamente."""
+    conteudo = """User-agent: *
+Disallow: /
+Allow: /store$
+Allow: /store/produtos
+Allow: /store/produto/
+Allow: /store/promocoes
+Allow: /store/politicas
+Disallow: /store/checkout
+Disallow: /store/carrinho
+Disallow: /store/conta
+Disallow: /store/login
+Allow: /frontend/
+Allow: /css/
+Allow: /static/
+
+Sitemap: https://lojafpfitness.com.br/sitemap.xml
+"""
+    return Response(conteudo, mimetype='text/plain')
 
 # --- Store Pages ---
 @store_bp.route('/store')
