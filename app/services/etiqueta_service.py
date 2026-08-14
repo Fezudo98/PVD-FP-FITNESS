@@ -55,8 +55,12 @@ def gerar_etiqueta_me(venda):
         "postal_code": venda.entrega_cep or "00000000"
     }
 
-    # Prepara Products
+    # Prepara Products e Volumes (a API do Melhor Envio valida peso/dimensões pelo campo
+    # "volumes", separado de "products" - "products" só aceita name/quantity/unitary_value.
+    # Enviar as medidas dentro de "products" faz a API ignorá-las e validar um pacote vazio,
+    # retornando erro de campo obrigatório mesmo com produtos com peso/dimensões cadastrados.
     products = []
+    volumes = []
     for item in venda.itens:
         prod = item.produto
         if not prod:
@@ -68,11 +72,13 @@ def gerar_etiqueta_me(venda):
         products.append({
             "name": prod.nome,
             "quantity": item.quantidade,
-            "unitary_value": float(item.preco_unitario_momento),
-            "weight": peso,
-            "width": largura,
+            "unitary_value": float(item.preco_unitario_momento)
+        })
+        volumes.append({
             "height": altura,
-            "length": comprimento
+            "width": largura,
+            "length": comprimento,
+            "weight": peso
         })
 
     # 2. Adicionar ao Carrinho
@@ -82,6 +88,7 @@ def gerar_etiqueta_me(venda):
         "from": sender,
         "to": receiver,
         "products": products,
+        "volumes": volumes,
         "options": {
             "insurance_value": venda.total_venda,
             "receipt": False,
