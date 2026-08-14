@@ -5,8 +5,17 @@ from ...models import Cupom, Produto, PromocaoAutomatica, Cliente
 from ...utils import token_required, registrar_log
 from ...services.email_service import enviar_comunicado_marketing
 import threading
+import time
 
 GATILHOS_VALIDOS = ('primeira_compra', 'primeira_avaliacao')
+
+# Ritmo de envio do comunicado em massa: provedores de SMTP (Gmail etc.) costumam bloquear ou
+# colocar em quarentena temporariamente contas que abrem muitas conexoes/logins em sequencia
+# muito rapida. Uma pausa curta entre cada e-mail, mais uma pausa maior a cada lote, mantem o
+# envio dentro de um ritmo seguro sem exigir infraestrutura de fila.
+PAUSA_ENTRE_EMAILS_SEGUNDOS = 1.5
+TAMANHO_LOTE = 20
+PAUSA_ENTRE_LOTES_SEGUNDOS = 10
 
 @api_bp.route('/api/cupons', methods=['GET', 'POST'])
 @token_required
@@ -196,7 +205,7 @@ def enviar_comunicado(current_user):
             from ...utils import registrar_log as _registrar_log
             sucesso = 0
             falha = 0
-            for email, nome in destinatarios:
+            for i, (email, nome) in enumerate(destinatarios):
                 try:
                     ok = enviar_comunicado_marketing(email, nome, assunto, mensagem)
                 except Exception as e:
@@ -206,6 +215,15 @@ def enviar_comunicado(current_user):
                     sucesso += 1
                 else:
                     falha += 1
+
+                # Pausa entre cada e-mail e uma pausa maior a cada lote - mantem o ritmo de
+                # envio seguro pro provedor de SMTP. Nao pausa depois do ultimo destinatario.
+                if i < len(destinatarios) - 1:
+                    if (i + 1) % TAMANHO_LOTE == 0:
+                        time.sleep(PAUSA_ENTRE_LOTES_SEGUNDOS)
+                    else:
+                        time.sleep(PAUSA_ENTRE_EMAILS_SEGUNDOS)
+
             _registrar_log(None, "Comunicado em Massa Concluído", f"Assunto: '{assunto}' - Enviados: {sucesso}, Falhas: {falha} (disparado por {admin_nome}).")
             db.session.commit()
 
@@ -215,4 +233,10 @@ def enviar_comunicado(current_user):
     )
     thread.start()
 
-    return jsonify({'mensagem': f'Envio iniciado para {total} cliente(s). Pode levar alguns minutos - acompanhe pelo Log de Atividades.'}), 202
+    # Estimativa de duração com o ritmo throttled (pausa entre e-mails + pausa maior a cada
+    # lote), pra lojista não achar que travou numa lista grande.
+    num_pausas_lote = (total - 1) // TAMANHO_LOTE
+    duracao_estimada_seg = (total - 1 - num_pausas_lote) * PAUSA_ENTRE_EMAILS_SEGUNDOS + num_pausas_lote * PAUSA_ENTRE_LOTES_SEGUNDOS
+    duracao_min = max(1, round(duracao_estimada_seg / 60))
+
+    return jsonify({'mensagem': f'Envio iniciado para {total} cliente(s). Deve levar cerca de {duracao_min} minuto(s) (envio gradual, pra não ser bloqueado pelo provedor de e-mail) - acompanhe pelo Log de Atividades.'}), 202
