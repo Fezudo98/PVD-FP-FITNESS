@@ -5,6 +5,70 @@ function formatBRL(value) {
     return (Number(value) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Parcelamento nos cards de produto: a taxa de juros do Mercado Pago é sempre a mesma
+// porcentagem independente do valor (confirmado comparando R$100 e R$200 - o "total" escala
+// linear), então uma única consulta à API já basta pra estimar o parcelamento de qualquer
+// produto na página, sem precisar de uma chamada por card (evita N chamadas numa grade de
+// 20-50 produtos).
+let _parcelamentoInfoPromise = null;
+
+function obterParcelamentoInfo() {
+    if (!_parcelamentoInfoPromise) {
+        _parcelamentoInfoPromise = fetch('/api/public/parcelamento?valor=100')
+            .then(res => res.json())
+            .then(data => {
+                const opcoes = data.opcoes || [];
+                if (opcoes.length === 0) return null;
+                const melhor = opcoes[opcoes.length - 1];
+                return { parcelas: melhor.parcelas, multiplicador: melhor.total / 100 };
+            })
+            .catch(() => null);
+    }
+    return _parcelamentoInfoPromise;
+}
+
+function formatarParcelasProduto(preco, infoParcelamento) {
+    if (!infoParcelamento || !preco) return '';
+    const totalEstimado = preco * infoParcelamento.multiplicador;
+    const valorParcela = totalEstimado / infoParcelamento.parcelas;
+    return `até ${infoParcelamento.parcelas}x de R$ ${formatBRL(valorParcela)}`;
+}
+
+// Card de produto minimalista compartilhado (foto em foco, texto discreto embaixo) - usado na
+// home, listagem, relacionados e sugestões do carrinho, pra manter o mesmo visual em todo
+// lugar sem duplicar a marcação em cada arquivo.
+function renderProdutoCardMinimal(p, infoParcelamento) {
+    let priceDisplay = `R$ ${formatBRL(p.preco_venda)}`;
+    if (p.max_price && p.max_price > p.preco_venda) {
+        priceDisplay = `A partir de R$ ${formatBRL(p.preco_venda)}`;
+    }
+
+    const img = p.imagem_url ? `/uploads/${p.imagem_url}` : 'https://via.placeholder.com/400x520?text=Sem+Imagem';
+    const parcelasTexto = formatarParcelasProduto(p.preco_venda, infoParcelamento);
+
+    const tags = [];
+    if (p.total_stock !== undefined && p.total_stock > 0 && p.total_stock <= 5) {
+        tags.push(`<span class="product-card-tag product-card-tag-estoque">Últimas ${p.total_stock} unid.</span>`);
+    }
+    if (p.is_best_seller) {
+        tags.push(`<span class="product-card-tag"><i class="fa-solid fa-fire me-1"></i>Mais vendido</span>`);
+    }
+
+    return `
+        <a href="/store/produto/${p.id}" class="product-card-minimal text-decoration-none">
+            <div class="product-card-minimal-img">
+                ${tags.length ? `<div class="product-card-tags">${tags.join('')}</div>` : ''}
+                <img src="${img}" alt="${p.nome}" loading="lazy">
+            </div>
+            <div class="product-card-minimal-info">
+                <div class="product-card-minimal-nome" title="${p.nome}">${p.nome}</div>
+                <div class="product-card-minimal-preco">${priceDisplay}</div>
+                ${parcelasTexto ? `<div class="product-card-minimal-parcelas">${parcelasTexto}</div>` : ''}
+            </div>
+        </a>
+    `;
+}
+
 // Wrapper seguro pro Meta Pixel: nao quebra a pagina se o fbq nao carregou (ex: bloqueador
 // de anuncios/tracker no navegador do cliente). Alem de disparar pro Pixel, espelha o evento
 // no nosso backend (exceto Purchase, que o servidor ja registra com mais autoridade via
@@ -205,7 +269,10 @@ async function loadCartSuggestions() {
     if (!section || !container) return;
 
     try {
-        const res = await fetch('/api/store/products?per_page=8&sort=mais_vendidos');
+        const [res, infoParcelamento] = await Promise.all([
+            fetch('/api/store/products?per_page=8&sort=mais_vendidos'),
+            obterParcelamentoInfo()
+        ]);
         if (!res.ok) return;
         const data = await res.json();
 
@@ -216,31 +283,11 @@ async function loadCartSuggestions() {
             return;
         }
 
-        container.innerHTML = sugestoes.map(p => {
-            let priceDisplay = `R$ ${formatBRL(p.preco_venda)}`;
-            if (p.max_price && p.max_price > p.preco_venda) {
-                priceDisplay = `A partir de R$ ${formatBRL(p.preco_venda)}`;
-            }
-            const img = p.imagem_url ? `/uploads/${p.imagem_url}` : 'https://via.placeholder.com/200x260?text=Sem+Imagem';
-            const acaoBtn = p.tem_variacoes
-                ? `<a href="/store/produto/${p.id}" class="btn btn-outline-dark btn-sm w-100 rounded-pill fw-bold">Ver Opções</a>`
-                : `<button class="btn btn-outline-dark btn-sm w-100 rounded-pill fw-bold" onclick="addToCart(${p.id}, '${p.nome}', ${p.preco_venda}, '${p.imagem_url || ''}', ${p.total_stock})">Adicionar</button>`;
-
-            return `
-                <div class="col-6 col-md-3">
-                    <div class="border-0 shadow-sm rounded-4 overflow-hidden bg-white h-100 d-flex flex-column">
-                        <a href="/store/produto/${p.id}" class="d-block" style="height: 160px; overflow: hidden;">
-                            <img src="${img}" alt="${p.nome}" class="w-100 h-100" style="object-fit: cover;">
-                        </a>
-                        <div class="p-2 text-center d-flex flex-column flex-grow-1">
-                            <div class="small fw-bold text-dark mb-1 text-truncate" title="${p.nome}">${p.nome}</div>
-                            <div class="text-warning fw-bold small mb-2">${priceDisplay}</div>
-                            <div class="mt-auto">${acaoBtn}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        container.innerHTML = sugestoes.map(p => `
+            <div class="col-6 col-md-3">
+                ${renderProdutoCardMinimal(p, infoParcelamento)}
+            </div>
+        `).join('');
 
         section.style.display = '';
     } catch (e) {
