@@ -100,6 +100,77 @@
             border-bottom: 1px solid var(--border-color);
         }
 
+        /* Mega menu "Categorias" - painel largo em colunas, no espírito de menus de lojas de
+           moda maiores (ex: Dudalina), adaptado pra nossa lista de categorias ser plana (sem
+           sub-grupos). column-span:all nos itens de cabeçalho/rodapé faz eles atravessarem
+           todas as colunas, ficando fora do fluxo em grade das categorias em si. */
+        #navCategoriasMenu.mega-menu-categorias {
+            min-width: 640px;
+            max-width: 92vw;
+            padding: 26px 30px 18px;
+            border: none;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 24px 55px rgba(0, 0, 0, 0.16);
+            columns: 3;
+            column-gap: 32px;
+        }
+
+        #navCategoriasMenu.mega-menu-categorias .mega-menu-titulo {
+            column-span: all;
+            font-size: 0.72rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--secondary-gold);
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+
+        #navCategoriasMenu.mega-menu-categorias li {
+            break-inside: avoid;
+        }
+
+        #navCategoriasMenu.mega-menu-categorias .dropdown-item {
+            padding: 7px 0;
+            color: var(--text-primary);
+            background: transparent !important;
+            border-radius: 0;
+            font-size: 0.96rem;
+            transition: color .15s ease, transform .15s ease;
+        }
+
+        #navCategoriasMenu.mega-menu-categorias .dropdown-item:hover {
+            color: var(--secondary-gold);
+            transform: translateX(3px);
+        }
+
+        #navCategoriasMenu.mega-menu-categorias .mega-menu-rodape {
+            column-span: all;
+            border-top: 1px solid var(--border-color);
+            margin-top: 12px;
+            padding-top: 12px;
+        }
+
+        #navCategoriasMenu.mega-menu-categorias .mega-menu-rodape .dropdown-item {
+            font-weight: 700;
+            color: var(--secondary-gold);
+        }
+
+        #navCategoriasMenu.mega-menu-categorias .mega-menu-rodape .dropdown-item:hover {
+            color: #000;
+        }
+
+        /* No mobile a navbar vira um menu colapsado vertical - a grade de 3 colunas fica
+           espremida demais ali dentro, então volta a ser uma lista simples de 1 coluna. */
+        @media (max-width: 991.98px) {
+            #navCategoriasMenu.mega-menu-categorias {
+                min-width: 0;
+                max-width: none;
+                columns: 1;
+                box-shadow: none;
+                padding: 10px 4px;
+            }
+        }
+
         /* Barra de promoções rolando no topo (frete/parcelamento), fixa acima da navbar. */
         .store-top-fixed {
             position: fixed;
@@ -675,7 +746,7 @@
                         <li class="nav-item"><a class="nav-link" href="/store/produtos">Produtos</a></li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navCategoriasToggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">Categorias</a>
-                            <ul class="dropdown-menu" id="navCategoriasMenu" aria-labelledby="navCategoriasToggle">
+                            <ul class="dropdown-menu mega-menu-categorias" id="navCategoriasMenu" aria-labelledby="navCategoriasToggle">
                                 <li><span class="dropdown-item-text text-muted small">Carregando...</span></li>
                             </ul>
                         </li>
@@ -876,7 +947,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Device ID do Mercado Pago: reduz falsos positivos do antifraude deles no checkout -->
     <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
-    <script src="/frontend/js/store.js?v=12"></script>
+    <script src="/frontend/js/store.js?v=13"></script>
     {% block scripts %}{% endblock %}
 </body>
 

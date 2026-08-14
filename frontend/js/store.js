@@ -829,10 +829,12 @@ async function initNavCategorias() {
             return;
         }
 
-        menu.innerHTML = categorias.map(cat =>
-            `<li><a class="dropdown-item" href="/store/produtos?categoria=${encodeURIComponent(cat)}">${cat}</a></li>`
-        ).join('') + '<li><hr class="dropdown-divider"></li>' +
-            '<li><a class="dropdown-item fw-bold" href="/store/produtos">Ver todos os produtos</a></li>';
+        menu.innerHTML =
+            '<li class="mega-menu-titulo">Categorias</li>' +
+            categorias.map(cat =>
+                `<li><a class="dropdown-item" href="/store/produtos?categoria=${encodeURIComponent(cat)}">${escapeHtml(cat)}</a></li>`
+            ).join('') +
+            '<li class="mega-menu-rodape"><a class="dropdown-item" href="/store/produtos">Ver todos os produtos <i class="fa-solid fa-arrow-right-long ms-1"></i></a></li>';
     } catch (e) {
         console.error('Erro ao carregar categorias da navbar:', e);
         menu.innerHTML = '<li><span class="dropdown-item-text text-muted small">Erro ao carregar</span></li>';
