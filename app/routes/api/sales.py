@@ -381,8 +381,9 @@ def gerar_etiqueta(current_user, venda_id):
         })
 
     try:
-        url_pdf, tracking_code = gerar_etiqueta_me(venda)
+        url_pdf, tracking_code, melhor_envio_id = gerar_etiqueta_me(venda)
         venda.etiqueta_url = url_pdf
+        venda.melhor_envio_id = melhor_envio_id
 
         if tracking_code:
             venda.codigo_rastreio = tracking_code
@@ -397,6 +398,84 @@ def gerar_etiqueta(current_user, venda_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': str(e)}), 500
+
+@api_bp.route('/api/vendas/<int:venda_id>/etiqueta/zpl', methods=['GET'])
+@token_required
+def obter_etiqueta_zpl(current_user, venda_id):
+    """Devolve o conteúdo cru em ZPL da etiqueta, pra impressão térmica nativa via QZ Tray
+    (sem passar pelo navegador). Se a venda não tem melhor_envio_id salvo (etiquetas geradas
+    antes desse campo existir), tenta recuperar pelo código de rastreio antes de desistir."""
+    if current_user.role != 'admin': return jsonify({'erro': 'Acesso negado.'}), 403
+    venda = Venda.query.get_or_404(venda_id)
+
+    if not venda.etiqueta_url:
+        return jsonify({'erro': 'Esta venda ainda não tem etiqueta gerada.'}), 404
+
+    if not venda.melhor_envio_id:
+        from ...services.etiqueta_service import buscar_melhor_envio_id_por_rastreio
+        venda.melhor_envio_id = buscar_melhor_envio_id_por_rastreio(venda.codigo_rastreio)
+        if venda.melhor_envio_id:
+            db.session.commit()
+
+    if not venda.melhor_envio_id:
+        return jsonify({'erro': 'Não foi possível localizar o envio no Melhor Envio para buscar o ZPL.'}), 404
+
+    try:
+        from ...services.etiqueta_service import obter_zpl_etiqueta
+        zpl = obter_zpl_etiqueta(venda.melhor_envio_id)
+        return jsonify({'venda_id': venda.id, 'zpl': zpl})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+@api_bp.route('/api/vendas/etiquetas/lote', methods=['POST'])
+@token_required
+def gerar_etiquetas_lote(current_user):
+    """Gera (quando faltar) e devolve o ZPL de várias etiquetas de uma vez, pra imprimir tudo
+    numa fila só via QZ Tray. Cada venda é processada isoladamente - uma falha (ex: saldo
+    insuficiente, CPF inválido) não derruba as outras do lote."""
+    if current_user.role != 'admin': return jsonify({'erro': 'Acesso negado.'}), 403
+    dados = request.get_json() or {}
+    venda_ids = dados.get('venda_ids') or []
+    if not venda_ids:
+        return jsonify({'erro': 'Nenhum pedido informado.'}), 400
+
+    from ...services.etiqueta_service import obter_zpl_etiqueta, buscar_melhor_envio_id_por_rastreio
+
+    resultados = []
+    for venda_id in venda_ids:
+        venda = Venda.query.get(venda_id)
+        if not venda:
+            resultados.append({'venda_id': venda_id, 'ok': False, 'erro': 'Pedido não encontrado.'})
+            continue
+        if not (venda.codigo_servico_frete and venda.codigo_servico_frete.startswith('me_')):
+            resultados.append({'venda_id': venda_id, 'ok': False, 'erro': 'Este pedido não usa o Melhor Envio.'})
+            continue
+
+        try:
+            if not venda.etiqueta_url:
+                url_pdf, tracking_code, melhor_envio_id = gerar_etiqueta_me(venda)
+                venda.etiqueta_url = url_pdf
+                venda.melhor_envio_id = melhor_envio_id
+                if tracking_code:
+                    venda.codigo_rastreio = tracking_code
+                    registrar_log(current_user, "Rastreio Automático ME", f"ID: {venda.id} - Rastreio: {tracking_code}")
+                db.session.commit()
+
+            if not venda.melhor_envio_id:
+                venda.melhor_envio_id = buscar_melhor_envio_id_por_rastreio(venda.codigo_rastreio)
+                if venda.melhor_envio_id:
+                    db.session.commit()
+
+            if not venda.melhor_envio_id:
+                raise Exception('Não foi possível localizar o envio no Melhor Envio para buscar o ZPL.')
+
+            zpl = obter_zpl_etiqueta(venda.melhor_envio_id)
+            resultados.append({'venda_id': venda.id, 'ok': True, 'zpl': zpl})
+        except Exception as e:
+            db.session.rollback()
+            resultados.append({'venda_id': venda_id, 'ok': False, 'erro': str(e)})
+
+    return jsonify({'resultados': resultados})
 
 @api_bp.route('/api/vendas/online/pendentes/count', methods=['GET'])
 @token_required
@@ -442,7 +521,9 @@ def get_online_orders(current_user):
             'total': v.total_venda,
             'status': v.status,
             'tipo_entrega': v.tipo_entrega,
-            'itens_count': len(v.itens)
+            'itens_count': len(v.itens),
+            'usa_melhor_envio': bool(v.codigo_servico_frete and v.codigo_servico_frete.startswith('me_')),
+            'etiqueta_url': v.etiqueta_url
         })
         
     return jsonify({

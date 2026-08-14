@@ -168,12 +168,26 @@
             </div>
         </div>
 
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-white-50 small" id="loteSelecionadosLabel">Nenhum pedido selecionado</span>
+                <button class="btn btn-warning btn-sm fw-bold d-none" id="btnImprimirLote" onclick="imprimirEtiquetasSelecionadas()">
+                    <i class="fa-solid fa-print me-1"></i>Imprimir Etiquetas Selecionadas
+                </button>
+            </div>
+            <button class="btn btn-outline-light btn-sm" onclick="configurarImpressoraTermica()">
+                <i class="fa-solid fa-gear me-1"></i>Configurar Impressora Térmica
+                <span class="small text-white-50" id="impressoraAtualLabel"></span>
+            </button>
+        </div>
+
         <div class="card bg-dark text-white border-secondary mb-4">
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-dark table-hover align-middle" id="onlineOrdersTable">
                         <thead>
                             <tr>
+                                <th style="width: 36px;"><input type="checkbox" class="form-check-input" id="checkAllLote" onchange="toggleTodosLote(this)"></th>
                                 <th>ID</th>
                                 <th>Data</th>
                                 <th>Cliente</th>
@@ -365,13 +379,16 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
     <script src="/js/theme_manager.js"></script>
     <script src="/js/main.js?v=6"></script>
+    <script src="/js/print_lote.js?v=1"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
             loadOnlineOrders();
             loadOnlineDashboard();
+            initImpressaoLote();
             if ("Notification" in window) {
                 Notification.requestPermission();
             }

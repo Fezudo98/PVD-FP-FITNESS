@@ -415,7 +415,7 @@ async function loadOnlineOrders(page = 1) {
     const statusFilter = document.getElementById('statusFilter');
     const statusVal = statusFilter ? statusFilter.value : '';
 
-    tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-white py-4">Carregando...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-white py-4">Carregando...</td></tr>';
 
     try {
         let url = `${API_URL}/api/vendas/online?page=${page}&per_page=10`;
@@ -443,7 +443,7 @@ async function loadOnlineOrders(page = 1) {
 
     } catch (error) {
         console.error(error);
-        tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Erro ao carregar pedidos: ${error.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Erro ao carregar pedidos: ${error.message}</td></tr>`;
     }
 }
 
@@ -490,7 +490,7 @@ function renderOrders(pedidos) {
     tableBody.innerHTML = '';
 
     if (pedidos.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-white py-4">Nenhum pedido online encontrado.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-white py-4">Nenhum pedido online encontrado.</td></tr>';
         return;
     }
 
@@ -499,8 +499,14 @@ function renderOrders(pedidos) {
         const tipoEntrega = p.tipo_entrega || 'Motoboy'; // Backward compatibility
         const actionsHtml = getContextualActions(p.id, p.status, tipoEntrega);
 
+        const podeImprimirLote = p.usa_melhor_envio && p.status !== 'Cancelada' && p.status !== 'Entregue';
+        const checkboxHtml = podeImprimirLote
+            ? `<input type="checkbox" class="form-check-input lote-checkbox" data-venda-id="${p.id}" onchange="atualizarSelecaoLote()">`
+            : '';
+
         const row = `
             <tr>
+                <td>${checkboxHtml}</td>
                 <td>#${p.id}</td>
                 <td>
                     ${p.data_hora}<br>

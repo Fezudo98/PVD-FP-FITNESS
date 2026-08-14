@@ -145,5 +145,61 @@ def gerar_etiqueta_me(venda):
                 tracking_code = tracking_info.get("tracking")
     except Exception as e:
         print(f"Aviso: Não foi possível puxar o rastreio automático do ME: {e}")
-    
-    return pdf_url, tracking_code
+
+    return pdf_url, tracking_code, str(order_id)
+
+
+def obter_zpl_etiqueta(melhor_envio_id):
+    """Busca o conteúdo cru (texto ZPL) de uma etiqueta já gerada, pra impressão térmica nativa
+    via QZ Tray - sem passar pelo motor de renderização/escala do navegador, que é a causa dos
+    problemas de tamanho ao imprimir a versão em PDF/HTML."""
+    token = os.environ.get('MELHOR_ENVIO_TOKEN')
+    url_base = os.environ.get('MELHOR_ENVIO_URL', 'https://sandbox.melhorenvio.com.br')
+
+    if not token:
+        raise Exception("Token do Melhor Envio não configurado.")
+
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {token}',
+        'User-Agent': 'FPFitnessApp (suporte@fpfitness.com)'
+    }
+
+    resp = requests.get(f"{url_base}/api/v2/me/imprimir/zpl/{melhor_envio_id}", headers=headers, timeout=15)
+    if not resp.ok:
+        raise Exception(f"Erro ao buscar etiqueta em ZPL: {resp.text}")
+
+    urls = resp.json()
+    if not urls:
+        raise Exception("Melhor Envio não retornou o arquivo ZPL da etiqueta.")
+    s3_url = urls[0] if isinstance(urls, list) else urls
+
+    resp_arquivo = requests.get(s3_url, timeout=15)
+    if not resp_arquivo.ok:
+        raise Exception("Não foi possível baixar o arquivo ZPL da etiqueta.")
+
+    return resp_arquivo.text
+
+
+def buscar_melhor_envio_id_por_rastreio(codigo_rastreio):
+    """Recupera o ID do envio no Melhor Envio a partir do código de rastreio, para etiquetas
+    geradas antes do campo melhor_envio_id existir no banco (retrocompatibilidade)."""
+    token = os.environ.get('MELHOR_ENVIO_TOKEN')
+    url_base = os.environ.get('MELHOR_ENVIO_URL', 'https://sandbox.melhorenvio.com.br')
+    if not token or not codigo_rastreio:
+        return None
+
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': f'Bearer {token}',
+        'User-Agent': 'FPFitnessApp (suporte@fpfitness.com)'
+    }
+    resp = requests.get(f"{url_base}/api/v2/me/orders", headers=headers, params={'per_page': 100}, timeout=15)
+    if not resp.ok:
+        return None
+
+    for pedido in resp.json().get('data', []):
+        if pedido.get('tracking') == codigo_rastreio:
+            return pedido.get('id')
+    return None

@@ -214,6 +214,10 @@ class Venda(db.Model):
     # URL do PDF da etiqueta gerada no Melhor Envio - salva pra nao precisar gerar de novo
     # (o que recompraria o frete na carteira do ME) so pra reimprimir uma etiqueta ja emitida.
     etiqueta_url = db.Column(db.String(500), nullable=True)
+    # ID do envio (order) no Melhor Envio - necessario pra buscar a etiqueta em formato ZPL
+    # (impressao termica nativa) depois de gerada; o link publico em etiqueta_url usa um hash
+    # diferente que nao serve pra isso.
+    melhor_envio_id = db.Column(db.String(50), nullable=True)
     id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     id_vendedor = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True) # Nullable para vendas online
     

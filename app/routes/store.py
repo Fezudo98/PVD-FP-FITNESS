@@ -80,8 +80,9 @@ def disparar_geracao_etiqueta_async(venda):
             try:
                 v_async = Venda.query.get(v_id)
                 if v_async and not v_async.etiqueta_url:
-                    url_pdf, tracking_code = gerar_etiqueta_me(v_async)
+                    url_pdf, tracking_code, melhor_envio_id = gerar_etiqueta_me(v_async)
                     v_async.etiqueta_url = url_pdf
+                    v_async.melhor_envio_id = melhor_envio_id
                     if tracking_code:
                         v_async.codigo_rastreio = tracking_code
                     db.session.commit()
