@@ -54,16 +54,17 @@
     <div class="print-toolbar">
         <div>
             <strong class="text-warning"><i class="fa-solid fa-print me-2"></i>Etiqueta - Pedido #<span id="vendaIdLabel">-</span></strong>
-            <span class="text-white-50 small ms-2 d-none d-md-inline">A janela de impressão do navegador deve abrir automaticamente. Selecione a impressora térmica e confirme.</span>
+            <span class="text-white-50 small ms-2 d-none d-md-inline" id="statusMsg">Buscando a etiqueta...</span>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-warning btn-sm fw-bold" id="btnImprimir"><i class="fa-solid fa-print me-1"></i>Imprimir</button>
-            <a href="javascript:void(0)" id="btnAbrirNovaAba" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-up-right-from-square me-1"></i>Abrir em nova aba</a>
             <a href="/loja_online.html" class="btn btn-outline-secondary btn-sm">Voltar</a>
         </div>
     </div>
-    <div class="print-frame-wrapper">
-        <iframe id="etiquetaFrame" title="Etiqueta de envio"></iframe>
+    <div class="print-frame-wrapper d-flex align-items-center justify-content-center">
+        <div class="text-white-50 text-center" id="mensagemCentral">
+            <div class="spinner-border text-warning mb-3"></div>
+            <p>Redirecionando para a etiqueta...</p>
+        </div>
     </div>
 
     <script>
@@ -75,40 +76,27 @@
         const params = new URLSearchParams(window.location.search);
         const vendaId = params.get('venda_id');
 
+        // A etiqueta do Melhor Envio é uma página renderizada por JS deles (CSP proibe embutir
+        // em iframe de outro domínio: "frame-ancestors" só libera os próprios domínios do ME),
+        // então não dá pra embutir nem reservir como PDF puro via proxy - a saída é navegar
+        // direto pra URL pública que eles hospedam, que já cuida da própria impressão.
         if (!vendaId) {
             document.body.innerHTML = '<div class="p-5 text-center text-white">ID do pedido não informado.</div>';
         } else {
             document.getElementById('vendaIdLabel').textContent = vendaId;
 
-            const pdfUrl = `/api/vendas/${vendaId}/etiqueta/pdf?token=${encodeURIComponent(token)}`;
-            const frame = document.getElementById('etiquetaFrame');
-            frame.src = pdfUrl;
-            document.getElementById('btnAbrirNovaAba').href = pdfUrl;
-
-            let jaTentouAutoImprimir = false;
-            frame.addEventListener('load', () => {
-                // So dispara a impressão automática uma vez (evita reabrir o dialogo se o
-                // iframe recarregar por qualquer motivo).
-                if (jaTentouAutoImprimir) return;
-                jaTentouAutoImprimir = true;
-                setTimeout(() => {
-                    try {
-                        frame.contentWindow.focus();
-                        frame.contentWindow.print();
-                    } catch (e) {
-                        console.error('Não foi possível disparar a impressão automaticamente:', e);
-                    }
-                }, 400);
-            });
-
-            document.getElementById('btnImprimir').addEventListener('click', () => {
-                try {
-                    frame.contentWindow.focus();
-                    frame.contentWindow.print();
-                } catch (e) {
-                    window.open(pdfUrl, '_blank');
-                }
-            });
+            fetch(`/api/vendas/${vendaId}`, { headers: { 'x-access-token': token } })
+                .then(res => res.json().then(data => ({ ok: res.ok, data })))
+                .then(({ ok, data }) => {
+                    if (!ok) throw new Error(data.message || data.erro || 'Não foi possível carregar o pedido.');
+                    if (!data.etiqueta_url) throw new Error('Este pedido ainda não tem etiqueta gerada.');
+                    document.getElementById('statusMsg').textContent = 'Abrindo a etiqueta no Melhor Envio...';
+                    window.location.replace(data.etiqueta_url);
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar etiqueta:', error);
+                    document.getElementById('mensagemCentral').innerHTML = `<p class="text-danger">${error.message}</p>`;
+                });
         }
     </script>
 </body>
