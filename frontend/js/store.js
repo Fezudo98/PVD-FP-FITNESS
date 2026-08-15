@@ -758,15 +758,39 @@ async function submitOrder() {
     }
 }
 
+// A barra fixa do topo (promoção + navbar) não tem altura fixa de verdade - varia com o
+// conteúdo da promoção, se o logo quebra linha em telas menores, fonte carregando etc. Um
+// valor de margem chutado no HTML (era 144px fixo) fica sempre um pouco errado, deixando uma
+// faixa do conteúdo escondida atrás da barra ou um vão em branco. Mede a altura real e ajusta
+// o espaço reservado pro conteúdo (e pro topo do painel de busca) toda vez que algo pode ter
+// mudado essa altura.
+function ajustarOffsetBarraFixa() {
+    const barra = document.querySelector('.store-top-fixed');
+    const main = document.querySelector('main');
+    const searchBar = document.querySelector('.store-search-bar');
+    if (!barra) return;
+    const altura = barra.offsetHeight;
+    if (main) main.style.marginTop = `${altura}px`;
+    if (searchBar) searchBar.style.top = `${altura}px`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     updateCartCount();
     updateAuthUI();
     initStoreSearchBar();
-    initStoreMarquee();
+    ajustarOffsetBarraFixa();
+    initStoreMarquee().then(ajustarOffsetBarraFixa);
     initNavCategorias();
     if (window.location.pathname.includes('/checkout')) {
         autoFillCheckout();
     }
+});
+
+window.addEventListener('load', ajustarOffsetBarraFixa);
+let ajusteOffsetResizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(ajusteOffsetResizeTimeout);
+    ajusteOffsetResizeTimeout = setTimeout(ajustarOffsetBarraFixa, 150);
 });
 
 // Barra de promoções rolando no topo: sempre com dados reais (frete/parcelamento), nunca

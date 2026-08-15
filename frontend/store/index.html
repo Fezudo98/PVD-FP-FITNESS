@@ -419,7 +419,7 @@
     async function loadFeaturedProducts() {
         try {
             const [response, infoParcelamento] = await Promise.all([
-                fetch('/api/store/products?per_page=4'),
+                fetch('/api/store/products?per_page=8'),
                 obterParcelamentoInfo()
             ]);
             const data = await response.json();
