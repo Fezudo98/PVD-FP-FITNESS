@@ -83,6 +83,16 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="mb-3">
+                                        <label for="regBirthdate"
+                                            class="form-label text-muted small fw-bold text-uppercase">Data de
+                                            Nascimento</label>
+                                        <input type="date" class="form-control bg-light border-light-subtle"
+                                            id="regBirthdate">
+                                        <small class="form-text text-muted mt-1 d-block"><i
+                                                class="fa-solid fa-gift me-1"></i>Opcional - pra te presentear no seu
+                                            aniversário!</small>
+                                    </div>
                                     <div class="mb-4">
                                         <label for="regPassword"
                                             class="form-label text-muted small fw-bold text-uppercase">Senha</label>
@@ -261,6 +271,7 @@
             const email = document.getElementById('regEmail').value;
             const telefone = document.getElementById('regPhone').value;
             const cpf = document.getElementById('regCpf').value;
+            const data_nascimento = document.getElementById('regBirthdate').value;
             const senha = document.getElementById('regPassword').value;
 
             // Password Validation
@@ -277,7 +288,7 @@
                 const res = await fetch('/api/client/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nome, email, telefone, cpf, senha })
+                    body: JSON.stringify({ nome, email, telefone, cpf, data_nascimento, senha })
                 });
                 const data = await res.json();
 

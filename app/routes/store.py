@@ -919,6 +919,7 @@ def consultar_parcelamento():
 def get_store_config():
     promo_primeira_compra = PromocaoAutomatica.query.filter_by(gatilho='primeira_compra').first()
     promo_primeira_avaliacao = PromocaoAutomatica.query.filter_by(gatilho='primeira_avaliacao').first()
+    promo_aniversario = PromocaoAutomatica.query.filter_by(gatilho='aniversario').first()
 
     return jsonify({
         'primeira_compra': {
@@ -930,6 +931,11 @@ def get_store_config():
             'ativo': bool(promo_primeira_avaliacao and promo_primeira_avaliacao.ativo),
             'percent': promo_primeira_avaliacao.valor_desconto if promo_primeira_avaliacao else None,
             'tipo': promo_primeira_avaliacao.tipo_desconto if promo_primeira_avaliacao else None
+        },
+        'aniversario': {
+            'ativo': bool(promo_aniversario and promo_aniversario.ativo),
+            'percent': promo_aniversario.valor_desconto if promo_aniversario else None,
+            'tipo': promo_aniversario.tipo_desconto if promo_aniversario else None
         },
         'desconto_frete': {
             'valor_minimo': FRETE_DESCONTO_VALOR_MINIMO,
@@ -1073,17 +1079,30 @@ def store_checkout():
             cpf_limpo = cpf_informado.replace('.', '').replace('-', '')
             cliente = Cliente.query.filter(_cpf_coluna_normalizada() == cpf_limpo).first()
     
+    # Data de nascimento é opcional no checkout e só preenche se o cliente ainda não tiver uma
+    # cadastrada - evita que um preenchimento divergente aqui sobrescreva silenciosamente o
+    # valor já confirmado antes (ex: em "Minha Conta").
+    data_nascimento_informada = None
+    if cliente_data.get('data_nascimento'):
+        try:
+            data_nascimento_informada = datetime.strptime(cliente_data['data_nascimento'], '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
     if not cliente:
         cliente = Cliente(
             nome=cliente_data['nome'],
             email=cliente_data['email'],
             cpf=cliente_data.get('cpf'),
-            telefone=cliente_data.get('telefone')
+            telefone=cliente_data.get('telefone'),
+            data_nascimento=data_nascimento_informada
         )
         db.session.add(cliente)
     else:
         if not cliente.email: cliente.email = cliente_data['email']
         if cliente_data.get('telefone'): cliente.telefone = cliente_data.get('telefone')
+        if not cliente.data_nascimento and data_nascimento_informada:
+            cliente.data_nascimento = data_nascimento_informada
     
     salvar_endereco = dados.get('salvar_endereco', False)
     end_data = cliente_data.get('endereco', {})
@@ -1182,6 +1201,10 @@ def store_checkout():
     # cupom manual, se o cliente tiver uma disponível e ainda válida.
     desconto_avaliacao = cliente.consumir_recompensa_avaliacao(total_venda - desconto_total)
     desconto_total += desconto_avaliacao
+
+    # Recompensa automática de aniversário: mesma lógica, empilhada por cima das anteriores.
+    desconto_aniversario = cliente.consumir_recompensa_aniversario(total_venda - desconto_total)
+    desconto_total += desconto_aniversario
 
     total_final = total_venda - desconto_total
 
@@ -1440,7 +1463,17 @@ def manage_client_me(current_client):
     if 'endereco_cidade' in dados: current_client.endereco_cidade = dados['endereco_cidade']
     if 'endereco_cep' in dados: current_client.endereco_cep = dados['endereco_cep']
     if 'endereco_complemento' in dados: current_client.endereco_complemento = dados['endereco_complemento']
-    
+
+    if 'data_nascimento' in dados:
+        valor = dados['data_nascimento']
+        if not valor:
+            current_client.data_nascimento = None
+        else:
+            try:
+                current_client.data_nascimento = datetime.strptime(valor, '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({'erro': 'Data de nascimento inválida.'}), 400
+
     db.session.commit()
     return jsonify({'mensagem': 'Dados atualizados com sucesso!', 'cliente': current_client.to_dict()})
 

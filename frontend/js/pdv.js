@@ -13,6 +13,7 @@ let cart = [];
 let allClients = [];
 let appliedCoupons = []; // Array para armazenar os múltiplos cupons aplicados
 let clienteRecompensaAvaliacao = null; // Desconto automático de "primeira avaliação" do cliente selecionado
+let clienteRecompensaAniversario = null; // Desconto automático de "aniversário" do cliente selecionado
 let payments = [];
 let totalSaleValue = 0;
 
@@ -285,6 +286,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 descontoAvaliacao = Math.min(clienteRecompensaAvaliacao.percentual, subtotalParaCalculo);
             }
             totalDiscountAmount += descontoAvaliacao;
+            subtotalParaCalculo -= descontoAvaliacao;
+        }
+
+        if (clienteRecompensaAniversario) {
+            let descontoAniversario = 0;
+            if (clienteRecompensaAniversario.tipo === 'percentual') {
+                descontoAniversario = subtotalParaCalculo * (clienteRecompensaAniversario.percentual / 100);
+            } else {
+                descontoAniversario = Math.min(clienteRecompensaAniversario.percentual, subtotalParaCalculo);
+            }
+            totalDiscountAmount += descontoAniversario;
         }
 
         totalDiscountAmount = Math.min(totalDiscountAmount, subtotal);
@@ -464,6 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
             payments = [];
             appliedCoupons = [];
             clienteRecompensaAvaliacao = null;
+            clienteRecompensaAniversario = null;
             renderAppliedCoupons();
 
             taxaEntregaInput.value = 0;
@@ -569,6 +582,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 clienteRecompensaAvaliacao = null;
             }
+            if (client.recompensa_aniversario_disponivel) {
+                clienteRecompensaAniversario = { percentual: client.desconto_aniversario_percentual, tipo: client.desconto_aniversario_tipo };
+                const desconto = client.desconto_aniversario_tipo === 'percentual' ? `${client.desconto_aniversario_percentual}%` : `R$ ${client.desconto_aniversario_percentual.toFixed(2)}`;
+                nomeExibido += ` <span class="badge bg-warning text-dark ms-1">🎂 ${desconto} de aniversário</span>`;
+            } else {
+                clienteRecompensaAniversario = null;
+            }
             selectedClientName.innerHTML = nomeExibido;
             selectedClientDisplay.classList.remove('d-none');
             clientSearchWrapper.classList.add('d-none');
@@ -581,6 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function removeClient() {
         selectedClientId.value = '';
         clienteRecompensaAvaliacao = null;
+        clienteRecompensaAniversario = null;
         selectedClientDisplay.classList.add('d-none');
         clientSearchWrapper.classList.remove('d-none');
         updateTotals();

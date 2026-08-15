@@ -118,6 +118,7 @@ function fbqTrack(evento, params, opcoes) {
 let cart = JSON.parse(localStorage.getItem('fp_fitness_cart')) || [];
 let currentCoupon = null; // Store applied coupon
 let clienteRecompensaAvaliacaoCheckout = null; // Desconto automático de "primeira avaliação" do cliente logado
+let clienteRecompensaAniversarioCheckout = null; // Desconto automático de "aniversário" do cliente logado
 
 function updateCartCount() {
     const count = cart.reduce((acc, item) => acc + item.quantity, 0);
@@ -470,6 +471,16 @@ function renderCheckoutPage() {
         }
     }
 
+    // Recompensa automática de aniversário: mesma lógica, empilhada por cima das anteriores.
+    if (clienteRecompensaAniversarioCheckout) {
+        const restante = subtotal - discount;
+        if (clienteRecompensaAniversarioCheckout.tipo === 'percentual') {
+            discount += restante * (clienteRecompensaAniversarioCheckout.percentual / 100);
+        } else {
+            discount += Math.min(clienteRecompensaAniversarioCheckout.percentual, restante);
+        }
+    }
+
     // Ensure discount doesn't exceed subtotal
     if (discount > subtotal) discount = subtotal;
 
@@ -588,6 +599,7 @@ async function submitOrder() {
         email: document.getElementById('email').value,
         cpf: document.getElementById('cpf').value,
         telefone: document.getElementById('telefone').value,
+        data_nascimento: document.getElementById('dataNascimento') ? document.getElementById('dataNascimento').value : '',
         endereco: {
             rua: document.getElementById('rua').value,
             numero: document.getElementById('numero').value,
@@ -1089,6 +1101,15 @@ async function autoFillCheckout() {
                     `Você tem ${desconto} de desconto por avaliar sua compra — será aplicado automaticamente neste pedido!`;
                 rewardBanner.classList.remove('d-none');
                 if (typeof renderCheckoutPage === 'function') renderCheckoutPage();
+            } else if (rewardBanner && data.recompensa_aniversario_disponivel) {
+                clienteRecompensaAniversarioCheckout = { percentual: data.desconto_aniversario_percentual, tipo: data.desconto_aniversario_tipo };
+                const desconto = data.desconto_aniversario_tipo === 'percentual'
+                    ? `${data.desconto_aniversario_percentual}%`
+                    : `R$ ${data.desconto_aniversario_percentual.toFixed(2)}`;
+                document.getElementById('avaliacaoRewardText').textContent =
+                    `Você tem ${desconto} de desconto de aniversário — será aplicado automaticamente neste pedido!`;
+                rewardBanner.classList.remove('d-none');
+                if (typeof renderCheckoutPage === 'function') renderCheckoutPage();
             }
         } else {
             // Fallback to stored user data
@@ -1105,6 +1126,7 @@ function fillForm(data) {
     if (document.getElementById('email')) document.getElementById('email').value = data.email || '';
     if (document.getElementById('cpf')) document.getElementById('cpf').value = data.cpf || '';
     if (document.getElementById('telefone')) document.getElementById('telefone').value = data.telefone || '';
+    if (document.getElementById('dataNascimento')) document.getElementById('dataNascimento').value = data.data_nascimento || '';
 
     if (document.getElementById('rua')) document.getElementById('rua').value = data.endereco_rua || '';
     if (document.getElementById('numero')) document.getElementById('numero').value = data.endereco_numero || '';

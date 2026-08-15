@@ -198,6 +198,7 @@
                             <select class="form-select" id="promocaoGatilho" required>
                                 <option value="primeira_compra">Primeira Compra</option>
                                 <option value="primeira_avaliacao">Primeira Avaliação</option>
+                                <option value="aniversario">Aniversário</option>
                             </select>
                             <small class="form-text text-muted">Só pode existir uma promoção ativa por gatilho.</small>
                         </div>
@@ -212,6 +213,10 @@
                             <label for="promocaoPrefixoCodigo" class="form-label">Prefixo do Código Gerado</label>
                             <input type="text" class="form-control" id="promocaoPrefixoCodigo" style="text-transform:uppercase" placeholder="Ex: REVIEW-">
                             <small class="form-text text-muted">Cada cliente recebe um código único começando com esse prefixo (ex: REVIEW-A1B2C3).</small>
+                        </div>
+
+                        <div class="mb-3 d-none" id="promocaoAniversarioInfo">
+                            <small class="form-text text-muted">Concedido automaticamente no dia do aniversário do cliente (se ele tiver a data de nascimento cadastrada), junto com o e-mail de parabéns. Não precisa de código.</small>
                         </div>
 
                         <div class="row">

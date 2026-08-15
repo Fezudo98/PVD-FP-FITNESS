@@ -1,8 +1,17 @@
+from datetime import datetime
 from flask import request, jsonify
 from . import api_bp
 from ...extensions import db
 from ...models import Usuario, Cliente, Venda
 from ...utils import token_required, registrar_log
+
+
+def _parse_data_nascimento(valor):
+    """Converte 'YYYY-MM-DD' (formato do <input type="date">) para date, ou None. Levanta
+    ValueError se o valor não estiver vazio e não for uma data válida."""
+    if not valor:
+        return None
+    return datetime.strptime(valor, '%Y-%m-%d').date()
 
 @api_bp.route('/api/usuarios', methods=['GET'])
 @token_required
@@ -47,7 +56,11 @@ def gerenciar_clientes(current_user):
         dados = request.get_json()
         if dados.get('cpf') and Cliente.query.filter_by(cpf=dados['cpf']).first():
             return jsonify({'erro': 'CPF já cadastrado.'}), 400
-        novo_cliente = Cliente(nome=dados['nome'], telefone=dados.get('telefone'), cpf=dados.get('cpf'))
+        try:
+            data_nascimento = _parse_data_nascimento(dados.get('data_nascimento'))
+        except ValueError:
+            return jsonify({'erro': 'Data de nascimento inválida.'}), 400
+        novo_cliente = Cliente(nome=dados['nome'], telefone=dados.get('telefone'), cpf=dados.get('cpf'), data_nascimento=data_nascimento)
         db.session.add(novo_cliente)
         db.session.commit()
         return jsonify(novo_cliente.to_dict()), 201
@@ -64,6 +77,11 @@ def gerenciar_cliente_especifico(current_user, cliente_id):
         cliente.nome = dados.get('nome', cliente.nome)
         cliente.telefone = dados.get('telefone', cliente.telefone)
         cliente.cpf = dados.get('cpf', cliente.cpf)
+        if 'data_nascimento' in dados:
+            try:
+                cliente.data_nascimento = _parse_data_nascimento(dados.get('data_nascimento'))
+            except ValueError:
+                return jsonify({'erro': 'Data de nascimento inválida.'}), 400
         db.session.commit()
         return jsonify(cliente.to_dict())
     elif request.method == 'DELETE':
@@ -89,6 +107,7 @@ def gerenciar_cliente_especifico(current_user, cliente_id):
             cliente.endereco_estado = None
             cliente.endereco_cep = None
             cliente.endereco_complemento = None
+            cliente.data_nascimento = None
             registrar_log(current_user, "Cliente Anonimizado (LGPD)", f"ID: {cliente_id} - Histórico de vendas preservado por obrigação legal.")
             db.session.commit()
             return jsonify({'mensagem': 'Dados pessoais do cliente removidos. Histórico de vendas preservado por obrigação legal.'})

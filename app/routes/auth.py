@@ -120,13 +120,22 @@ def register_client():
         if Cliente.query.filter_by(cpf=cpf).first():
              return jsonify({'erro': 'CPF já cadastrado.'}), 400
 
+    # Data de Nascimento (opcional, formato ISO 'YYYY-MM-DD' vindo do <input type="date">)
+    data_nascimento = None
+    if dados.get('data_nascimento'):
+        try:
+            data_nascimento = datetime.strptime(dados['data_nascimento'], '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'erro': 'Data de nascimento inválida.'}), 400
+
     senha_hash = bcrypt.generate_password_hash(senha).decode('utf-8')
     novo_cliente = Cliente(
-        nome=dados['nome'], 
-        email=dados['email'], 
+        nome=dados['nome'],
+        email=dados['email'],
         senha_hash=senha_hash,
         telefone=dados.get('telefone'),
-        cpf=dados.get('cpf')
+        cpf=dados.get('cpf'),
+        data_nascimento=data_nascimento
     )
     db.session.add(novo_cliente)
     db.session.commit()

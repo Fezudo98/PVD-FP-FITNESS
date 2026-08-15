@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${escapeHtml(cliente.telefone) || 'N/A'}</td>
                 <td>${escapeHtml(cliente.cpf) || 'N/A'}</td>
                 <td>
-                    <button class="btn btn-sm btn-info edit-btn" data-id="${cliente.id}" data-nome="${escapeHtml(cliente.nome)}" data-telefone="${escapeHtml(cliente.telefone) || ''}" data-cpf="${escapeHtml(cliente.cpf) || ''}">Editar</button>
+                    <button class="btn btn-sm btn-info edit-btn" data-id="${cliente.id}" data-nome="${escapeHtml(cliente.nome)}" data-telefone="${escapeHtml(cliente.telefone) || ''}" data-cpf="${escapeHtml(cliente.cpf) || ''}" data-nascimento="${cliente.data_nascimento || ''}">Editar</button>
                     <button class="btn btn-sm btn-danger delete-btn" data-id="${cliente.id}">Excluir</button>
                 </td>
             `;
@@ -75,7 +75,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const clienteData = {
             nome: document.getElementById('nome').value,
             telefone: document.getElementById('telefone').value,
-            cpf: document.getElementById('cpf').value
+            cpf: document.getElementById('cpf').value,
+            data_nascimento: document.getElementById('dataNascimento').value
         };
 
         try {
@@ -102,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('nome').value = target.dataset.nome;
             document.getElementById('telefone').value = target.dataset.telefone;
             document.getElementById('cpf').value = target.dataset.cpf;
+            document.getElementById('dataNascimento').value = target.dataset.nascimento;
             modalTitle.textContent = 'Editar Cliente';
             clienteModal.show();
         } else if (target.classList.contains('delete-btn')) {

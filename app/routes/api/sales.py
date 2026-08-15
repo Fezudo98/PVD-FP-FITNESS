@@ -84,6 +84,7 @@ def registrar_venda(current_user):
         cliente_pdv = Cliente.query.get(id_cliente_venda) if id_cliente_venda else None
         if cliente_pdv:
             desconto_total_calculado += cliente_pdv.consumir_recompensa_avaliacao(subtotal_produtos - desconto_total_calculado)
+            desconto_total_calculado += cliente_pdv.consumir_recompensa_aniversario(subtotal_produtos - desconto_total_calculado)
 
         if dados.get('entrega_gratuita', False):
             # Mantém a taxa de entrega para controle de custo (pagamento motoboy), 

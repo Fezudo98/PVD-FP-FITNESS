@@ -7,7 +7,7 @@ from ...services.email_service import enviar_comunicado_marketing
 import threading
 import time
 
-GATILHOS_VALIDOS = ('primeira_compra', 'primeira_avaliacao')
+GATILHOS_VALIDOS = ('primeira_compra', 'primeira_avaliacao', 'aniversario')
 
 # Ritmo de envio do comunicado em massa: provedores de SMTP (Gmail etc.) costumam bloquear ou
 # colocar em quarentena temporariamente contas que abrem muitas conexoes/logins em sequencia

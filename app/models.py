@@ -116,6 +116,7 @@ class Cliente(db.Model):
     senha_hash = db.Column(db.String(128), nullable=True)
     foto_perfil = db.Column(db.String(255), nullable=True) # URL/Path da foto
     data_cadastro = db.Column(db.DateTime, default=current_brazil_time)
+    data_nascimento = db.Column(db.Date, nullable=True)
     
     # Endereço Principal
     endereco_rua = db.Column(db.String(200), nullable=True)
@@ -134,6 +135,14 @@ class Cliente(db.Model):
     desconto_avaliacao_percentual = db.Column(db.Float, nullable=True)
     desconto_avaliacao_tipo = db.Column(db.String(20), nullable=True)
     desconto_avaliacao_expira_em = db.Column(db.DateTime, nullable=True)
+
+    # Recompensa automática de aniversário: e-mail de parabéns (sempre) + desconto opcional
+    # (se a promoção automática do gatilho 'aniversario' estiver ativa), concedidos 1x por ano
+    # pelo job diário do scheduler (ver app/scheduler.py).
+    desconto_aniversario_percentual = db.Column(db.Float, nullable=True)
+    desconto_aniversario_tipo = db.Column(db.String(20), nullable=True)
+    desconto_aniversario_expira_em = db.Column(db.DateTime, nullable=True)
+    aniversario_ultimo_ano_notificado = db.Column(db.Integer, nullable=True)
 
     def conceder_recompensa_avaliacao(self, promocao, validade_dias=30):
         self.recompensa_avaliacao_concedida = True
@@ -164,16 +173,54 @@ class Cliente(db.Model):
         self.desconto_avaliacao_expira_em = None
         return 0.0 if expirado else desconto
 
+    def conceder_recompensa_aniversario(self, promocao, validade_dias=30):
+        """Diferente da recompensa de avaliação (única na vida), o aniversário se repete todo
+        ano - por isso não há uma flag "concedida" permanente, e sim `aniversario_ultimo_ano_notificado`
+        registrando o ano em que o cliente já foi avisado/presenteado, pra não conceder de novo
+        no mesmo ano (ex: se o job do scheduler rodar mais de uma vez no dia do aniversário)."""
+        self.desconto_aniversario_percentual = promocao.valor_desconto
+        self.desconto_aniversario_tipo = promocao.tipo_desconto
+        self.desconto_aniversario_expira_em = current_brazil_time() + timedelta(days=validade_dias)
+        self.aniversario_ultimo_ano_notificado = current_brazil_time().year
+
+    def recompensa_aniversario_disponivel(self):
+        """True se há um desconto de aniversário concedido, ainda não usado e dentro da
+        validade. Não consome - só para exibir ao cliente antes do checkout."""
+        if not self.desconto_aniversario_percentual or not self.desconto_aniversario_expira_em:
+            return False
+        return current_brazil_time() <= self.desconto_aniversario_expira_em
+
+    def consumir_recompensa_aniversario(self, subtotal):
+        """Aplica e consome (uso único dentro da validade, válido em qualquer canal - online ou
+        PDV) o desconto automático de aniversário, se houver um disponível e ainda válido.
+        Retorna o valor do desconto (0.0 se não houver nenhum disponível/válido)."""
+        if not self.desconto_aniversario_percentual or not self.desconto_aniversario_expira_em:
+            return 0.0
+        expirado = current_brazil_time() > self.desconto_aniversario_expira_em
+        if self.desconto_aniversario_tipo == 'percentual':
+            desconto = subtotal * (self.desconto_aniversario_percentual / 100)
+        else:
+            desconto = min(self.desconto_aniversario_percentual, subtotal)
+        self.desconto_aniversario_percentual = None
+        self.desconto_aniversario_tipo = None
+        self.desconto_aniversario_expira_em = None
+        return 0.0 if expirado else desconto
+
     def to_dict(self):
         return {
             'id': self.id, 'nome': self.nome, 'telefone': self.telefone, 'cpf': self.cpf,
             'email': self.email,
             'foto_perfil': self.foto_perfil,
+            'data_nascimento': self.data_nascimento.strftime('%Y-%m-%d') if self.data_nascimento else None,
             'recompensa_avaliacao_concedida': self.recompensa_avaliacao_concedida,
             'recompensa_avaliacao_disponivel': self.recompensa_avaliacao_disponivel(),
             'desconto_avaliacao_percentual': self.desconto_avaliacao_percentual,
             'desconto_avaliacao_tipo': self.desconto_avaliacao_tipo,
             'desconto_avaliacao_expira_em': self.desconto_avaliacao_expira_em.strftime('%d/%m/%Y') if self.desconto_avaliacao_expira_em else None,
+            'recompensa_aniversario_disponivel': self.recompensa_aniversario_disponivel(),
+            'desconto_aniversario_percentual': self.desconto_aniversario_percentual,
+            'desconto_aniversario_tipo': self.desconto_aniversario_tipo,
+            'desconto_aniversario_expira_em': self.desconto_aniversario_expira_em.strftime('%d/%m/%Y') if self.desconto_aniversario_expira_em else None,
             'data_cadastro': self.data_cadastro.strftime('%d/%m/%Y') if self.data_cadastro else None,
             'endereco_rua': self.endereco_rua, 'endereco_numero': self.endereco_numero,
             'endereco_bairro': self.endereco_bairro, 'endereco_cidade': self.endereco_cidade,

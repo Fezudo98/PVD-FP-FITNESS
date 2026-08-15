@@ -117,6 +117,17 @@
                 });
             }
 
+            const aniversario = config.aniversario;
+            if (aniversario && aniversario.ativo) {
+                html += renderPromoCard({
+                    icone: 'fa-solid fa-gift',
+                    titulo: `${aniversario.percent}% OFF no seu aniversário`,
+                    descricao: `Cadastre sua data de nascimento em "Minha Conta" e ganhe automaticamente ${aniversario.percent}% de desconto no dia do seu aniversário, aplicado sozinho na sua próxima compra (válido por 30 dias).`,
+                    codigo: null,
+                    corBadge: 'bg-warning'
+                });
+            }
+
             loading.classList.add('d-none');
 
             if (!html) {
@@ -148,6 +159,13 @@
                     : `R$ ${data.desconto_avaliacao_percentual.toFixed(2)}`;
                 document.getElementById('minhaRecompensaTexto').textContent =
                     `${desconto} de desconto por ter avaliado sua compra — válido até ${data.desconto_avaliacao_expira_em}. Aplicado automaticamente na sua próxima compra, não precisa de código!`;
+                document.getElementById('minhaRecompensaCard').classList.remove('d-none');
+            } else if (data.recompensa_aniversario_disponivel) {
+                const desconto = data.desconto_aniversario_tipo === 'percentual'
+                    ? `${data.desconto_aniversario_percentual}%`
+                    : `R$ ${data.desconto_aniversario_percentual.toFixed(2)}`;
+                document.getElementById('minhaRecompensaTexto').textContent =
+                    `${desconto} de presente de aniversário — válido até ${data.desconto_aniversario_expira_em}. Aplicado automaticamente na sua próxima compra, não precisa de código!`;
                 document.getElementById('minhaRecompensaCard').classList.remove('d-none');
             }
         } catch (e) {

@@ -159,7 +159,7 @@
 
                 <h1 class="fw-bold mb-1 animate__animated animate__fadeInDown" id="recompensaPercentHero"
                     style="font-family: 'Outfit', sans-serif; font-size: 3.5rem; line-height: 1; background: linear-gradient(135deg, #ffd54f, #e0b431); -webkit-background-clip: text; background-clip: text; color: transparent;"></h1>
-                <p class="text-light mb-4" style="font-weight: 300;">por ter avaliado sua compra — aplicado automaticamente, sem precisar de código!</p>
+                <p class="text-light mb-4" style="font-weight: 300;" id="recompensaMotivo">aplicado automaticamente, sem precisar de código!</p>
 
                 <p class="text-warning fw-bold mb-4"><i class="fa-regular fa-clock me-2"></i>Válido até <span id="recompensaValidade"></span></p>
 
@@ -324,16 +324,35 @@
             if (!res.ok) return false;
             const data = await res.json();
 
-            if (!data.recompensa_avaliacao_disponivel) return false;
+            // Prioriza avaliação se o cliente tiver as duas recompensas disponíveis ao mesmo
+            // tempo (caso raríssimo) - a de aniversário some no próximo checkout de qualquer forma.
+            let tipo, percentual, tipoDesconto, expiraEm, motivo;
+            if (data.recompensa_avaliacao_disponivel) {
+                tipo = 'avaliacao';
+                percentual = data.desconto_avaliacao_percentual;
+                tipoDesconto = data.desconto_avaliacao_tipo;
+                expiraEm = data.desconto_avaliacao_expira_em;
+                motivo = 'por ter avaliado sua compra — aplicado automaticamente, sem precisar de código!';
+            } else if (data.recompensa_aniversario_disponivel) {
+                tipo = 'aniversario';
+                percentual = data.desconto_aniversario_percentual;
+                tipoDesconto = data.desconto_aniversario_tipo;
+                expiraEm = data.desconto_aniversario_expira_em;
+                motivo = 'de presente de aniversário — aplicado automaticamente, sem precisar de código!';
+            } else {
+                return false;
+            }
 
-            const chave = `recompensa_avaliacao_shown_${data.desconto_avaliacao_expira_em}`;
+            const chave = `recompensa_${tipo}_shown_${expiraEm}`;
             if (localStorage.getItem(chave)) return false;
 
-            const desconto = data.desconto_avaliacao_tipo === 'percentual'
-                ? `${data.desconto_avaliacao_percentual}%`
-                : `R$ ${data.desconto_avaliacao_percentual.toFixed(2)}`;
+            const desconto = tipoDesconto === 'percentual'
+                ? `${percentual}%`
+                : `R$ ${percentual.toFixed(2)}`;
             document.getElementById('recompensaPercentHero').textContent = `${desconto} OFF`;
-            document.getElementById('recompensaValidade').textContent = data.desconto_avaliacao_expira_em;
+            document.getElementById('recompensaMotivo').textContent = motivo;
+            document.getElementById('recompensaValidade').textContent = expiraEm;
+            document.getElementById('recompensaModal').dataset.tipoRecompensa = tipo;
 
             setTimeout(() => {
                 const recompensaModal = new bootstrap.Modal(document.getElementById('recompensaModal'));
@@ -347,8 +366,10 @@
     }
 
     function closeRecompensaModal() {
+        const modalEl = document.getElementById('recompensaModal');
+        const tipo = modalEl.dataset.tipoRecompensa || 'avaliacao';
         const heroText = document.getElementById('recompensaValidade').textContent;
-        if (heroText) localStorage.setItem(`recompensa_avaliacao_shown_${heroText}`, 'true');
+        if (heroText) localStorage.setItem(`recompensa_${tipo}_shown_${heroText}`, 'true');
     }
 
     function copyCoupon(code) {

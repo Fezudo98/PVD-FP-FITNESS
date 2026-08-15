@@ -4,7 +4,7 @@ import mercadopago
 from datetime import timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from .extensions import db
-from .models import Venda, Configuracao, current_brazil_time
+from .models import Venda, Configuracao, Cliente, PromocaoAutomatica, current_brazil_time
 from .utils import registrar_log
 
 def init_scheduler(app):
@@ -94,6 +94,50 @@ def init_scheduler(app):
             except Exception as e:
                 print(f"[Scheduler] Erro ao atualizar rastreios: {e}")
 
+    def job_aniversariantes_hoje():
+        """Roda 1x/dia: envia e-mail de parabéns para quem faz aniversário hoje e, se a
+        promoção automática do gatilho 'aniversario' estiver ativa, concede também um desconto
+        de uso único (aplicado automaticamente no próximo checkout, sem precisar de código).
+        `aniversario_ultimo_ano_notificado` evita notificar/conceder de novo no mesmo ano caso
+        o job rode mais de uma vez no dia (ex: reinício do servidor)."""
+        with app.app_context():
+            try:
+                hoje = current_brazil_time()
+                ano_atual = hoje.year
+                aniversariantes = Cliente.query.filter(
+                    Cliente.data_nascimento.isnot(None),
+                    db.func.strftime('%m-%d', Cliente.data_nascimento) == hoje.strftime('%m-%d'),
+                    db.or_(
+                        Cliente.aniversario_ultimo_ano_notificado.is_(None),
+                        Cliente.aniversario_ultimo_ano_notificado != ano_atual
+                    )
+                ).all()
+
+                if not aniversariantes:
+                    return
+
+                promo_aniversario = PromocaoAutomatica.query.filter_by(gatilho='aniversario', ativo=True).first()
+
+                from .services.email_service import enviar_feliz_aniversario
+                for cliente in aniversariantes:
+                    desconto_percentual = None
+                    desconto_tipo = None
+                    if promo_aniversario:
+                        cliente.conceder_recompensa_aniversario(promo_aniversario)
+                        desconto_percentual = promo_aniversario.valor_desconto
+                        desconto_tipo = promo_aniversario.tipo_desconto
+                    else:
+                        cliente.aniversario_ultimo_ano_notificado = ano_atual
+
+                    try:
+                        enviar_feliz_aniversario(cliente, desconto_percentual, desconto_tipo, validade_dias=30)
+                    except Exception as e:
+                        print(f"[Scheduler] Erro ao enviar e-mail de aniversário do cliente {cliente.id}: {e}")
+
+                db.session.commit()
+            except Exception as e:
+                print(f"[Scheduler] Erro ao processar aniversariantes do dia: {e}")
+
     def job_reconciliar_estornos_mp():
         """Rede de segurança pro webhook do Mercado Pago: se a chamada pra buscar o status do
         pagamento falhar de forma transitória (rede, timeout) dentro do webhook, um evento de
@@ -155,6 +199,9 @@ def init_scheduler(app):
     # Roda a reconciliação de estornos/chargebacks 1x por dia - não é tão sensível a tempo
     # quanto aprovação de pagamento, então não precisa de intervalo curto
     scheduler.add_job(func=job_reconciliar_estornos_mp, trigger="interval", hours=24)
+
+    # Roda a checagem de aniversariantes 1x por dia, às 9h no horário de Brasília
+    scheduler.add_job(func=job_aniversariantes_hoje, trigger="cron", hour=9, minute=0, timezone="America/Fortaleza")
 
     scheduler.start()
     return scheduler

@@ -246,19 +246,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     const promocaoGatilhoSelect = document.getElementById('promocaoGatilho');
     const promocaoCodigoWrapper = document.getElementById('promocaoCodigoWrapper');
     const promocaoPrefixoWrapper = document.getElementById('promocaoPrefixoWrapper');
+    const promocaoAniversarioInfo = document.getElementById('promocaoAniversarioInfo');
 
     const GATILHO_LABELS = {
         primeira_compra: 'Primeira Compra',
-        primeira_avaliacao: 'Primeira Avaliação'
+        primeira_avaliacao: 'Primeira Avaliação',
+        aniversario: 'Aniversário'
     };
 
     function atualizarCamposPorGatilho() {
+        promocaoCodigoWrapper.classList.add('d-none');
+        promocaoPrefixoWrapper.classList.add('d-none');
+        promocaoAniversarioInfo.classList.add('d-none');
+
         if (promocaoGatilhoSelect.value === 'primeira_avaliacao') {
-            promocaoCodigoWrapper.classList.add('d-none');
             promocaoPrefixoWrapper.classList.remove('d-none');
+        } else if (promocaoGatilhoSelect.value === 'aniversario') {
+            promocaoAniversarioInfo.classList.remove('d-none');
         } else {
             promocaoCodigoWrapper.classList.remove('d-none');
-            promocaoPrefixoWrapper.classList.add('d-none');
         }
     }
     promocaoGatilhoSelect.addEventListener('change', atualizarCamposPorGatilho);
@@ -286,7 +292,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         promocoes.forEach(p => {
             const tr = document.createElement('tr');
             const valorTexto = p.tipo_desconto === 'percentual' ? `${p.valor_desconto}%` : `R$ ${Number(p.valor_desconto).toFixed(2)}`;
-            const codigoTexto = p.gatilho === 'primeira_avaliacao' ? (p.prefixo_codigo || '-') : (p.codigo_cupom || '-');
+            const codigoTexto = p.gatilho === 'primeira_avaliacao' ? (p.prefixo_codigo || '-') : (p.gatilho === 'aniversario' ? 'Automático' : (p.codigo_cupom || '-'));
             tr.innerHTML = `
                 <td>${p.nome}</td>
                 <td>${GATILHO_LABELS[p.gatilho] || p.gatilho}</td>

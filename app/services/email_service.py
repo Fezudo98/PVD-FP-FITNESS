@@ -239,6 +239,35 @@ def enviar_aviso_novo_pedido_admin(venda):
     return _enviar_email(destinatario, f'🛍️ Novo pedido #{venda.id} recebido - FP Moda Fitness', html)
 
 
+def enviar_feliz_aniversario(cliente, desconto_percentual=None, desconto_tipo=None, validade_dias=None):
+    """Envia o e-mail de parabéns no aniversário do cliente (disparado 1x/ano pelo job diário
+    do scheduler). Se houver uma promoção automática do gatilho 'aniversario' ativa no momento,
+    inclui o desconto já concedido (aplicado automaticamente, sem precisar de código)."""
+    if not cliente.email:
+        return False
+
+    primeiro_nome = cliente.nome.strip().split(' ')[0]
+
+    desconto_html = ''
+    if desconto_percentual:
+        desconto_txt = f'{desconto_percentual}%' if desconto_tipo == 'percentual' else f'R$ {_fmt_brl(desconto_percentual)}'
+        desconto_html = f'''
+            <p style="font-size:18px;font-weight:bold;color:#c9a22b;margin-top:20px;">🎁 Ganhe {desconto_txt} de desconto na sua próxima compra!</p>
+            <p>Aplicado automaticamente, sem precisar de código — é só finalizar a compra dentro de {validade_dias} dias.</p>
+            <a href="https://lojafpfitness.com.br/store/produtos" style="display:inline-block;margin-top:10px;padding:12px 24px;background:linear-gradient(135deg,#e0b431,#c9a22b);color:#000000;text-decoration:none;font-weight:bold;border-radius:50px;">Ver Produtos</a>
+        '''
+
+    corpo = f'''
+        <p>Olá, {primeiro_nome}!</p>
+        <p>A equipe FP Moda Fitness deseja um Feliz Aniversário! 🎉🎂</p>
+        <p>Que seu novo ano venha cheio de saúde, disposição e muito treino!</p>
+        {desconto_html}
+    '''
+
+    html = _template_base('Feliz Aniversário! 🎂', corpo, rodape_link='https://lojafpfitness.com.br/store', rodape_texto='Visitar a loja')
+    return _enviar_email(cliente.email, f'Feliz Aniversário, {primeiro_nome}! - FP Moda Fitness', html)
+
+
 def enviar_comunicado_marketing(email_destino, nome_destino, assunto, mensagem):
     """Envia um comunicado avulso (ex: mensagem de data comemorativa, aviso geral) escrito
     pela lojista no painel, usando o mesmo template visual dos e-mails transacionais.
