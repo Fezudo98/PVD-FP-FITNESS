@@ -15,7 +15,7 @@ import uuid
 import types
 from ..extensions import db, limiter
 from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, VisitaSite, EventoMarketing, current_brazil_time
-from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html
+from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html, traduzir_status_detail_mp
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
 from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin, enviar_pagamento_rejeitado, enviar_lembrete_carrinho_abandonado
@@ -1028,6 +1028,14 @@ def criar_preferencia_mercadopago(venda, cliente, device_id=None):
             endereco["street_number"] = int(''.join(filter(str.isdigit, venda.entrega_numero or '')) or 0)
         except ValueError:
             pass
+        # Cidade/estado não fazem parte do schema oficial de payer.address da API de
+        # Preferências (só zip_code/street_name/street_number são documentados), mas campos
+        # extras são ignorados sem erro pelo MP - mandamos como reforço best-effort de
+        # qualidade de dados pro antifraude, sem risco de quebrar a criação da preferência.
+        if venda.entrega_cidade:
+            endereco["city"] = venda.entrega_cidade
+        if venda.entrega_estado:
+            endereco["state"] = venda.entrega_estado
         payer["address"] = endereco
 
     preference_data = {
@@ -1370,6 +1378,7 @@ def mercadopago_webhook():
             payment_data = payment_info["response"]
             external_reference = payment_data.get("external_reference")
             payment_status = payment_data.get("status")
+            status_detail = payment_data.get("status_detail")
             
             if external_reference:
                 venda = Venda.query.get(external_reference)
@@ -1402,17 +1411,22 @@ def mercadopago_webhook():
                             db.session.commit()
 
                         elif payment_status in ['rejected', 'cancelled']:
-                            venda.atualizar_status('Cancelada', motivo=f'Pagamento {payment_status} pelo Mercado Pago.')
+                            venda.status_detail_mp = status_detail
+                            motivo_traduzido = traduzir_status_detail_mp(status_detail)
+                            motivo = f'Pagamento {payment_status} pelo Mercado Pago.'
+                            if motivo_traduzido:
+                                motivo += f' Motivo: {motivo_traduzido}'
+                            venda.atualizar_status('Cancelada', motivo=motivo)
                             for item in venda.itens:
                                 produto = Produto.query.get(item.id_produto)
                                 if produto:
                                     produto.quantidade += item.quantidade
-                            registrar_log(None, "Venda Cancelada (Webhook MP)", f"ID: {venda.id} - Pagamento {payment_status}.")
+                            registrar_log(None, "Venda Cancelada (Webhook MP)", f"ID: {venda.id} - Pagamento {payment_status} ({status_detail or 'sem detalhe'}).")
                             db.session.commit()
 
                             if payment_status == 'rejected':
                                 try:
-                                    enviar_pagamento_rejeitado(venda)
+                                    enviar_pagamento_rejeitado(venda, status_detail)
                                 except Exception as e:
                                     print(f"Erro ao enviar e-mail de pagamento rejeitado da venda {venda.id}: {e}")
 

@@ -33,6 +33,37 @@ def validate_cpf(cpf):
     
     return True
 
+# Traduz o `status_detail` que o Mercado Pago devolve pra recusas de pagamento em uma explicação
+# curta e acionável pro cliente/lojista - sem isso, toda recusa (CVV errado, sem limite, banco
+# bloqueou, antifraude do MP) mostra a mesma mensagem genérica, e ninguém sabe o motivo real.
+# Referência: https://www.mercadopago.com.br/developers/pt/docs/checkout-api/response-handling/collection-results
+STATUS_DETAIL_MENSAGENS = {
+    'cc_rejected_insufficient_amount': 'O cartão não tem limite suficiente para esse valor.',
+    'cc_rejected_bad_filled_security_code': 'O código de segurança (CVV) do cartão foi digitado errado.',
+    'cc_rejected_bad_filled_date': 'A data de validade do cartão foi digitada errada.',
+    'cc_rejected_bad_filled_other': 'Algum dado do cartão foi digitado errado.',
+    'cc_rejected_bad_filled_card_number': 'O número do cartão foi digitado errado.',
+    'cc_rejected_call_for_authorize': 'O banco do cliente bloqueou a compra preventivamente - é preciso ligar pro banco e autorizar.',
+    'cc_rejected_card_disabled': 'O cartão está desabilitado - o cliente precisa entrar em contato com o banco para ativá-lo.',
+    'cc_rejected_duplicated_payment': 'Já existe um pagamento idêntico recente - pode ser uma tentativa duplicada.',
+    'cc_rejected_high_risk': 'A compra foi sinalizada como suspeita pelo antifraude do Mercado Pago.',
+    'cc_rejected_max_attempts': 'O cliente atingiu o limite de tentativas com esse cartão.',
+    'cc_rejected_other_reason': 'O banco emissor do cartão recusou o pagamento, sem detalhar o motivo.',
+    'cc_rejected_blacklist': 'O cartão está em uma lista de restrição do banco emissor.',
+    'cc_rejected_invalid_installments': 'O número de parcelas escolhido não é aceito para esse cartão.',
+    'cc_rejected_card_type_not_allowed': 'Esse tipo de cartão não é aceito para esse pagamento.',
+}
+
+
+def traduzir_status_detail_mp(status_detail):
+    """Retorna uma mensagem curta em português pro `status_detail` de uma recusa do Mercado
+    Pago, ou None se o código não for reconhecido (recusas fora do cartão de crédito, como PIX
+    expirado, não têm uma explicação específica útil aqui)."""
+    if not status_detail:
+        return None
+    return STATUS_DETAIL_MENSAGENS.get(status_detail)
+
+
 def registrar_log(usuario, acao, detalhes=""):
     try:
         user_id = usuario.id if usuario else None

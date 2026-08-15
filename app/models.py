@@ -315,6 +315,10 @@ class Venda(db.Model):
     data_entrega = db.Column(db.DateTime, nullable=True)
     data_cancelamento = db.Column(db.DateTime, nullable=True)
     motivo_cancelamento = db.Column(db.String(255), nullable=True)
+    # Código bruto de `status_detail` devolvido pelo Mercado Pago numa recusa de pagamento (ex:
+    # 'cc_rejected_insufficient_amount') - guardado pra análise futura de padrões de recusa,
+    # além de já entrar traduzido em `motivo_cancelamento` (ver traduzir_status_detail_mp).
+    status_detail_mp = db.Column(db.String(50), nullable=True)
 
     # Controla o envio único do e-mail de lembrete de carrinho abandonado (ver
     # lembrar_carrinhos_abandonados em store.py) - sem isso, cada execução do job de 15 em 15
