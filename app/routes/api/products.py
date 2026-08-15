@@ -157,6 +157,11 @@ def listar_produtos_agrupados(current_user):
     per_page = request.args.get('per_page', 15, type=int)
     search_query = request.args.get('q', '', type=str)
     category_filter = request.args.get('categoria', '', type=str)
+    # 'baixo' = so variacoes com estoque baixo (mas > 0); 'zero' = so variacoes zeradas. Aplicado
+    # tanto na paginacao (pra nao trazer paginas vazias de pecas sem nenhuma variacao no filtro)
+    # quanto na lista de variantes de cada grupo (pra so mostrar o que interessa, nao a peca
+    # inteira quando so uma cor/tamanho estiver baixa).
+    filtro_estoque = request.args.get('filtro', '', type=str)
 
     base_query = db.session.query(ProdutoBase.id).join(
         Produto, Produto.produto_base_id == ProdutoBase.id
@@ -167,6 +172,10 @@ def listar_produtos_agrupados(current_user):
         base_query = base_query.filter(or_(ProdutoBase.nome.ilike(termo_busca), Produto.sku.ilike(termo_busca)))
     if category_filter:
         base_query = base_query.filter(ProdutoBase.categoria == category_filter)
+    if filtro_estoque == 'baixo':
+        base_query = base_query.filter(Produto.quantidade > 0, Produto.quantidade <= Produto.limite_estoque_baixo)
+    elif filtro_estoque == 'zero':
+        base_query = base_query.filter(Produto.quantidade == 0)
 
     base_query = base_query.distinct().order_by(ProdutoBase.nome)
     paginacao = base_query.paginate(page=page, per_page=per_page, error_out=False)
@@ -180,8 +189,12 @@ def listar_produtos_agrupados(current_user):
         base = bases_map.get(base_id)
         if not base:
             continue
-        variantes = Produto.query.filter_by(produto_base_id=base.id, deletado=False)\
-            .order_by(Produto.cor, Produto.tamanho).all()
+        variantes_query = Produto.query.filter_by(produto_base_id=base.id, deletado=False)
+        if filtro_estoque == 'baixo':
+            variantes_query = variantes_query.filter(Produto.quantidade > 0, Produto.quantidade <= Produto.limite_estoque_baixo)
+        elif filtro_estoque == 'zero':
+            variantes_query = variantes_query.filter(Produto.quantidade == 0)
+        variantes = variantes_query.order_by(Produto.cor, Produto.tamanho).all()
         if not variantes:
             continue
         precos = [v.preco_venda for v in variantes]

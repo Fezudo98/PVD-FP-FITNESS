@@ -10,77 +10,240 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consultar Estoque - Sistema FP Moda Fitness</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- CORRIGIDO: Adicionado o nome do arquivo style.css -->
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .dash-card {
+            background: linear-gradient(145deg, #24272c 0%, #15171a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            position: relative;
+        }
 
+        .dash-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: var(--card-accent, transparent);
+        }
+
+        @media (min-width: 992px) {
+            .col-lg-2-4 { flex: 0 0 auto; width: 20%; }
+        }
+
+        .produto-grupo-card {
+            background: linear-gradient(145deg, #24272c 0%, #1a1c20 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            margin-bottom: 14px;
+            overflow: hidden;
+            transition: border-color 0.2s ease;
+        }
+
+        .produto-grupo-card:hover {
+            border-color: rgba(224, 180, 49, 0.35);
+        }
+
+        .produto-grupo-header {
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .produto-grupo-thumb {
+            width: 56px;
+            height: 56px;
+            border-radius: 10px;
+            object-fit: cover;
+            background: #2b2e33;
+            flex-shrink: 0;
+        }
+
+        .produto-grupo-chevron {
+            transition: transform 0.25s ease;
+            color: #8a8f98;
+            flex-shrink: 0;
+        }
+
+        .produto-grupo-card.aberto .produto-grupo-chevron {
+            transform: rotate(90deg);
+            color: #e0b431;
+        }
+
+        .produto-grupo-variantes {
+            display: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            background: #1a1c20;
+        }
+
+        .produto-grupo-card.aberto .produto-grupo-variantes {
+            display: block;
+        }
+
+        .badge-estoque-ok { background: rgba(25, 135, 84, 0.18); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); }
+        .badge-estoque-baixo { background: rgba(255, 193, 7, 0.15); color: #ffc107; border: 1px solid rgba(255, 193, 7, 0.35); }
+        .badge-estoque-zero { background: rgba(220, 53, 69, 0.15); color: #ff6b7a; border: 1px solid rgba(255, 107, 122, 0.35); }
+
+        .cor-swatch {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: inline-block;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        .variante-row {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .variante-row:last-child { border-bottom: none; }
+
+        .variante-row.estoque-baixo-row td:first-child { box-shadow: inset 3px 0 0 #ffc107; }
+        .variante-row.estoque-zero-row td:first-child { box-shadow: inset 3px 0 0 #ff6b7a; }
+
+        .filtro-rapido-btn.active {
+            background-color: var(--primary-gold, #e0b431) !important;
+            color: #000 !important;
+            border-color: var(--primary-gold, #e0b431) !important;
+        }
+
+        .skeleton-line {
+            background: linear-gradient(90deg, #2a2d32 25%, #34383e 37%, #2a2d32 63%);
+            background-size: 400% 100%;
+            animation: skeleton-loading 1.4s ease infinite;
+            border-radius: 6px;
+        }
+
+        @keyframes skeleton-loading {
+            0% { background-position: 100% 50%; }
+            100% { background-position: 0 50%; }
+        }
+    </style>
 </head>
 
 <body>
     <div class="background-container"></div>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <!-- CORREÇÃO APLICADA AQUI -->
             <a class="navbar-brand" href="/index.html"><img src="/logo.jpg" alt="Logo" width="100"></a>
-            
+
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar" aria-controls="adminNavbar" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse justify-content-end" id="adminNavbar">
                 <div class="d-flex flex-column flex-lg-row mt-3 mt-lg-0 w-100 justify-content-end">
-                <div class="dropdown me-2">
-                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="themeDropdown"
-                        data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-palette"></i> Temas
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="themeDropdown" id="themeSelector">
-                        <!-- Populated by JS -->
-                    </ul>
+                    <div class="dropdown me-2">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="themeDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-palette"></i> Temas
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="themeDropdown" id="themeSelector">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                    <a href="/produtos.html" class="btn btn-outline-warning me-2"><i class="fas fa-pen me-1"></i>Gerenciar Produtos</a>
+                    <a href="/index.html" class="btn btn-outline-secondary me-2">Voltar ao Painel</a>
+                    <a href="/manual.html" class="btn btn-outline-info me-2" title="Manual do Sistema">
+                        <i class="fas fa-book"></i> Manual
+                    </a>
+                    <button class="btn btn-outline-warning" id="logoutButton">Sair</button>
                 </div>
-                <a href="/index.html" class="btn btn-outline-secondary me-2">Voltar ao Painel</a>
-                <a href="/manual.html" class="btn btn-outline-info me-2" title="Manual do Sistema">
-                    <i class="fas fa-book"></i> Manual
-                </a>
-                <button class="btn btn-outline-warning" id="logoutButton">Sair</button>
             </div>
-</div>
         </div>
     </nav>
 
     <main class="container main-content mt-4">
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <h2>Consultar Estoque</h2>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+            <h2 class="mb-0"><i class="fas fa-boxes-stacked me-2 text-warning"></i>Consultar Estoque</h2>
+        </div>
+
+        <!-- Cards de Estatísticas -->
+        <div class="row g-3 mb-4" id="statsRow">
+            <div class="col-6 col-lg-2-4">
+                <div class="dash-card text-white h-100" style="--card-accent: #e0b431;">
+                    <div class="p-3">
+                        <h6 class="text-white-50 small mb-1"><i class="fas fa-tshirt me-1 text-warning"></i>Peças</h6>
+                        <h3 class="mb-0 fw-bold" id="statPecas"><span class="skeleton-line d-inline-block" style="width:40px;height:26px;"></span></h3>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-6">
-                <input type="text" id="searchInput" class="form-control" placeholder="Buscar por nome ou SKU...">
+            <div class="col-6 col-lg-2-4">
+                <div class="dash-card text-white h-100" style="--card-accent: #0dcaf0;">
+                    <div class="p-3">
+                        <h6 class="text-white-50 small mb-1"><i class="fas fa-layer-group me-1 text-info"></i>Variações</h6>
+                        <h3 class="mb-0 fw-bold" id="statVariantes"><span class="skeleton-line d-inline-block" style="width:40px;height:26px;"></span></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-2-4">
+                <div class="dash-card text-white h-100" style="--card-accent: #ffc107;">
+                    <div class="p-3">
+                        <h6 class="text-white-50 small mb-1"><i class="fas fa-triangle-exclamation me-1 text-warning"></i>Estoque baixo</h6>
+                        <h3 class="mb-0 fw-bold" id="statEstoqueBaixo"><span class="skeleton-line d-inline-block" style="width:40px;height:26px;"></span></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-2-4">
+                <div class="dash-card text-white h-100" style="--card-accent: #dc3545;">
+                    <div class="p-3">
+                        <h6 class="text-white-50 small mb-1"><i class="fas fa-box-open me-1 text-danger"></i>Sem estoque</h6>
+                        <h3 class="mb-0 fw-bold" id="statSemEstoque"><span class="skeleton-line d-inline-block" style="width:40px;height:26px;"></span></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-2-4">
+                <div class="dash-card text-white h-100" style="--card-accent: #198754;">
+                    <div class="p-3">
+                        <h6 class="text-white-50 small mb-1"><i class="fas fa-sack-dollar me-1 text-success"></i>Valor em estoque (custo)</h6>
+                        <h3 class="mb-0 fw-bold" id="statValorEstoque"><span class="skeleton-line d-inline-block" style="width:80px;height:26px;"></span></h3>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-dark table-hover">
-                <thead>
-                    <tr>
-                        <th>Imagem</th>
-                        <th>SKU</th>
-                        <th>Nome</th>
-                        <th>Categoria</th>
-                        <th>Cor/Tamanho</th>
-                        <th>Preço Venda</th>
-                        <th>Quantidade</th>
-                        <th>Cód. Barras</th>
-                    </tr>
-                </thead>
-                <tbody id="estoqueTableBody">
-                    <!-- Linhas da tabela serão inseridas aqui -->
-                </tbody>
-            </table>
+        <div class="row mb-3 g-2">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-white-50"><i class="fas fa-search"></i></span>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Buscar por nome ou SKU...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="categoryFilterSelect">
+                    <option value="">Todas as Categorias</option>
+                    <!-- Opções carregadas via JS -->
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-light w-100" id="toggleAllGroupsBtn" title="Expandir/recolher todos">
+                    <i class="fas fa-expand"></i> Expandir tudo
+                </button>
+            </div>
         </div>
+
+        <div class="d-flex gap-2 mb-3 flex-wrap">
+            <button class="btn btn-outline-light btn-sm filtro-rapido-btn active" data-filtro="todos"><i class="fas fa-list me-1"></i>Todos</button>
+            <button class="btn btn-outline-warning btn-sm filtro-rapido-btn" data-filtro="baixo"><i class="fas fa-triangle-exclamation me-1"></i>Estoque baixo</button>
+            <button class="btn btn-outline-danger btn-sm filtro-rapido-btn" data-filtro="zero"><i class="fas fa-box-open me-1"></i>Sem estoque</button>
+        </div>
+
+        <!-- Lista agrupada por peça -->
+        <div id="produtosGruposContainer">
+            <!-- Grupos inseridos via JS -->
+        </div>
+        <div id="paginationContainer" class="d-flex justify-content-center mt-4"></div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/theme_manager.js?v=2"></script>
-    <!-- CORRIGIDO: Adicionado o nome do arquivo estoque.js -->
-    <script src="/js/estoque.js"></script>
+    <script src="/js/estoque.js?v=2"></script>
 </body>
 
 </html>
