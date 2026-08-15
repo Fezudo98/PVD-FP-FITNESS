@@ -1036,8 +1036,8 @@ function updateAuthUI() {
     if (token) {
         authContainer.innerHTML = `
             <div class="dropdown">
-                <button class="btn btn-warning btn-sm rounded-pill px-3 dropdown-toggle fw-bold" type="button" data-bs-toggle="dropdown">
-                    <i class="fa-regular fa-user me-2"></i>Minha Conta
+                <button class="btn btn-link text-dark position-relative dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Minha Conta" aria-label="Minha Conta">
+                    <i class="fa-regular fa-user fa-lg"></i>
                 </button>
                   <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
                       <li><a class="dropdown-item" href="/store/conta#profile">Meu Perfil</a></li>
