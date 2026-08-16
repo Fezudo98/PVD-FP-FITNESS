@@ -1,8 +1,10 @@
 from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime, timedelta, timezone
 import jwt
+import secrets
+import hashlib
 from ..extensions import db, bcrypt, limiter
-from ..models import Usuario, Cliente
+from ..models import Usuario, Cliente, current_brazil_time
 from ..utils import registrar_log, validate_cpf
 
 auth_bp = Blueprint('auth', __name__)
@@ -156,3 +158,62 @@ def login_client():
         
     token = jwt.encode({'id': cliente.id, 'type': 'client', 'exp': datetime.now(timezone.utc) + timedelta(days=7)}, current_app.config['SECRET_KEY'], algorithm="HS256")
     return jsonify({'token': token, 'cliente': cliente.to_dict()})
+
+@auth_bp.route('/api/client/forgot-password', methods=['POST'])
+@limiter.limit("5 per minute")
+def forgot_password_client():
+    dados = request.get_json(silent=True) or {}
+    email = (dados.get('email') or '').strip()
+
+    # Resposta genérica sempre, exista ou não o e-mail - senão dá pra descobrir quais e-mails
+    # têm conta na loja só testando esse endpoint (enumeração de contas).
+    resposta_generica = jsonify({'mensagem': 'Se este e-mail estiver cadastrado, você vai receber um link para redefinir sua senha.'})
+
+    if not email:
+        return resposta_generica, 200
+
+    cliente = Cliente.query.filter_by(email=email).first()
+    if not cliente:
+        return resposta_generica, 200
+
+    token = secrets.token_urlsafe(32)
+    cliente.reset_senha_token_hash = hashlib.sha256(token.encode()).hexdigest()
+    cliente.reset_senha_expira_em = current_brazil_time() + timedelta(hours=1)
+    db.session.commit()
+
+    link = f'https://lojafpfitness.com.br/store/redefinir-senha?token={token}'
+    try:
+        from ..services.email_service import enviar_redefinicao_senha
+        enviar_redefinicao_senha(cliente, link)
+    except Exception as e:
+        print(f"Erro ao enviar e-mail de redefinição de senha para {cliente.email}: {e}")
+
+    return resposta_generica, 200
+
+@auth_bp.route('/api/client/reset-password', methods=['POST'])
+@limiter.limit("10 per minute")
+def reset_password_client():
+    dados = request.get_json(silent=True) or {}
+    token = dados.get('token')
+    senha = dados.get('senha')
+
+    if not token or not senha:
+        return jsonify({'erro': 'Token e nova senha são obrigatórios.'}), 400
+    if len(senha) < 6:
+        return jsonify({'erro': 'A senha deve ter no mínimo 6 caracteres.'}), 400
+    if not any(c.isalpha() for c in senha) or not any(c.isdigit() for c in senha):
+        return jsonify({'erro': 'A senha deve conter letras e números.'}), 400
+
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    cliente = Cliente.query.filter_by(reset_senha_token_hash=token_hash).first()
+
+    if not cliente or not cliente.reset_senha_expira_em or current_brazil_time() > cliente.reset_senha_expira_em:
+        return jsonify({'erro': 'Link inválido ou expirado. Solicite um novo.'}), 400
+
+    cliente.senha_hash = bcrypt.generate_password_hash(senha).decode('utf-8')
+    cliente.reset_senha_token_hash = None
+    cliente.reset_senha_expira_em = None
+    registrar_log(None, "Senha Redefinida (Cliente)", f"Cliente ID: {cliente.id}, Email: {cliente.email}")
+    db.session.commit()
+
+    return jsonify({'mensagem': 'Senha redefinida com sucesso! Você já pode fazer login.'})

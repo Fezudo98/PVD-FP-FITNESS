@@ -515,7 +515,10 @@ function renderOrders(pedidos) {
                 <td class="text-truncate" style="max-width: 150px;" title="${p.cliente}">${p.cliente}</td>
                 <td>${p.itens_count} itens</td>
                 <td class="text-warning fw-bold">R$ ${p.total.toFixed(2)}</td>
-                <td><span class="badge ${statusClass} status-badge">${p.status}</span></td>
+                <td>
+                    <span class="badge ${statusClass} status-badge">${p.status}</span>
+                    ${p.revisao_manual_necessaria ? '<span class="badge rounded-pill bg-danger bg-opacity-25 text-danger border border-danger border-opacity-50 ms-1" title="Primeira compra + frete para outro estado + valor alto - confirme com o cliente antes de despachar"><i class="fas fa-magnifying-glass"></i> Revisar</span>' : ''}
+                </td>
                 <td class="text-end">
                     <button class="btn btn-sm btn-outline-info rounded-circle me-1" title="Ver Detalhes" style="width: 32px; height: 32px; padding: 0;" onclick="viewOrderDetails(${p.id})">
                         <i class="fas fa-eye"></i>
@@ -598,6 +601,8 @@ async function viewOrderDetails(id) {
         // Populate ID (Header and Body)
         document.getElementById('modalOrderId').textContent = venda.id;
         document.getElementById('modalOrderIdBody').textContent = venda.id;
+
+        document.getElementById('modalRevisaoManualAlert').classList.toggle('d-none', !venda.revisao_manual_necessaria);
 
         // Client Name & Whatsapp
         // NEW STRUCTURE

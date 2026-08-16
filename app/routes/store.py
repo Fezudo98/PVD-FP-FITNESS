@@ -18,7 +18,7 @@ from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, Avali
 from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html, traduzir_status_detail_mp
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
-from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin, enviar_pagamento_rejeitado, enviar_lembrete_carrinho_abandonado
+from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin, enviar_pagamento_rejeitado, enviar_lembrete_carrinho_abandonado, enviar_aviso_revisao_manual
 from ..services.meta_capi_service import enviar_evento_purchase
 import mercadopago
 import threading
@@ -36,6 +36,32 @@ def _aplicar_desconto_frete(valor_frete, subtotal):
     if subtotal >= FRETE_DESCONTO_VALOR_MINIMO and valor_frete > 0:
         return round(max(0, valor_frete - FRETE_DESCONTO_VALOR_MAXIMO), 2)
     return valor_frete
+
+# Trava antifraude pra pedidos de risco elevado: primeira compra do cliente + frete pra fora do
+# estado da loja + valor alto é justamente o perfil que mais engana o antifraude automático do
+# Mercado Pago (cartão roubado aprovado, chargeback só aparece dias/semanas depois - quando a
+# mercadoria já foi despachada). Esses 3 fatores juntos seguram a geração automática da etiqueta,
+# exigindo revisão manual antes do envio (ver _pedido_requer_revisao_manual).
+REVISAO_MANUAL_ESTADO_LOJA = 'CE'
+REVISAO_MANUAL_VALOR_MINIMO = 400.0
+
+def _pedido_requer_revisao_manual(venda):
+    """True se a venda combina os 3 fatores de risco de fraude em frete interestadual: primeira
+    compra do cliente, entrega fora do estado da loja e valor acima do limite. Chamar só depois
+    que o pagamento foi aprovado (venda.total_venda e venda.entrega_estado já definitivos)."""
+    if not venda.entrega_estado or venda.entrega_estado == REVISAO_MANUAL_ESTADO_LOJA:
+        return False
+    if venda.total_venda < REVISAO_MANUAL_VALOR_MINIMO:
+        return False
+    if not venda.id_cliente:
+        return False
+
+    ja_comprou_antes = Venda.query.filter(
+        Venda.id_cliente == venda.id_cliente,
+        Venda.id != venda.id,
+        Venda.status != 'Cancelada'
+    ).first()
+    return ja_comprou_antes is None
 
 def _cpf_coluna_normalizada():
     """Expressão SQL que remove pontuação do Cliente.cpf armazenado, para comparar com um CPF
@@ -321,6 +347,10 @@ def store_promotions_page():
 @store_bp.route('/store/login')
 def store_login_page():
     return render_template('store/login.html')
+
+@store_bp.route('/store/redefinir-senha')
+def store_reset_password_page():
+    return render_template('store/redefinir_senha.html')
 
 @store_bp.route('/store/conta')
 def store_account_page():
@@ -1387,6 +1417,7 @@ def mercadopago_webhook():
                     if venda.status == 'Pendente':
                         if payment_status == 'approved':
                             venda.atualizar_status('Concluída')
+                            venda.revisao_manual_necessaria = _pedido_requer_revisao_manual(venda)
                             metodo = payment_data.get('payment_method_id', 'mercadopago')
                             pg = Pagamento(
                                 valor=venda.total_venda,
@@ -1398,7 +1429,16 @@ def mercadopago_webhook():
                             db.session.commit()
 
                             salvar_recibo_html(venda)
-                            disparar_geracao_etiqueta_async(venda)
+                            if venda.revisao_manual_necessaria:
+                                # Segura a geração automática da etiqueta - a lojista precisa
+                                # revisar o pedido manualmente antes de gerar/despachar.
+                                registrar_log(None, "Pedido Sinalizado para Revisão Manual", f"ID: {venda.id} - Primeira compra + frete para {venda.entrega_estado} + valor R$ {venda.total_venda:.2f}.")
+                                try:
+                                    enviar_aviso_revisao_manual(venda)
+                                except Exception as e:
+                                    print(f"Erro ao enviar aviso de revisão manual da venda {venda.id}: {e}")
+                            else:
+                                disparar_geracao_etiqueta_async(venda)
                             try:
                                 enviar_pagamento_aprovado(venda)
                             except Exception as e:

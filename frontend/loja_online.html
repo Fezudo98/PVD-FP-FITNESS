@@ -236,6 +236,15 @@
                         </div>
                     </div>
 
+                    <!-- Alerta de Revisão Manual (só aparece se sinalizado) -->
+                    <div class="alert alert-danger d-none" id="modalRevisaoManualAlert" role="alert">
+                        <i class="fas fa-magnifying-glass me-2"></i>
+                        <strong>Pedido sinalizado para revisão manual.</strong>
+                        Primeira compra do cliente + frete para outro estado + valor alto - a etiqueta
+                        <strong>não</strong> foi gerada automaticamente. Confirme o pedido com o cliente
+                        (WhatsApp/telefone) antes de gerar a etiqueta e despachar.
+                    </div>
+
                     <!-- Client Details -->
                     <div class="card bg-secondary bg-opacity-10 border-0 mb-4">
                         <div class="card-body">
@@ -381,7 +390,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
     <script src="/js/theme_manager.js?v=2"></script>
-    <script src="/js/main.js?v=8"></script>
+    <script src="/js/main.js?v=9"></script>
     <script src="/js/print_lote.js?v=2"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {

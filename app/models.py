@@ -117,6 +117,12 @@ class Cliente(db.Model):
     foto_perfil = db.Column(db.String(255), nullable=True) # URL/Path da foto
     data_cadastro = db.Column(db.DateTime, default=current_brazil_time)
     data_nascimento = db.Column(db.Date, nullable=True)
+
+    # "Esqueci minha senha": guarda só o hash do token (não o token em si), pra um vazamento do
+    # banco não permitir redefinir a senha de ninguém - o token de verdade só existe no link do
+    # e-mail. Curta validade (1h, ver auth.py) e uso único (limpo assim que a senha é trocada).
+    reset_senha_token_hash = db.Column(db.String(64), nullable=True)
+    reset_senha_expira_em = db.Column(db.DateTime, nullable=True)
     
     # Endereço Principal
     endereco_rua = db.Column(db.String(200), nullable=True)
@@ -319,6 +325,12 @@ class Venda(db.Model):
     # 'cc_rejected_insufficient_amount') - guardado pra análise futura de padrões de recusa,
     # além de já entrar traduzido em `motivo_cancelamento` (ver traduzir_status_detail_mp).
     status_detail_mp = db.Column(db.String(50), nullable=True)
+
+    # Trava de segurança contra fraude em pedidos de risco elevado (primeira compra do cliente +
+    # frete pra outro estado + valor alto - ver _pedido_requer_revisao_manual em store.py): quando
+    # True, a etiqueta de envio NÃO é gerada automaticamente na aprovação do pagamento, exigindo
+    # que a lojista confira o pedido manualmente antes de despachar.
+    revisao_manual_necessaria = db.Column(db.Boolean, nullable=False, default=False)
 
     # Controla o envio único do e-mail de lembrete de carrinho abandonado (ver
     # lembrar_carrinhos_abandonados em store.py) - sem isso, cada execução do job de 15 em 15

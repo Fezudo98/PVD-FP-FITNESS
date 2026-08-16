@@ -244,6 +244,24 @@ def enviar_aviso_novo_pedido_admin(venda):
     return _enviar_email(destinatario, f'🛍️ Novo pedido #{venda.id} recebido - FP Moda Fitness', html)
 
 
+def enviar_redefinicao_senha(cliente, link):
+    """Envia o link de redefinição de senha (válido por 1h, uso único - ver auth.py)."""
+    if not cliente.email:
+        return False
+
+    primeiro_nome = cliente.nome.strip().split(' ')[0]
+
+    corpo = f'''
+        <p>Olá, {primeiro_nome}!</p>
+        <p>Recebemos um pedido para redefinir a senha da sua conta na FP Moda Fitness.</p>
+        <a href="{link}" style="display:inline-block;margin-top:10px;padding:12px 24px;background:linear-gradient(135deg,#e0b431,#c9a22b);color:#000000;text-decoration:none;font-weight:bold;border-radius:50px;">Redefinir Senha</a>
+        <p style="margin-top:20px;font-size:0.85rem;color:#888888;">Esse link é válido por 1 hora e só pode ser usado uma vez. Se você não pediu essa redefinição, pode ignorar este e-mail - sua senha continua a mesma.</p>
+    '''
+
+    html = _template_base('Redefinir sua senha', corpo, rodape_link='https://lojafpfitness.com.br/store', rodape_texto='Visitar a loja')
+    return _enviar_email(cliente.email, 'Redefinição de senha - FP Moda Fitness', html)
+
+
 def enviar_feliz_aniversario(cliente, desconto_percentual=None, desconto_tipo=None, validade_dias=None):
     """Envia o e-mail de parabéns no aniversário do cliente (disparado 1x/ano pelo job diário
     do scheduler). Se houver uma promoção automática do gatilho 'aniversario' ativa no momento,
@@ -271,6 +289,35 @@ def enviar_feliz_aniversario(cliente, desconto_percentual=None, desconto_tipo=No
 
     html = _template_base('Feliz Aniversário! 🎂', corpo, rodape_link='https://lojafpfitness.com.br/store', rodape_texto='Visitar a loja')
     return _enviar_email(cliente.email, f'Feliz Aniversário, {primeiro_nome}! - FP Moda Fitness', html)
+
+
+def enviar_aviso_revisao_manual(venda):
+    """Avisa a lojista que um pedido pago foi sinalizado como de risco elevado (primeira compra +
+    frete pra outro estado + valor alto) e está com a geração automática da etiqueta suspensa -
+    precisa ser conferido manualmente (ex: confirmar com o cliente por WhatsApp) antes de gerar a
+    etiqueta e despachar. Vai pro mesmo destinatário do aviso de novo pedido."""
+    destinatario = current_app.config.get('ADMIN_NOTIFICATION_EMAIL') or current_app.config.get('MAIL_USERNAME')
+    if not destinatario:
+        return False
+
+    cliente_nome = venda.cliente.nome if venda.cliente else 'Cliente não identificado'
+    cliente_contato = (venda.cliente.telefone if venda.cliente and venda.cliente.telefone else '') or (venda.cliente.email if venda.cliente else '')
+    endereco = f"{venda.entrega_cidade}/{venda.entrega_estado}" if venda.entrega_cidade else venda.entrega_estado
+
+    corpo = f'''
+        <p>O pedido <strong>#{venda.id}</strong> foi pago e sinalizado para <strong>revisão manual</strong> antes do envio. 🔎</p>
+        <p>Motivo: é a <strong>primeira compra</strong> deste cliente, o frete é para <strong>{endereco}</strong> (fora do estado da loja) e o valor é alto - combinação que costuma indicar risco de fraude de cartão.</p>
+        <p><strong>Cliente:</strong> {cliente_nome} {f'({cliente_contato})' if cliente_contato else ''}</p>
+        <p style="font-size:18px;font-weight:bold;color:#c9a22b;">Total: R$ {_fmt_brl(venda.total_venda)}</p>
+        <p>A etiqueta de envio <strong>não foi gerada automaticamente</strong>. Recomendado confirmar o pedido com o cliente (WhatsApp/telefone) antes de gerar a etiqueta manualmente no painel.</p>
+    '''
+
+    html = _template_base(
+        f'Pedido #{venda.id} aguardando revisão', corpo,
+        rodape_link='https://www.lojafpfitness.com.br/loja_online.html',
+        rodape_texto='Ver no painel administrativo'
+    )
+    return _enviar_email(destinatario, f'🔎 Pedido #{venda.id} requer revisão antes do envio - FP Moda Fitness', html)
 
 
 def enviar_comunicado_marketing(email_destino, nome_destino, assunto, mensagem):

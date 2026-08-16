@@ -1,0 +1,106 @@
+{% extends "store/base.html" %}
+
+{% block content %}
+<section class="py-5 bg-light" style="min-height: 80vh;">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-5 col-md-8">
+                <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="card-header bg-dark text-white text-center py-4">
+                        <h3 class="fw-bold mb-0" style="font-family: 'Outfit', sans-serif;">Redefinir Senha</h3>
+                    </div>
+                    <div class="card-body p-4 p-md-5">
+                        <p class="text-muted small mb-4">Escolha uma nova senha para a sua conta.</p>
+                        <form id="resetPasswordForm">
+                            <div class="mb-3">
+                                <label for="newPassword"
+                                    class="form-label text-muted small fw-bold text-uppercase">Nova Senha</label>
+                                <input type="password"
+                                    class="form-control form-control-lg bg-light border-light-subtle"
+                                    id="newPassword" required>
+                                <small class="form-text text-muted mt-1 d-block"><i
+                                        class="fa-solid fa-circle-info me-1"></i>Mínimo 6 caracteres (letras e
+                                    números).</small>
+                            </div>
+                            <div class="mb-4">
+                                <label for="confirmPassword"
+                                    class="form-label text-muted small fw-bold text-uppercase">Confirmar Nova
+                                    Senha</label>
+                                <input type="password"
+                                    class="form-control form-control-lg bg-light border-light-subtle"
+                                    id="confirmPassword" required>
+                            </div>
+                            <button type="submit"
+                                class="btn btn-warning w-100 btn-lg rounded-pill fw-bold shadow-sm">Redefinir
+                                Senha</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const token = new URLSearchParams(window.location.search).get('token');
+
+        if (!token) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Link inválido',
+                text: 'Esse link de redefinição de senha está incompleto ou é inválido.'
+            }).then(() => {
+                window.location.href = '/store/login';
+            });
+            return;
+        }
+
+        document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const senha = document.getElementById('newPassword').value;
+            const confirmacao = document.getElementById('confirmPassword').value;
+
+            if (senha.length < 6) {
+                Swal.fire({ icon: 'warning', title: 'Senha Fraca', text: 'A senha deve ter no mínimo 6 caracteres.' });
+                return;
+            }
+            if (!/[a-zA-Z]/.test(senha) || !/[0-9]/.test(senha)) {
+                Swal.fire({ icon: 'warning', title: 'Senha Fraca', text: 'A senha deve conter letras e números.' });
+                return;
+            }
+            if (senha !== confirmacao) {
+                Swal.fire({ icon: 'warning', title: 'Senhas não conferem', text: 'A confirmação precisa ser igual à nova senha.' });
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/client/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, senha })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Senha Redefinida!',
+                        text: 'Você já pode entrar com a sua nova senha.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = '/store/login';
+                    });
+                } else {
+                    throw new Error(data.erro || 'Não foi possível redefinir a senha.');
+                }
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Erro', text: error.message });
+            }
+        });
+    });
+</script>
+{% endblock %}

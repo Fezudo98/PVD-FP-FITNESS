@@ -41,10 +41,15 @@
                                             class="form-control form-control-lg bg-light border-light-subtle"
                                             id="loginPassword" required>
                                     </div>
-                                    <div class="mb-4 form-check">
-                                        <input type="checkbox" class="form-check-input" id="rememberMe">
-                                        <label class="form-check-label text-muted small" for="rememberMe">Permanecer
-                                            conectado</label>
+                                    <div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                        <div class="form-check mb-0">
+                                            <input type="checkbox" class="form-check-input" id="rememberMe">
+                                            <label class="form-check-label text-muted small" for="rememberMe">Permanecer
+                                                conectado</label>
+                                        </div>
+                                        <a href="#" class="small fw-bold text-decoration-none" id="forgotPasswordLink"
+                                            data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Esqueci minha
+                                            senha</a>
                                     </div>
                                     <button type="submit"
                                         class="btn btn-warning w-100 btn-lg rounded-pill fw-bold shadow-sm">Entrar</button>
@@ -115,6 +120,32 @@
         </div>
     </div>
 </section>
+
+<!-- Modal "Esqueci minha senha" -->
+<div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold" style="font-family: 'Outfit', sans-serif;">Redefinir Senha</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Digite o e-mail da sua conta - vamos te enviar um link para criar uma
+                    nova senha.</p>
+                <form id="forgotPasswordForm">
+                    <div class="mb-3">
+                        <label for="forgotPasswordEmail" class="form-label text-muted small fw-bold
+                            text-uppercase">Email</label>
+                        <input type="email" class="form-control bg-light border-light-subtle"
+                            id="forgotPasswordEmail" required>
+                    </div>
+                    <button type="submit"
+                        class="btn btn-warning w-100 fw-bold rounded-pill shadow-sm">Enviar Link</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -309,6 +340,33 @@
                 }
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'Erro', text: error.message });
+            }
+        });
+
+        // Esqueci minha senha
+        document.getElementById('forgotPasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('forgotPasswordEmail').value;
+
+            try {
+                const res = await fetch('/api/client/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+
+                const modalEl = document.getElementById('forgotPasswordModal');
+                bootstrap.Modal.getInstance(modalEl)?.hide();
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Verifique seu e-mail',
+                    text: data.mensagem || 'Se este e-mail estiver cadastrado, você vai receber um link para redefinir sua senha.'
+                });
+                document.getElementById('forgotPasswordForm').reset();
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Erro', text: 'Não foi possível enviar o link agora. Tente novamente.' });
             }
         });
     });

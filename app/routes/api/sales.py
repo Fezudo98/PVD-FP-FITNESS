@@ -251,7 +251,8 @@ def get_venda_details(current_user, venda_id):
         'data_envio': venda.data_envio.strftime('%d/%m/%Y %H:%M:%S') if venda.data_envio else None,
         'data_entrega': venda.data_entrega.strftime('%d/%m/%Y %H:%M:%S') if venda.data_entrega else None,
         'data_cancelamento': venda.data_cancelamento.strftime('%d/%m/%Y %H:%M:%S') if venda.data_cancelamento else None,
-        'motivo_cancelamento': venda.motivo_cancelamento
+        'motivo_cancelamento': venda.motivo_cancelamento,
+        'revisao_manual_necessaria': venda.revisao_manual_necessaria
     })
 
 @api_bp.route('/api/vendas/<int:venda_id>/marcar_pago', methods=['POST'])
@@ -550,7 +551,8 @@ def get_online_orders(current_user):
             'tipo_entrega': v.tipo_entrega,
             'itens_count': len(v.itens),
             'usa_melhor_envio': bool(v.codigo_servico_frete and v.codigo_servico_frete.startswith('me_')),
-            'etiqueta_url': v.etiqueta_url
+            'etiqueta_url': v.etiqueta_url,
+            'revisao_manual_necessaria': v.revisao_manual_necessaria
         })
         
     return jsonify({
