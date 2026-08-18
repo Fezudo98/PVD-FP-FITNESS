@@ -1,9 +1,10 @@
 from flask import request, jsonify, current_app, Response
 from . import api_bp
 from ...extensions import db
-from ...models import Venda, ItemVenda, Pagamento, Cupom, MovimentacaoCaixa, Produto, Cliente, Configuracao, current_brazil_time
+from ...models import Venda, ItemVenda, Pagamento, Cupom, MovimentacaoCaixa, Produto, Cliente, Configuracao, EventoMarketing, current_brazil_time
 from ...utils import token_required, registrar_log, salvar_recibo_html, gerar_recibo_html
 from ...services.etiqueta_service import gerar_etiqueta_me
+from ...services.meta_capi_service import enviar_evento_purchase
 from ...extensions import limiter
 import os
 import mercadopago
@@ -286,6 +287,18 @@ def marcar_venda_paga(current_user, venda_id):
 
     registrar_log(current_user, "Pagamento Registrado Manualmente", f"ID: {venda.id} - Forma: {forma} - Valor: R$ {venda.total_venda:.2f}")
     db.session.commit()
+
+    # Venda online (sem vendedor de PDV) confirmada por fora do fluxo automático do Mercado
+    # Pago (ex: cliente pagou Pix na retirada) - sem isso, o evento de Purchase do Meta Pixel/
+    # Conversions API nunca dispara pra essas vendas, subcontando conversão real de anúncio.
+    # Vendas do PDV físico não entram aqui (não são atribuíveis a um clique de anúncio).
+    if venda.id_vendedor is None:
+        enviado_ok = enviar_evento_purchase(venda)
+        db.session.add(EventoMarketing(
+            tipo='Purchase', valor=venda.total_venda, id_venda=venda.id,
+            detalhe='Pagamento manual (marcar_pago)', enviado_meta=enviado_ok
+        ))
+        db.session.commit()
 
     return jsonify({'mensagem': 'Pagamento registrado com sucesso.'})
 
