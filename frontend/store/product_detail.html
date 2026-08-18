@@ -59,8 +59,14 @@
                         <!-- Color options will be dynamically loaded here -->
                     </div>
                     <div class="col-12" id="sizeOptionsContainer">
-                        <label class="product-detail-label">Tamanho</label>
-                        <div class="d-flex flex-wrap gap-2" id="sizeButtons">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label class="product-detail-label mb-0">Tamanho</label>
+                            <button type="button" class="btn btn-link btn-sm p-0 d-none" id="sizeGuideBtn"
+                                onclick="openSizeGuide()" style="font-size: 0.78rem; color: var(--primary-gold); text-decoration: underline;">
+                                <i class="fas fa-ruler-combined me-1"></i>Guia de medidas
+                            </button>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 mt-2" id="sizeButtons">
                             <!-- Size buttons will be dynamically loaded here -->
                         </div>
                     </div>
@@ -430,6 +436,23 @@
             <video id="lightboxVideo" controls style="display:none;"></video>
         </div>
         <span class="lightbox-next" onclick="changeImage(1)">&#10095;</span>
+    </div>
+</div>
+
+<!-- Size Guide Modal -->
+<div class="modal fade" id="sizeGuideModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" style="font-family: 'Outfit', sans-serif;">
+                    <i class="fas fa-ruler-combined me-2" style="color: var(--primary-gold);"></i>Guia de Medidas
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body" id="sizeGuideModalBody">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
     </div>
 </div>
 
@@ -803,6 +826,7 @@
         carregarParcelamento(product.preco_venda);
         document.getElementById('productDescription').textContent = product.descricao || 'Sem descrição disponível.';
         document.getElementById('productCategory').textContent = product.categoria || 'Geral';
+        checkSizeGuide(product.categoria);
 
         // --- Stock Warning ---
         let totalStock = 0;
@@ -1172,6 +1196,48 @@
     }
 
     // --- REVIEWS LOGIC ---
+
+    // --- SIZE GUIDE (Tabela de Medidas) ---
+    let currentSizeGuideData = null;
+    let sizeGuideCheckedCategoria = null;
+
+    async function checkSizeGuide(categoria) {
+        const btn = document.getElementById('sizeGuideBtn');
+        if (!categoria) { btn.classList.add('d-none'); return; }
+        if (categoria === sizeGuideCheckedCategoria) return; // já verificado pra essa categoria (evita refetch a cada troca de cor)
+        sizeGuideCheckedCategoria = categoria;
+        try {
+            const res = await fetch(`/api/store/tabela-medidas/${encodeURIComponent(categoria)}`);
+            if (res.ok) {
+                currentSizeGuideData = await res.json();
+                btn.classList.remove('d-none');
+            } else {
+                currentSizeGuideData = null;
+                btn.classList.add('d-none');
+            }
+        } catch (e) {
+            console.error('Erro ao verificar guia de medidas:', e);
+            btn.classList.add('d-none');
+        }
+    }
+
+    function openSizeGuide() {
+        if (!currentSizeGuideData) return;
+        const t = currentSizeGuideData;
+        let html = '';
+        if (t.observacao) html += `<p class="text-muted small">${escapeHtml(t.observacao)}</p>`;
+        html += '<div class="table-responsive"><table class="table table-bordered text-center mb-0"><thead><tr><th>Tamanho</th>';
+        t.colunas.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
+        html += '</tr></thead><tbody>';
+        t.linhas.forEach(l => {
+            html += `<tr><td class="fw-bold">${escapeHtml(l.tamanho)}</td>`;
+            l.valores.forEach(v => html += `<td>${escapeHtml(v)}</td>`);
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        document.getElementById('sizeGuideModalBody').innerHTML = html;
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('sizeGuideModal')).show();
+    }
 
     // --- LIGHTBOX LOGIC ---
     let currentLightboxMedia = [];

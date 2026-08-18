@@ -426,6 +426,28 @@ class Configuracao(db.Model):
     chave = db.Column(db.String(50), unique=True, nullable=False)
     valor = db.Column(db.String(255), nullable=True)
 
+class TabelaMedidas(db.Model):
+    """Tabela de medidas por categoria de produto (ex: 'Legging', 'Top') - uma tabela vale pra
+    todos os produtos daquela categoria, em vez de cadastrar uma por produto/variação (inviável
+    com centenas de produtos já cadastrados). `colunas` guarda os nomes das medidas (ex:
+    ['Cintura (cm)', 'Quadril (cm)']) e `linhas` guarda uma entrada por tamanho, com um valor
+    por coluna - ambos como JSON porque o número/nome das medidas varia por tipo de peça."""
+    id = db.Column(db.Integer, primary_key=True)
+    categoria = db.Column(db.String(100), unique=True, nullable=False)
+    colunas = db.Column(db.JSON, nullable=False, default=list)
+    linhas = db.Column(db.JSON, nullable=False, default=list)
+    observacao = db.Column(db.String(255), nullable=True)
+    data_atualizacao = db.Column(db.DateTime, default=current_brazil_time, onupdate=current_brazil_time)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'categoria': self.categoria,
+            'colunas': self.colunas or [],
+            'linhas': self.linhas or [],
+            'observacao': self.observacao
+        }
+
 class PromocaoAutomatica(db.Model):
     """Regra de cupom automático (ex: primeira compra, primeira avaliação). Cada 'gatilho' tem
     uma lógica de elegibilidade própria no backend (não é configurável via dados, só o código,

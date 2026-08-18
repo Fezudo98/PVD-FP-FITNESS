@@ -2,7 +2,7 @@
 from flask import request, jsonify, current_app
 from . import api_bp
 from ...extensions import db
-from ...models import Produto, ProdutoImagem, ProdutoBase
+from ...models import Produto, ProdutoImagem, ProdutoBase, TabelaMedidas
 from ...utils import token_required, registrar_log, generate_standard_sku
 from ...extensions import limiter
 # pyrefly: ignore [missing-import]
@@ -120,6 +120,91 @@ def manage_categorias(current_user):
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': str(e)}), 500
+
+def _validar_dados_tabela_medidas(dados):
+    """Retorna uma mensagem de erro (string) se os dados forem inválidos, ou None se estiverem ok."""
+    categoria = (dados.get('categoria') or '').strip()
+    if not categoria:
+        return 'Categoria é obrigatória.'
+
+    colunas = dados.get('colunas')
+    if not isinstance(colunas, list) or not colunas or not all(isinstance(c, str) and c.strip() for c in colunas):
+        return 'Informe ao menos uma coluna de medida.'
+
+    linhas = dados.get('linhas')
+    if not isinstance(linhas, list) or not linhas:
+        return 'Informe ao menos uma linha (tamanho).'
+    for linha in linhas:
+        if not isinstance(linha, dict) or not (linha.get('tamanho') or '').strip():
+            return 'Toda linha precisa de um tamanho preenchido.'
+        valores = linha.get('valores')
+        if not isinstance(valores, list) or len(valores) != len(colunas):
+            return 'Cada linha precisa de um valor para cada coluna cadastrada.'
+
+    return None
+
+@api_bp.route('/api/tabelas-medidas', methods=['GET', 'POST'])
+@token_required
+def gerenciar_tabelas_medidas(current_user):
+    if request.method == 'GET':
+        tabelas = TabelaMedidas.query.order_by(TabelaMedidas.categoria).all()
+        return jsonify([t.to_dict() for t in tabelas])
+
+    if current_user.role != 'admin':
+        return jsonify({'erro': 'Acesso negado.'}), 403
+
+    dados = request.get_json(silent=True) or {}
+    erro = _validar_dados_tabela_medidas(dados)
+    if erro:
+        return jsonify({'erro': erro}), 400
+
+    categoria = dados['categoria'].strip()
+    if TabelaMedidas.query.filter_by(categoria=categoria).first():
+        return jsonify({'erro': f'Já existe uma tabela de medidas para a categoria "{categoria}". Edite a existente.'}), 400
+
+    nova_tabela = TabelaMedidas(
+        categoria=categoria,
+        colunas=[c.strip() for c in dados['colunas']],
+        linhas=dados['linhas'],
+        observacao=(dados.get('observacao') or '').strip() or None
+    )
+    db.session.add(nova_tabela)
+    registrar_log(current_user, "Tabela de Medidas Criada", f"Categoria: {categoria}")
+    db.session.commit()
+    return jsonify(nova_tabela.to_dict()), 201
+
+@api_bp.route('/api/tabelas-medidas/<int:tabela_id>', methods=['PUT', 'DELETE'])
+@token_required
+def gerenciar_tabela_medidas_especifica(current_user, tabela_id):
+    if current_user.role != 'admin':
+        return jsonify({'erro': 'Acesso negado.'}), 403
+
+    tabela = TabelaMedidas.query.get_or_404(tabela_id)
+
+    if request.method == 'PUT':
+        dados = request.get_json(silent=True) or {}
+        erro = _validar_dados_tabela_medidas(dados)
+        if erro:
+            return jsonify({'erro': erro}), 400
+
+        categoria = dados['categoria'].strip()
+        conflito = TabelaMedidas.query.filter(TabelaMedidas.categoria == categoria, TabelaMedidas.id != tabela.id).first()
+        if conflito:
+            return jsonify({'erro': f'Já existe uma tabela de medidas para a categoria "{categoria}".'}), 400
+
+        tabela.categoria = categoria
+        tabela.colunas = [c.strip() for c in dados['colunas']]
+        tabela.linhas = dados['linhas']
+        tabela.observacao = (dados.get('observacao') or '').strip() or None
+        registrar_log(current_user, "Tabela de Medidas Atualizada", f"Categoria: {categoria}")
+        db.session.commit()
+        return jsonify(tabela.to_dict())
+
+    if request.method == 'DELETE':
+        registrar_log(current_user, "Tabela de Medidas Excluída", f"Categoria: {tabela.categoria}")
+        db.session.delete(tabela)
+        db.session.commit()
+        return jsonify({'mensagem': 'Tabela de medidas excluída!'})
 
 @api_bp.route('/api/produtos/stats', methods=['GET'])
 @token_required

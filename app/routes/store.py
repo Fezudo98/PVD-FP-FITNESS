@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 import uuid
 import types
 from ..extensions import db, limiter
-from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, VisitaSite, EventoMarketing, current_brazil_time
+from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, VisitaSite, EventoMarketing, TabelaMedidas, current_brazil_time
 from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html, traduzir_status_detail_mp
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
@@ -944,6 +944,13 @@ def consultar_parcelamento():
     except Exception as e:
         print(f"Erro ao consultar parcelamento no Mercado Pago: {e}")
         return jsonify({'opcoes': []})
+
+@store_bp.route('/api/store/tabela-medidas/<categoria>', methods=['GET'])
+def get_tabela_medidas_por_categoria(categoria):
+    tabela = TabelaMedidas.query.filter(func.lower(TabelaMedidas.categoria) == categoria.strip().lower()).first()
+    if not tabela:
+        return jsonify({'erro': 'Nenhuma tabela de medidas cadastrada para esta categoria.'}), 404
+    return jsonify(tabela.to_dict())
 
 @store_bp.route('/api/store/config', methods=['GET'])
 def get_store_config():
