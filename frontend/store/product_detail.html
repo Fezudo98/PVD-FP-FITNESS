@@ -25,9 +25,8 @@
                         <span class="visually-hidden">Next</span>
                     </button>
 
-                    <div class="position-absolute top-0 start-0 m-4" style="z-index: 10;">
-                        <span class="badge bg-dark text-warning px-3 py-2 rounded-pill fw-bold border border-warning border-opacity-25 shadow-sm"
-                            id="productCategory" style="letter-spacing: 1px;"></span>
+                    <div class="position-absolute top-0 start-0 m-3" style="z-index: 10;">
+                        <span class="product-card-tag" id="productCategory"></span>
                     </div>
                 </div>
 
@@ -41,20 +40,18 @@
 
         <!-- Product Details -->
         <div class="col-md-6">
-            <div class="d-flex flex-column h-100 ps-md-4 py-3">
-                <h1 class="display-4 fw-bold text-dark mb-2" id="productName" style="font-family: 'Outfit', sans-serif; line-height: 1.1;">Carregando...</h1>
+            <div class="d-flex flex-column h-100 ps-md-4 py-3 product-detail-panel">
+                <h1 class="product-detail-name" id="productName">Carregando...</h1>
 
                 <!-- Dynamic Rating Summary -->
                 <div class="d-flex align-items-center mb-3" id="ratingSummaryContainer"
                     style="display: none !important;">
-                    <div class="text-warning me-3" id="ratingStars"></div>
+                    <div class="me-3" style="color: var(--primary-gold);" id="ratingStars"></div>
                     <span class="text-muted small fw-semibold" id="ratingCount"></span>
                 </div>
 
-                <h2 class="display-6 fw-bold text-warning mb-1" id="productPrice">R$ --,--</h2>
+                <h2 class="product-detail-price" id="productPrice">R$ --,--</h2>
                 <div class="text-muted small mb-4" id="productParcelamento"></div>
-
-
 
                 <!-- Options -->
                 <div class="row g-3 mb-4">
@@ -62,48 +59,48 @@
                         <!-- Color options will be dynamically loaded here -->
                     </div>
                     <div class="col-12" id="sizeOptionsContainer">
-                        <label class="form-label text-muted small text-uppercase fw-bold mb-2" style="letter-spacing: 1px;">Tamanho</label>
+                        <label class="product-detail-label">Tamanho</label>
                         <div class="d-flex flex-wrap gap-2" id="sizeButtons">
                             <!-- Size buttons will be dynamically loaded here -->
                         </div>
                     </div>
                     <div class="col-6 mt-3">
-                        <label class="form-label text-muted small text-uppercase fw-bold mb-2" style="letter-spacing: 1px;">Quantidade</label>
-                        <div class="input-group input-group-lg rounded-pill border overflow-hidden shadow-sm" style="width: 140px; background-color: #f8f9fa;">
-                            <button class="btn btn-light border-0 text-dark fw-bold px-3 transition-color hover-warning" type="button"
+                        <label class="product-detail-label">Quantidade</label>
+                        <div class="input-group overflow-hidden product-detail-qty" style="width: 130px;">
+                            <button class="btn border-0 text-dark fw-bold px-3" type="button"
                                 onclick="adjustQty(-1)">-</button>
                             <input type="text" class="form-control bg-transparent text-dark border-0 text-center fw-bold p-0"
                                 value="1" id="productQty" readonly>
-                            <button class="btn btn-light border-0 text-dark fw-bold px-3 transition-color hover-warning" type="button"
+                            <button class="btn border-0 text-dark fw-bold px-3" type="button"
                                 onclick="adjustQty(1)">+</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Actions -->
-                <div class="d-grid gap-3">
-                    <button id="btnAddToCart" class="btn btn-dark btn-lg rounded-pill py-3 fw-bold shadow-lg transition-scale pulse-btn"
-                        onclick="addToCartCurrent()" style="letter-spacing: 1px;">
-                        <i class="fa-solid fa-cart-plus text-warning me-2"></i> Adicionar ao Carrinho
+                <div class="d-grid gap-2">
+                    <button id="btnAddToCart" class="btn product-detail-btn product-detail-btn-primary"
+                        onclick="addToCartCurrent()">
+                        <i class="fa-solid fa-cart-plus me-2"></i> Adicionar ao Carrinho
                     </button>
-                    <button id="btnBuyNow" class="btn btn-warning btn-lg rounded-pill py-3 fw-bold shadow-sm transition-scale" onclick="buyNow()" style="letter-spacing: 1px;">
+                    <button id="btnBuyNow" class="btn product-detail-btn product-detail-btn-accent" onclick="buyNow()">
                         <i class="fa-solid fa-bolt me-2"></i> Comprar Agora
                     </button>
-                    <button id="btnFavorite" class="btn btn-outline-dark btn-lg rounded-pill py-3 fw-bold transition-scale" style="letter-spacing: 1px;" onclick="toggleFavorite()">
+                    <button id="btnFavorite" class="btn product-detail-btn product-detail-btn-outline" onclick="toggleFavorite()">
                         <i id="favoriteIcon" class="fa-regular fa-heart me-2"></i> <span id="favoriteText">Adicionar aos Favoritos</span>
                     </button>
                 </div>
 
                 <!-- Extra Info -->
-                <div class="mt-3 pt-3 border-top border-secondary">
+                <div class="mt-3 pt-3 product-detail-divider">
                     <div class="d-flex align-items-center text-muted small">
                         <i class="fas fa-undo me-2"></i> Devolução grátis em até 7 dias
                     </div>
                 </div>
                 <!-- Product Description (Moved here for better mobile UX) -->
-                <div class="mt-4 pt-3 border-top border-secondary">
-                    <h5 class="fw-bold mb-3">Descrição do Produto</h5>
-                    <p class="text-muted fs-6" id="productDescription" style="line-height: 1.7; text-align: justify;">
+                <div class="mt-3 pt-3 product-detail-divider">
+                    <h5 class="product-detail-section-title">Descrição do Produto</h5>
+                    <p class="text-muted" id="productDescription" style="line-height: 1.7; font-size: 0.92rem;">
                         Carregando detalhes do produto...
                     </p>
                 </div>
@@ -228,7 +225,7 @@
         border: 2px solid #dee2e6;
     }
 
-    /* Product Zoom Styles - Desktop Only */
+    /* Product Zoom Styles - Desktop Only (pan-zoom on hover) */
     @media (hover: hover) {
         .product-zoom-container {
             overflow: hidden !important;
@@ -239,6 +236,141 @@
             transition: transform 0.1s ease-out;
             will-change: transform;
         }
+    }
+
+    /* Toque/clique na imagem sempre abre o lightbox em tela cheia (única forma de ampliar no
+       celular, já que o pan-zoom acima é hover-only). O ícone de lupa reforça que dá pra ampliar -
+       fica sempre visível em touch, e só aparece no hover em telas com mouse. */
+    .product-zoom-container {
+        position: relative;
+        cursor: zoom-in;
+    }
+
+    .product-zoom-hint {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: rgba(20, 20, 20, 0.6);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        z-index: 6;
+        pointer-events: none;
+    }
+
+    @media (hover: hover) {
+        .product-zoom-hint {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .product-zoom-container:hover .product-zoom-hint {
+            opacity: 1;
+        }
+    }
+
+    /* Coluna de detalhes do produto - mesmo perfil minimalista dos cards (base.html:
+       .product-card-minimal-*): tipografia discreta, sem pílulas/sombras pesadas, dourado da
+       marca em vez do amarelo padrão do Bootstrap. */
+    .product-detail-name {
+        font-family: 'Outfit', sans-serif;
+        font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+        font-weight: 700;
+        line-height: 1.2;
+        color: var(--text-primary);
+        margin-bottom: 0.4rem;
+    }
+
+    .product-detail-price {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--primary-gold);
+        margin-bottom: 0.15rem;
+    }
+
+    .product-detail-label {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted, #8a8a8a);
+        margin-bottom: 0.5rem;
+    }
+
+    .product-detail-section-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+    }
+
+    .product-detail-divider {
+        border-top: 1px solid var(--border-color);
+    }
+
+    .product-detail-qty {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--surface-card);
+    }
+
+    .product-detail-btn {
+        border-radius: 8px;
+        padding: 0.85rem 1rem;
+        font-weight: 600;
+        font-size: 0.92rem;
+        border: 1px solid transparent;
+    }
+
+    .product-detail-btn-primary {
+        background: var(--text-primary);
+        color: #fff;
+    }
+
+    @media (hover: hover) {
+        .product-detail-btn-primary:hover { opacity: 0.88; color: #fff; }
+    }
+
+    .product-detail-btn-accent {
+        background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
+        color: #000;
+    }
+
+    @media (hover: hover) {
+        .product-detail-btn-accent:hover { filter: brightness(0.96); color: #000; }
+    }
+
+    .product-detail-btn-outline {
+        background: transparent;
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+
+    @media (hover: hover) {
+        .product-detail-btn-outline:hover { border-color: var(--text-primary); }
+    }
+
+    /* Botões de tamanho - mesmo tratamento discreto (sem pílula/sombra) */
+    .product-detail-size-btn {
+        min-width: 52px;
+        padding: 0.5rem 0.9rem;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .btn-check:checked + .product-detail-size-btn {
+        background: var(--text-primary);
+        border-color: var(--text-primary);
+        color: #fff;
     }
 </style>
 
@@ -735,14 +867,23 @@
 
             // ADDED: zoom-container class, REMOVED inline events
             const itemHtml = `
-                <div class="carousel-item ${isActive} h-100 product-zoom-container">
-                    <img src="${src}" class="d-block w-100 h-100" alt="${product.nome}" 
-                         style="object-fit: contain; pointer-events: none;" 
+                <div class="carousel-item ${isActive} h-100 product-zoom-container" onclick="openProductLightbox(${index})">
+                    <img src="${src}" class="d-block w-100 h-100" alt="${product.nome}"
+                         style="object-fit: contain; pointer-events: none;"
                          oncontextmenu="return false;">
+                    <span class="product-zoom-hint"><i class="fas fa-magnifying-glass-plus"></i></span>
                 </div>
             `;
             carouselInner.insertAdjacentHTML('beforeend', itemHtml);
         });
+
+        // Imagens resolvidas (URL completa) pra abrir no lightbox ao tocar/clicar - em vez de só
+        // o zoom por hover (que não existe em touch, deixando o celular sem nenhum jeito de
+        // ampliar a foto do produto).
+        currentProductImagesForLightbox = images.map(imgUrl => ({
+            tipo: 'imagem',
+            src: imgUrl.startsWith('http') ? imgUrl : `/uploads/${imgUrl}`
+        }));
 
         if (images.length > 1) {
             images.forEach((imgUrl, index) => {
@@ -867,7 +1008,7 @@
                     `}).join('')}
                 </div>
                 <style>
-                    .btn-check:checked + label { border-color: #ffc107 !important; transform: scale(1.1); }
+                    .btn-check:checked + label { border-color: var(--primary-gold) !important; transform: scale(1.1); }
                     .btn-check:checked + label .check-icon { opacity: 1 !important; }
                 </style>
             `;
@@ -899,7 +1040,7 @@
         if (sizes.length > 0) {
             sizeContainer.innerHTML = sizes.map(size => `
                 <input type="radio" class="btn-check" name="sizeOption" id="size_${size}" value="${size}" autocomplete="off" onchange="handleSizeChange('${size}')">
-                <label class="btn btn-outline-dark px-4 py-2 rounded-pill fw-bold transition-scale" for="size_${size}" style="min-width: 60px;">${size}</label>
+                <label class="btn product-detail-size-btn" for="size_${size}">${size}</label>
             `).join('');
             selectedSize = null;
         } else {
@@ -1035,6 +1176,12 @@
     // --- LIGHTBOX LOGIC ---
     let currentLightboxMedia = [];
     let currentLightboxIndex = 0;
+    let currentProductImagesForLightbox = [];
+
+    function openProductLightbox(index) {
+        const mediaJson = encodeURIComponent(JSON.stringify(currentProductImagesForLightbox));
+        openLightbox(index, mediaJson);
+    }
 
     function openLightbox(index, mediaJsonEncoded) {
         // Decode hidden JSON
@@ -1078,7 +1225,9 @@
         const nextBtn = document.querySelector('.lightbox-next');
 
         const item = currentLightboxMedia[currentLightboxIndex];
-        const src = `/static/uploads/reviews/${item.url}`;
+        // Fotos do produto já vêm com a URL completa resolvida (item.src); mídia de avaliação
+        // continua montando o caminho a partir de item.url, como sempre foi.
+        const src = item.src || `/static/uploads/reviews/${item.url}`;
 
         if (item.tipo === 'video') {
             img.style.display = 'none';
