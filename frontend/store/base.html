@@ -842,16 +842,20 @@
             </div>
         </div>
 
-        <!-- Banner de parcelamento sem juros (fecha e não volta a aparecer nesse navegador) -->
-        <div id="semJurosBanner" class="sem-juros-banner d-none">
-            <div class="container d-flex align-items-center justify-content-center gap-2 position-relative py-2">
-                <span id="semJurosBannerText" class="fw-bold text-center"></span>
-                <button type="button" class="sem-juros-banner-close" aria-label="Fechar" onclick="closeSemJurosBanner()">&times;</button>
-            </div>
-        </div>
-
         <!-- Main Content -->
         <main class="flex-grow-1" style="margin-top: 153px;">
+            <!-- Banner de parcelamento sem juros (fecha e não volta a aparecer nesse navegador).
+                 Fica dentro do <main> (não antes dele) porque a barra fixa do topo (position:
+                 fixed) sai do fluxo normal da página - qualquer coisa fora do <main> nasce no
+                 topo real da página (y=0) e fica escondida atrás da barra fixa, mesmo com
+                 display:block ativo. Dentro do <main>, herda o mesmo espaço já reservado
+                 (margin-top) pra ficar visível abaixo da barra. -->
+            <div id="semJurosBanner" class="sem-juros-banner d-none">
+                <div class="container d-flex align-items-center justify-content-center gap-2 position-relative py-2">
+                    <span id="semJurosBannerText" class="fw-bold text-center"></span>
+                    <button type="button" class="sem-juros-banner-close" aria-label="Fechar" onclick="closeSemJurosBanner()">&times;</button>
+                </div>
+            </div>
             {% block content %}{% endblock %}
         </main>
 
