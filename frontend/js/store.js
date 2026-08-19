@@ -793,10 +793,40 @@ document.addEventListener('DOMContentLoaded', () => {
     ajustarOffsetBarraFixa();
     initStoreMarquee().then(ajustarOffsetBarraFixa);
     initNavCategorias();
+    initSemJurosBanner();
     if (window.location.pathname.includes('/checkout')) {
         autoFillCheckout();
     }
 });
+
+// Banner de parcelamento sem juros: consulta o parcelamento real (mesma fonte da barra de
+// promoções) e só aparece se existir ao menos uma parcela sem juros de verdade - nunca promete
+// algo que o checkout não confirme na hora de pagar. Fica escondido se o cliente já fechou antes
+// (persistido no navegador, não reaparece a cada navegação).
+async function initSemJurosBanner() {
+    const banner = document.getElementById('semJurosBanner');
+    if (!banner) return;
+    if (localStorage.getItem('semJurosBannerFechado')) return;
+
+    try {
+        const res = await fetch('/api/public/parcelamento?valor=200');
+        const data = await res.json();
+        const opcoesSemJuros = (data.opcoes || []).filter(o => o.sem_juros);
+        if (opcoesSemJuros.length === 0) return;
+
+        const maxSemJuros = opcoesSemJuros[opcoesSemJuros.length - 1].parcelas;
+        document.getElementById('semJurosBannerText').textContent =
+            `🤑 Parcele em até ${maxSemJuros}x sem juros no cartão!`;
+        banner.classList.remove('d-none');
+    } catch (e) {
+        console.error('Erro ao carregar banner de parcelamento sem juros:', e);
+    }
+}
+
+function closeSemJurosBanner() {
+    document.getElementById('semJurosBanner').classList.add('d-none');
+    localStorage.setItem('semJurosBannerFechado', '1');
+}
 
 window.addEventListener('load', ajustarOffsetBarraFixa);
 let ajusteOffsetResizeTimeout;

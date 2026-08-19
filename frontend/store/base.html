@@ -171,6 +171,42 @@
             }
         }
 
+        /* Banner de parcelamento sem juros - fica no fluxo normal da página (não fixo, logo
+           acima do <main>), então fechar ele não desloca mais nada nem exige recalcular offset
+           de barra fixa. Fica escondido por padrão e só some quando o JS confirma parcela real
+           sem juros na conta do Mercado Pago (nunca promete algo que o checkout não cumpra). */
+        .sem-juros-banner {
+            background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
+            color: #000;
+        }
+
+        .sem-juros-banner-close {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            line-height: 1;
+            color: #000;
+            opacity: 0.6;
+            cursor: pointer;
+            padding: 0 0.25rem;
+        }
+
+        .sem-juros-banner-close:hover {
+            opacity: 1;
+        }
+
+        @media (max-width: 576px) {
+            .sem-juros-banner-close {
+                position: static;
+                transform: none;
+                margin-left: 0.25rem;
+            }
+        }
+
         /* Barra de promoções rolando no topo (frete/parcelamento), fixa acima da navbar. */
         .store-top-fixed {
             position: fixed;
@@ -806,6 +842,14 @@
             </div>
         </div>
 
+        <!-- Banner de parcelamento sem juros (fecha e não volta a aparecer nesse navegador) -->
+        <div id="semJurosBanner" class="sem-juros-banner d-none">
+            <div class="container d-flex align-items-center justify-content-center gap-2 position-relative py-2">
+                <span id="semJurosBannerText" class="fw-bold text-center"></span>
+                <button type="button" class="sem-juros-banner-close" aria-label="Fechar" onclick="closeSemJurosBanner()">&times;</button>
+            </div>
+        </div>
+
         <!-- Main Content -->
         <main class="flex-grow-1" style="margin-top: 153px;">
             {% block content %}{% endblock %}
@@ -947,7 +991,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Device ID do Mercado Pago: reduz falsos positivos do antifraude deles no checkout -->
     <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
-    <script src="/frontend/js/store.js?v=17"></script>
+    <script src="/frontend/js/store.js?v=18"></script>
     {% block scripts %}{% endblock %}
 </body>
 
