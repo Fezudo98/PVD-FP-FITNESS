@@ -36,8 +36,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (sortParam) {
         currentSort = sortParam;
-        const sortFilter = document.getElementById('sortFilter');
-        if (sortFilter) sortFilter.value = sortParam;
+        const opcaoAtiva = document.querySelector(`.sort-option[data-value="${sortParam}"]`);
+        if (opcaoAtiva) aplicarSelecaoOrdenacao(opcaoAtiva);
     }
 
     if (tamanhosParam) currentSizes = tamanhosParam.split(',').filter(Boolean);
@@ -81,14 +81,19 @@ function selecionarCategoria(categoria) {
     loadProducts();
 }
 
-function filterBySort() {
-    const sortFilter = document.getElementById('sortFilter');
-    if (sortFilter) {
-        currentSort = sortFilter.value;
-        currentPage = 1;
-        resetContainer();
-        loadProducts();
-    }
+function aplicarSelecaoOrdenacao(opcaoEl) {
+    document.querySelectorAll('.sort-option').forEach(el => el.classList.remove('active'));
+    opcaoEl.classList.add('active');
+    const label = document.getElementById('sortDropdownLabel');
+    if (label) label.textContent = opcaoEl.dataset.label;
+}
+
+function selecionarOrdenacao(opcaoEl) {
+    aplicarSelecaoOrdenacao(opcaoEl);
+    currentSort = opcaoEl.dataset.value;
+    currentPage = 1;
+    resetContainer();
+    loadProducts();
 }
 
 function toggleTamanho(tamanho, marcado) {
