@@ -326,7 +326,49 @@ def store_products_page():
 
 @store_bp.route('/store/produto/<int:produto_id>')
 def store_product_detail_page(produto_id):
-    return render_template('store/product_detail.html')
+    # Busca o produto no servidor (em vez de deixar só o JS buscar depois) pra título,
+    # descrição, Open Graph e dados estruturados virem prontos no HTML que o Google le -
+    # sem isso, toda pagina de produto era indexada com o mesmo titulo/descricao genericos
+    # da loja inteira. first_or_404 tambem devolve 404 de verdade pra produto inexistente/
+    # inativo, em vez de uma pagina "não encontrado" renderizada só no JS (soft-404).
+    produto = Produto.query.filter_by(id=produto_id, online_ativo=True, deletado=False).first_or_404()
+
+    if produto.imagem_url:
+        imagem_completa = produto.imagem_url if produto.imagem_url.startswith('http') else f'https://lojafpfitness.com.br/uploads/{produto.imagem_url}'
+    else:
+        imagem_completa = 'https://lojafpfitness.com.br/static/img/logo.png'
+
+    descricao_meta = (produto.descricao or f'{produto.nome} - roupa fitness feminina da FP Moda Fitness.').strip()
+    if len(descricao_meta) > 160:
+        descricao_meta = descricao_meta[:157].rstrip() + '...'
+
+    url_produto = f'https://lojafpfitness.com.br/store/produto/{produto.id}'
+    product_jsonld = {
+        '@context': 'https://schema.org/',
+        '@type': 'Product',
+        'name': produto.nome,
+        'image': [imagem_completa],
+        'description': descricao_meta,
+        'sku': produto.sku,
+        'brand': {'@type': 'Brand', 'name': 'FP Moda Fitness'},
+        'offers': {
+            '@type': 'Offer',
+            'url': url_produto,
+            'priceCurrency': 'BRL',
+            'price': produto.preco_venda,
+            'availability': 'https://schema.org/InStock' if produto.quantidade > 0 else 'https://schema.org/OutOfStock',
+            'itemCondition': 'https://schema.org/NewCondition'
+        }
+    }
+
+    return render_template(
+        'store/product_detail.html',
+        produto=produto,
+        imagem_completa=imagem_completa,
+        descricao_meta=descricao_meta,
+        url_produto=url_produto,
+        product_jsonld=product_jsonld
+    )
 
 @store_bp.route('/store/carrinho')
 def store_cart_page():

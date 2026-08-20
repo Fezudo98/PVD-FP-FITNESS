@@ -8,7 +8,20 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FP Moda Fitness | Loja Online</title>
+    <title>{% block title %}FP Moda Fitness | Roupas Fitness Femininas Online{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Roupas fitness femininas com conforto e estilo: leggings, tops, conjuntos e mais. Compre online, com entrega para todo o Brasil e parcelamento sem juros.{% endblock %}">
+    <link rel="canonical" href="{% block canonical_url %}https://lojafpfitness.com.br{{ request.path }}{% endblock %}">
+
+    <!-- Open Graph / prévia de link (WhatsApp, Instagram, Facebook) -->
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:site_name" content="FP Moda Fitness">
+    <meta property="og:title" content="{% block og_title %}FP Moda Fitness | Roupas Fitness Femininas Online{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Roupas fitness femininas com conforto e estilo: leggings, tops, conjuntos e mais.{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}https://lojafpfitness.com.br/static/img/logo.png{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}https://lojafpfitness.com.br{{ request.path }}{% endblock %}">
+    <meta name="twitter:card" content="summary_large_image">
+
+    {% block structured_data %}{% endblock %}
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -995,7 +1008,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Device ID do Mercado Pago: reduz falsos positivos do antifraude deles no checkout -->
     <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
-    <script src="/frontend/js/store.js?v=18"></script>
+    <script src="/frontend/js/store.js?v=19"></script>
     {% block scripts %}{% endblock %}
 </body>
 
