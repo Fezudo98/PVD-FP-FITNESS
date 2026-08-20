@@ -501,6 +501,11 @@ function renderCheckoutPage() {
 
     if (totalEl) totalEl.textContent = `R$ ${formatBRL(total)}`;
 
+    // Espelha na barra fixa mobile (checkout.html) - so existe nessa pagina, no frete ainda nao
+    // calculado (antes do CEP), entao mostra so subtotal-desconto ate o frete entrar na conta.
+    const mobileTotalEl = document.getElementById('mobileCheckoutTotal');
+    if (mobileTotalEl) mobileTotalEl.textContent = `R$ ${formatBRL(total)}`;
+
     // So dispara uma vez por carregamento da pagina (a funcao roda de novo a cada
     // cupom/frete recalculado, o que nao deve gerar eventos duplicados de funil).
     if (!initiateCheckoutTracked) {

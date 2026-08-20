@@ -36,6 +36,26 @@
                 -webkit-text-fill-color: #ffffff !important;
                 caret-color: #ffffff;
             }
+
+            .checkout-mobile-bar {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: #121212;
+                box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25);
+                z-index: 1020;
+                padding-bottom: env(safe-area-inset-bottom, 0);
+            }
+
+            /* Espaço reservado no fim da página pra barra fixa não cobrir o botão real de
+               "Confirmar Pedido" quando a cliente rola até o fim. Este <style> só carrega
+               dentro do checkout, então não afeta o <main> de nenhuma outra página. */
+            @media (max-width: 991.98px) {
+                main {
+                    padding-bottom: 84px;
+                }
+            }
         </style>
 
         <div class="row g-5">
@@ -184,7 +204,7 @@
 
             <!-- Order Summary -->
             <div class="col-lg-4">
-                <div class="p-4 p-md-5 rounded-4 position-sticky border-0 shadow-lg"
+                <div id="orderSummaryCard" class="p-4 p-md-5 rounded-4 position-sticky border-0 shadow-lg"
                     style="top: 100px; background-color: #121212; color: #fff;">
                     <!-- Ambient Glow -->
                     <div class="position-absolute top-0 end-0 w-100 h-100 rounded-4" style="background: radial-gradient(circle at top right, rgba(255, 193, 7, 0.15), transparent 60%); pointer-events: none;"></div>
@@ -249,6 +269,23 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Barra fixa de total (só mobile) - no celular as colunas empilham e o resumo/total/botão
+         de confirmar iam parar depois de 11 campos + opções de frete, sem a cliente ver quanto
+         vai pagar até rolar tudo. Essa barra mantém o total sempre visível; o botão rola até o
+         resumo de verdade em vez de duplicar o fluxo de confirmação (mantém termos/checkbox no
+         caminho, não pula etapa). -->
+    <div class="d-lg-none checkout-mobile-bar">
+        <div class="container d-flex align-items-center justify-content-between gap-3 py-3">
+            <div>
+                <div class="text-white-50 small text-uppercase" style="letter-spacing: 0.5px;">Total</div>
+                <div class="fw-bold text-warning h5 mb-0" id="mobileCheckoutTotal">R$ 0,00</div>
+            </div>
+            <button type="button" class="btn btn-warning fw-bold rounded-pill px-4 py-2" onclick="scrollToOrderSummary()">
+                Revisar e Finalizar
+            </button>
         </div>
     </div>
 </section>
@@ -414,7 +451,20 @@
             return;
         }
 
-        container.innerHTML = options.map((opt, index) => {
+        // Marcar "Retirada na Loja" como padrão confunde quem acabou de digitar um endereço
+        // de entrega (o resumo mostra frete "Grátis" e a pessoa nem percebe que precisa trocar
+        // pra receber em casa). O padrão agora é a opção de entrega real mais barata (Correios/
+        // transportadora); "Retirada" e "Motoboy" (preço "a combinar", não é grátis de verdade)
+        // continuam disponíveis pra quem escolher ativamente, só não vêm pré-marcados.
+        const opcoesEntregaReal = options.filter(opt => opt.id !== 'retirada' && opt.id !== 'motoboy');
+        let idPadrao;
+        if (opcoesEntregaReal.length > 0) {
+            idPadrao = opcoesEntregaReal.reduce((maisBarata, atual) => atual.valor < maisBarata.valor ? atual : maisBarata).id;
+        } else {
+            idPadrao = options[0].id;
+        }
+
+        container.innerHTML = options.map((opt) => {
             let valorFormatado = `R$ ${formatBRL(opt.valor)}`;
             if (opt.id === 'motoboy') {
                 valorFormatado = `<span class="text-warning">A combinar</span>`;
@@ -426,7 +476,7 @@
             <div class="form-check mb-2">
                 <input class="form-check-input" type="radio" name="shippingOption" id="ship_${opt.id}"
                     value="${opt.valor}" data-name="${opt.nome}" data-option-id="${opt.id}"
-                    ${index === 0 ? 'checked' : ''} onchange="updateShippingCost(${opt.valor}, '${opt.id}')">
+                    ${opt.id === idPadrao ? 'checked' : ''} onchange="updateShippingCost(${opt.valor}, '${opt.id}')">
                 <label class="form-check-label d-flex justify-content-between w-100 pe-3" for="ship_${opt.id}">
                     <span>${opt.nome} (${opt.prazo})</span>
                     <span class="fw-bold">${valorFormatado}</span>
@@ -435,9 +485,10 @@
             `;
         }).join('');
 
-        // Apply first option by default
-        if (options.length > 0) {
-            updateShippingCost(options[0].valor, options[0].id);
+        // Aplica o custo da opção que ficou marcada por padrão
+        const opcaoPadrao = options.find(opt => opt.id === idPadrao);
+        if (opcaoPadrao) {
+            updateShippingCost(opcaoPadrao.valor, opcaoPadrao.id);
         }
     }
 
@@ -480,6 +531,14 @@
         // Update UI
         document.getElementById('checkoutSubtotal').textContent = `R$ ${formatBRL(subtotal)}`;
         document.getElementById('checkoutTotal').textContent = `R$ ${formatBRL(total)}`;
+
+        const mobileTotalEl = document.getElementById('mobileCheckoutTotal');
+        if (mobileTotalEl) mobileTotalEl.textContent = `R$ ${formatBRL(total)}`;
+    }
+
+    function scrollToOrderSummary() {
+        const card = document.getElementById('orderSummaryCard');
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 </script>
 {% endblock %}
