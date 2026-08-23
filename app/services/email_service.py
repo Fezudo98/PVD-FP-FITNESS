@@ -39,7 +39,7 @@ def _enviar_email(destinatario, assunto, corpo_html, anexos=None):
     try:
         msg = MIMEMultipart('mixed')
         msg['Subject'] = assunto
-        msg['From'] = f"FP Moda Fitness <{remetente}>"
+        msg['From'] = f"FitPro Store <{remetente}>"
         msg['To'] = destinatario
 
         corpo = MIMEMultipart('alternative')
@@ -69,14 +69,14 @@ def _template_base(titulo, corpo_html, rodape_link='https://www.lojafpfitness.co
 <body style="margin:0;padding:0;background-color:#f4f4f4;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
 <div style="max-width:600px;margin:20px auto;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid #eeeeee;">
     <div style="background:linear-gradient(135deg,#e0b431,#c9a22b);padding:30px;text-align:center;">
-        <h1 style="color:#000000;margin:0;font-size:22px;">FP Moda Fitness</h1>
+        <h1 style="color:#000000;margin:0;font-size:22px;">FitPro Store</h1>
     </div>
     <div style="padding:30px;color:#333333;line-height:1.5;">
         <h2 style="color:#212529;margin-top:0;">{titulo}</h2>
         {corpo_html}
     </div>
     <div style="background:#f8f9fa;padding:20px;text-align:center;color:#888888;font-size:12px;">
-        <p style="margin:0;">FP Moda Fitness &middot; R. Oitenta, 166, Sen. Carlos Jereissati, Pacatuba - CE</p>
+        <p style="margin:0;">FitPro Store &middot; R. Oitenta, 166, Sen. Carlos Jereissati, Pacatuba - CE</p>
         <p style="margin:5px 0 0;"><a href="{rodape_link}" style="color:#c9a22b;">{rodape_texto}</a></p>
     </div>
 </div>
@@ -109,7 +109,7 @@ def enviar_confirmacao_pedido(venda):
     '''
 
     html = _template_base(f'Recebemos seu pedido #{venda.id}!', corpo)
-    return _enviar_email(venda.cliente.email, f'Recebemos seu pedido #{venda.id} - FP Moda Fitness', html)
+    return _enviar_email(venda.cliente.email, f'Recebemos seu pedido #{venda.id} - FitPro Store', html)
 
 
 def enviar_pagamento_aprovado(venda):
@@ -134,7 +134,7 @@ def enviar_pagamento_aprovado(venda):
     except Exception as e:
         _log(f"[Email] Erro ao gerar comprovante anexo da venda {venda.id}: {e}")
 
-    return _enviar_email(venda.cliente.email, f'Pagamento aprovado - Pedido #{venda.id} - FP Moda Fitness', html, anexos=anexos)
+    return _enviar_email(venda.cliente.email, f'Pagamento aprovado - Pedido #{venda.id} - FitPro Store', html, anexos=anexos)
 
 
 def enviar_pagamento_rejeitado(venda, status_detail=None):
@@ -157,7 +157,7 @@ def enviar_pagamento_rejeitado(venda, status_detail=None):
     '''
 
     html = _template_base(f'Pagamento não aprovado - Pedido #{venda.id}', corpo)
-    return _enviar_email(venda.cliente.email, f'Pagamento não aprovado - Pedido #{venda.id} - FP Moda Fitness', html)
+    return _enviar_email(venda.cliente.email, f'Pagamento não aprovado - Pedido #{venda.id} - FitPro Store', html)
 
 
 def enviar_lembrete_carrinho_abandonado(venda):
@@ -180,7 +180,7 @@ def enviar_lembrete_carrinho_abandonado(venda):
     '''
 
     html = _template_base(f'Seu carrinho está te esperando! 🛒', corpo)
-    return _enviar_email(venda.cliente.email, f'Você esqueceu algo no carrinho - Pedido #{venda.id} - FP Moda Fitness', html)
+    return _enviar_email(venda.cliente.email, f'Você esqueceu algo no carrinho - Pedido #{venda.id} - FitPro Store', html)
 
 
 def enviar_pedido_enviado(venda):
@@ -199,7 +199,7 @@ def enviar_pedido_enviado(venda):
     '''
 
     html = _template_base(f'Pedido #{venda.id} a caminho!', corpo)
-    return _enviar_email(venda.cliente.email, f'Seu pedido #{venda.id} foi enviado! - FP Moda Fitness', html)
+    return _enviar_email(venda.cliente.email, f'Seu pedido #{venda.id} foi enviado! - FitPro Store', html)
 
 
 def enviar_pedido_entregue(venda):
@@ -213,7 +213,7 @@ def enviar_pedido_entregue(venda):
     '''
 
     html = _template_base(f'Pedido #{venda.id} entregue!', corpo)
-    return _enviar_email(venda.cliente.email, f'Seu pedido #{venda.id} foi entregue! - FP Moda Fitness', html)
+    return _enviar_email(venda.cliente.email, f'Seu pedido #{venda.id} foi entregue! - FitPro Store', html)
 
 
 def enviar_aviso_novo_pedido_admin(venda):
@@ -241,7 +241,7 @@ def enviar_aviso_novo_pedido_admin(venda):
         rodape_link='https://www.lojafpfitness.com.br/loja_online.html',
         rodape_texto='Ver no painel administrativo'
     )
-    return _enviar_email(destinatario, f'🛍️ Novo pedido #{venda.id} recebido - FP Moda Fitness', html)
+    return _enviar_email(destinatario, f'🛍️ Novo pedido #{venda.id} recebido - FitPro Store', html)
 
 
 def enviar_redefinicao_senha(cliente, link):
@@ -253,13 +253,13 @@ def enviar_redefinicao_senha(cliente, link):
 
     corpo = f'''
         <p>Olá, {primeiro_nome}!</p>
-        <p>Recebemos um pedido para redefinir a senha da sua conta na FP Moda Fitness.</p>
+        <p>Recebemos um pedido para redefinir a senha da sua conta na FitPro Store.</p>
         <a href="{link}" style="display:inline-block;margin-top:10px;padding:12px 24px;background:linear-gradient(135deg,#e0b431,#c9a22b);color:#000000;text-decoration:none;font-weight:bold;border-radius:50px;">Redefinir Senha</a>
         <p style="margin-top:20px;font-size:0.85rem;color:#888888;">Esse link é válido por 1 hora e só pode ser usado uma vez. Se você não pediu essa redefinição, pode ignorar este e-mail - sua senha continua a mesma.</p>
     '''
 
     html = _template_base('Redefinir sua senha', corpo, rodape_link='https://lojafpfitness.com.br/store', rodape_texto='Visitar a loja')
-    return _enviar_email(cliente.email, 'Redefinição de senha - FP Moda Fitness', html)
+    return _enviar_email(cliente.email, 'Redefinição de senha - FitPro Store', html)
 
 
 def enviar_feliz_aniversario(cliente, desconto_percentual=None, desconto_tipo=None, validade_dias=None):
@@ -282,13 +282,13 @@ def enviar_feliz_aniversario(cliente, desconto_percentual=None, desconto_tipo=No
 
     corpo = f'''
         <p>Olá, {primeiro_nome}!</p>
-        <p>A equipe FP Moda Fitness deseja um Feliz Aniversário! 🎉🎂</p>
+        <p>A equipe FitPro Store deseja um Feliz Aniversário! 🎉🎂</p>
         <p>Que seu novo ano venha cheio de saúde, disposição e muito treino!</p>
         {desconto_html}
     '''
 
     html = _template_base('Feliz Aniversário! 🎂', corpo, rodape_link='https://lojafpfitness.com.br/store', rodape_texto='Visitar a loja')
-    return _enviar_email(cliente.email, f'Feliz Aniversário, {primeiro_nome}! - FP Moda Fitness', html)
+    return _enviar_email(cliente.email, f'Feliz Aniversário, {primeiro_nome}! - FitPro Store', html)
 
 
 def enviar_aviso_revisao_manual(venda):
@@ -317,7 +317,7 @@ def enviar_aviso_revisao_manual(venda):
         rodape_link='https://www.lojafpfitness.com.br/loja_online.html',
         rodape_texto='Ver no painel administrativo'
     )
-    return _enviar_email(destinatario, f'🔎 Pedido #{venda.id} requer revisão antes do envio - FP Moda Fitness', html)
+    return _enviar_email(destinatario, f'🔎 Pedido #{venda.id} requer revisão antes do envio - FitPro Store', html)
 
 
 def enviar_comunicado_marketing(email_destino, nome_destino, assunto, mensagem):
@@ -333,4 +333,4 @@ def enviar_comunicado_marketing(email_destino, nome_destino, assunto, mensagem):
     corpo = f'<div style="line-height:1.7;">{corpo_formatado}</div>'
 
     html = _template_base(assunto, corpo, rodape_link='https://lojafpfitness.com.br/store', rodape_texto='Visitar a loja')
-    return _enviar_email(email_destino, f'{assunto} - FP Moda Fitness', html)
+    return _enviar_email(email_destino, f'{assunto} - FitPro Store', html)

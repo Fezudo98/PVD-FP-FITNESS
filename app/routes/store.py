@@ -336,7 +336,7 @@ def store_product_detail_page(produto_id):
     else:
         imagem_completa = 'https://lojafpfitness.com.br/static/img/logo.png'
 
-    descricao_meta = (produto.descricao or f'{produto.nome} - roupa fitness feminina da FP Moda Fitness.').strip()
+    descricao_meta = (produto.descricao or f'{produto.nome} - roupa fitness feminina da FitPro Store.').strip()
     if len(descricao_meta) > 160:
         descricao_meta = descricao_meta[:157].rstrip() + '...'
 
@@ -348,7 +348,7 @@ def store_product_detail_page(produto_id):
         'image': [imagem_completa],
         'description': descricao_meta,
         'sku': produto.sku,
-        'brand': {'@type': 'Brand', 'name': 'FP Moda Fitness'},
+        'brand': {'@type': 'Brand', 'name': 'FitPro Store'},
         'offers': {
             '@type': 'Offer',
             'url': url_produto,
@@ -1074,7 +1074,7 @@ def criar_preferencia_mercadopago(venda, cliente, device_id=None):
     soma_itens = round(sum(i["unit_price"] * i["quantity"] for i in mp_items), 2)
     if abs(soma_itens - round(venda.total_venda, 2)) >= 0.01:
         mp_items = [{
-            "title": f"Pedido #{venda.id} - FP Fitness",
+            "title": f"Pedido #{venda.id} - FitPro Store",
             "quantity": 1,
             "unit_price": round(venda.total_venda, 2),
             "currency_id": "BRL"

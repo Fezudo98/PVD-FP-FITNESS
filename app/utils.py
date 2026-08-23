@@ -137,7 +137,7 @@ def _logo_base64_tag():
         return None
     with open(logo_path, "rb") as image_file:
         encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-    return f'<img src="data:image/jpeg;base64,{encoded_string}" alt="FP Moda Fitness" style="max-height:60px;">'
+    return f'<img src="data:image/jpeg;base64,{encoded_string}" alt="FitPro Store" style="max-height:60px;">'
 
 
 def gerar_recibo_html(venda):
@@ -159,7 +159,7 @@ def gerar_recibo_html(venda):
             <td style="padding:12px 8px;border-bottom:1px solid #eeeeee;text-align:right;font-weight:600;">R$ {subtotal_item:.2f}</td>
         </tr>'''
 
-    logo_tag = _logo_base64_tag() or '<span style="color:#000000;font-size:20px;font-weight:700;">FP Moda Fitness</span>'
+    logo_tag = _logo_base64_tag() or '<span style="color:#000000;font-size:20px;font-weight:700;">FitPro Store</span>'
 
     desconto_html = ''
     if venda.desconto_total and venda.desconto_total > 0:
@@ -247,7 +247,7 @@ def gerar_recibo_html(venda):
 
     <div style="background:#f8f9fa;padding:20px;text-align:center;color:#888888;font-size:12px;">
         <p style="margin:0;">Este é um comprovante informal, sem valor fiscal.</p>
-        <p style="margin:5px 0 0;">FP Moda Fitness &middot; R. Oitenta, 166, Sen. Carlos Jereissati, Pacatuba - CE</p>
+        <p style="margin:5px 0 0;">FitPro Store &middot; R. Oitenta, 166, Sen. Carlos Jereissati, Pacatuba - CE</p>
     </div>
 </div>
 </body>

@@ -29,7 +29,7 @@ def gerar_etiqueta_me(venda):
 
     # Prepara Sender
     sender = {
-        "name": loja_info.get("name", "Loja FP Fitness"),
+        "name": loja_info.get("name", "Loja FitPro Store"),
         "phone": loja_info.get("phone", {}).get("phone", "11999999999"),
         "email": loja_info.get("email", "suporte@loja.com"),
         "document": loja_info.get("document", "00000000000"),

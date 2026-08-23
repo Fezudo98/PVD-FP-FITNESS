@@ -1,9 +1,9 @@
 {% extends "store/base.html" %}
 
-{% block title %}{{ produto.nome }} | FP Moda Fitness{% endblock %}
+{% block title %}{{ produto.nome }} | FitPro Store{% endblock %}
 {% block meta_description %}{{ descricao_meta }}{% endblock %}
 {% block og_type %}product{% endblock %}
-{% block og_title %}{{ produto.nome }} | FP Moda Fitness{% endblock %}
+{% block og_title %}{{ produto.nome }} | FitPro Store{% endblock %}
 {% block og_description %}{{ descricao_meta }}{% endblock %}
 {% block og_image %}{{ imagem_completa }}{% endblock %}
 {% block canonical_url %}{{ url_produto }}{% endblock %}
@@ -832,7 +832,7 @@
     }
 
     function renderProductInfo(product) {
-        document.title = `${product.nome} | FP Moda Fitness`;
+        document.title = `${product.nome} | FitPro Store`;
         document.getElementById('productName').textContent = product.nome;
         document.getElementById('productPrice').textContent = `R$ ${formatBRL(product.preco_venda)}`;
         carregarParcelamento(product.preco_venda);
