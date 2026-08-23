@@ -25,16 +25,14 @@ import threading
 
 store_bp = Blueprint('store', __name__)
 
-# Desconto no frete por valor mínimo de compra: definido pela lojista (nao é "frete grátis" de
-# verdade - é um desconto fixo de até R$30 sobre o frete calculado, que só zera o frete quando
-# o valor calculado é menor ou igual a isso). Só se aplica a fretes pagos (Correios/
-# transportadora via Melhor Envio); retirada e motoboy já são 0 por conta própria.
-FRETE_DESCONTO_VALOR_MINIMO = 350.0
-FRETE_DESCONTO_VALOR_MAXIMO = 30.0
+# Frete grátis de verdade (não é mais um desconto limitado a R$30 - zera o frete inteiro)
+# pra compras acima do valor mínimo definido pela lojista. Só se aplica a fretes pagos
+# (Correios/transportadora via Melhor Envio); retirada e motoboy já são 0 por conta própria.
+FRETE_DESCONTO_VALOR_MINIMO = 450.0
 
 def _aplicar_desconto_frete(valor_frete, subtotal):
     if subtotal >= FRETE_DESCONTO_VALOR_MINIMO and valor_frete > 0:
-        return round(max(0, valor_frete - FRETE_DESCONTO_VALOR_MAXIMO), 2)
+        return 0.0
     return valor_frete
 
 # Trava antifraude pra pedidos de risco elevado: primeira compra do cliente + frete pra fora do
@@ -940,7 +938,6 @@ def calcular_frete():
         'opcoes': opcoes,
         'desconto_frete': {
             'valor_minimo': FRETE_DESCONTO_VALOR_MINIMO,
-            'valor_desconto': FRETE_DESCONTO_VALOR_MAXIMO,
             'subtotal': round(subtotal, 2),
             'elegivel': subtotal >= FRETE_DESCONTO_VALOR_MINIMO,
             'faltam': faltam_para_desconto
@@ -1017,8 +1014,7 @@ def get_store_config():
             'tipo': promo_aniversario.tipo_desconto if promo_aniversario else None
         },
         'desconto_frete': {
-            'valor_minimo': FRETE_DESCONTO_VALOR_MINIMO,
-            'valor_desconto': FRETE_DESCONTO_VALOR_MAXIMO
+            'valor_minimo': FRETE_DESCONTO_VALOR_MINIMO
         }
     })
 

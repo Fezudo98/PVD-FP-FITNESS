@@ -186,20 +186,20 @@ function renderFreteDescontoNudge(elementId, subtotal) {
     const el = document.getElementById(elementId);
     if (!el || !freteDescontoConfig) return;
 
-    const { valor_minimo, valor_desconto } = freteDescontoConfig;
+    const { valor_minimo } = freteDescontoConfig;
     el.classList.remove('d-none');
 
     if (subtotal >= valor_minimo) {
         el.innerHTML = `
             <div class="alert alert-success bg-success bg-opacity-10 border-success text-success small mb-0 py-2">
-                <i class="fa-solid fa-circle-check me-2"></i>Você ganhou <strong>R$ ${formatBRL(valor_desconto)}</strong> de desconto no frete!
+                <i class="fa-solid fa-circle-check me-2"></i>Você ganhou <strong>frete grátis</strong>!
             </div>`;
     } else {
         const faltam = valor_minimo - subtotal;
         const pct = Math.min(100, Math.round((subtotal / valor_minimo) * 100));
         el.innerHTML = `
             <div class="small text-warning mb-1">
-                <i class="fa-solid fa-truck-fast me-1"></i>Faltam <strong>R$ ${formatBRL(faltam)}</strong> para ganhar R$ ${formatBRL(valor_desconto)} de desconto no frete!
+                <i class="fa-solid fa-truck-fast me-1"></i>Faltam <strong>R$ ${formatBRL(faltam)}</strong> para ganhar <strong>frete grátis</strong>!
             </div>
             <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.1);">
                 <div class="progress-bar bg-warning" style="width: ${pct}%;"></div>
@@ -852,7 +852,7 @@ async function initStoreMarquee() {
         const res = await fetch('/api/store/config');
         const config = await res.json();
         if (config.desconto_frete) {
-            itens.push(`Desconto no frete em compras acima de R$ ${formatBRL(config.desconto_frete.valor_minimo)}`);
+            itens.push(`Frete grátis em compras acima de R$ ${formatBRL(config.desconto_frete.valor_minimo)}`);
         }
         if (config.primeira_compra && config.primeira_compra.ativo && config.primeira_compra.codigo) {
             itens.push(`${config.primeira_compra.percent}% OFF na primeira compra com o cupom ${config.primeira_compra.codigo}`);

@@ -10,7 +10,7 @@
 {% block content %}
 <!-- Promo Banner (arte pronta com o cupom de primeira compra) -->
 <a href="/store/produtos" class="d-none d-block" id="promoBanner" title="Ver coleção">
-    <img src="/static/img/banner_boas_vindas.jpg?v=1" alt="Bem-vinda à nossa loja - Ganhe 10% de desconto na sua primeira compra com o cupom FITPRO10" class="w-100 d-block">
+    <img src="/static/img/banner_frete_gratis.jpg?v=1" alt="Frete grátis nas compras acima de R$450,00 e parcelamento em até 3x sem juros no cartão" class="w-100 d-block">
 </a>
 
 <!-- Barra de Confiança -->
@@ -19,7 +19,7 @@
         <div class="row g-3 text-center" id="trustBadgesRow">
             <div class="col-4">
                 <i class="fa-solid fa-truck-fast text-warning mb-1 d-block" style="font-size: 1.3rem;"></i>
-                <span class="small fw-semibold text-dark" id="trustBadgeFrete">Desconto no frete em compras acima de R$350</span>
+                <span class="small fw-semibold text-dark" id="trustBadgeFrete">Frete grátis em compras acima de R$450</span>
             </div>
             <div class="col-4">
                 <i class="fa-solid fa-lock text-warning mb-1 d-block" style="font-size: 1.3rem;"></i>
@@ -416,7 +416,7 @@
             // ficar desatualizado se o valor mudar).
             const freteBadge = document.getElementById('trustBadgeFrete');
             if (freteBadge && config.desconto_frete) {
-                freteBadge.textContent = `Desconto no frete acima de R$ ${formatBRL(config.desconto_frete.valor_minimo)}`;
+                freteBadge.textContent = `Frete grátis acima de R$ ${formatBRL(config.desconto_frete.valor_minimo)}`;
             }
         } catch (e) {
             console.error('Erro ao carregar promos:', e);
