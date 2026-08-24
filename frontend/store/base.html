@@ -113,6 +113,52 @@
             border-bottom: 1px solid var(--border-color);
         }
 
+        /* Menu principal com acabamento editorial (maiúsculas + letter-spacing) e sublinhado
+           dourado no hover/página ativa via box-shadow inset - evita usar ::after, que colidiria
+           com o caret do dropdown "Categorias" (Bootstrap já usa ::after pra desenhar a seta). */
+        .store-navbar .navbar-nav .nav-link {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.82rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            padding: 0.65rem 0 !important;
+            margin: 0 1.05rem;
+            box-shadow: inset 0 -2px 0 transparent;
+            transition: color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .store-navbar .navbar-nav .nav-item:first-child .nav-link {
+            margin-left: 0;
+        }
+
+        .store-navbar .navbar-nav .nav-item:last-child .nav-link {
+            margin-right: 0;
+        }
+
+        .store-navbar .navbar-nav .nav-link:hover,
+        .store-navbar .navbar-nav .nav-link.active {
+            color: var(--secondary-gold);
+            box-shadow: inset 0 -2px 0 var(--primary-gold);
+        }
+
+        .store-navbar .navbar-nav .dropdown-toggle::after {
+            margin-left: 0.4em;
+            vertical-align: 0.15em;
+        }
+
+        .store-navbar .btn-link {
+            transition: color 0.2s ease, transform 0.15s ease;
+        }
+
+        .store-navbar .btn-link:hover {
+            transform: translateY(-1px);
+        }
+
+        .store-navbar .store-search-toggle:hover {
+            color: var(--secondary-gold) !important;
+        }
+
         /* Mega menu "Categorias" - painel largo em colunas, no espírito de menus de lojas de
            moda maiores (ex: Dudalina), adaptado pra nossa lista de categorias ser plana (sem
            sub-grupos). column-span:all nos itens de cabeçalho/rodapé faz eles atravessarem
@@ -718,10 +764,10 @@
                 /* Smaller cards on mobile */
             }
 
-            /* Logo original (max-height: 100px) deixava a navbar mobile mais alta que os 80px
-               reservados aqui embaixo, cobrindo o topo do banner de promoção e do herói. */
+            /* Nova logo é bem mais larga (proporção ~3.9:1) que a antiga - em altura mobile
+               igual à do desktop ela estouraria a largura da navbar junto com busca/carrinho. */
             .store-navbar .navbar-brand img {
-                max-height: 48px !important;
+                max-height: 34px !important;
             }
 
             .store-navbar.py-1 {
@@ -760,10 +806,10 @@
                     <!-- Itens injetados via JS (store.js) com dados reais (frete/parcelamento) -->
                 </div>
             </div>
-            <nav class="navbar navbar-expand-lg navbar-light store-navbar py-1">
+            <nav class="navbar navbar-expand-lg navbar-light store-navbar py-2">
             <div class="container">
                 <a class="navbar-brand d-flex align-items-center gap-2" href="/store">
-                    <img src="/static/img/logo.png?v=4" alt="FitPro Store" style="max-height: 100px;"
+                    <img src="/static/img/logo.png?v=4" alt="FitPro Store" style="max-height: 52px;"
                         onerror="this.onerror=null; this.src='/frontend/logo.png';">
                 </a>
 
@@ -1008,7 +1054,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Device ID do Mercado Pago: reduz falsos positivos do antifraude deles no checkout -->
     <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
-    <script src="/frontend/js/store.js?v=20"></script>
+    <script src="/frontend/js/store.js?v=21"></script>
     {% block scripts %}{% endblock %}
 </body>
 

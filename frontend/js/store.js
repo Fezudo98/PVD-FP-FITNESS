@@ -791,6 +791,21 @@ function ajustarOffsetBarraFixa() {
     if (searchBar) searchBar.style.top = `${altura}px`;
 }
 
+// Destaca no menu o item correspondente à página atual (match exato do path, ou prefixo pra
+// "Produtos" cobrir tanto /store/produtos quanto /store/produto/<id> de detalhe).
+function marcarNavAtiva() {
+    const path = window.location.pathname;
+    document.querySelectorAll('.store-navbar .navbar-nav > .nav-item > .nav-link[href]').forEach(link => {
+        const href = link.getAttribute('href');
+        if (!href || href.startsWith('javascript:')) return;
+        const linkPath = href.split('?')[0];
+        const ativo = linkPath === '/store'
+            ? path === '/store'
+            : path === linkPath || (linkPath === '/store/produtos' && path.startsWith('/store/produto/'));
+        link.classList.toggle('active', ativo);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     updateCartCount();
     updateAuthUI();
@@ -799,6 +814,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initStoreMarquee().then(ajustarOffsetBarraFixa);
     initNavCategorias();
     initSemJurosBanner();
+    marcarNavAtiva();
     if (window.location.pathname.includes('/checkout')) {
         autoFillCheckout();
     }
