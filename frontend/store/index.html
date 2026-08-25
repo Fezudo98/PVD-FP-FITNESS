@@ -14,24 +14,63 @@
 </a>
 
 <!-- Barra de Confiança -->
-<section class="py-3 bg-white border-bottom">
+<section class="py-4 bg-white border-bottom trust-bar">
     <div class="container">
-        <div class="row g-3 text-center" id="trustBadgesRow">
-            <div class="col-4">
-                <i class="fa-solid fa-truck-fast text-warning mb-1 d-block" style="font-size: 1.3rem;"></i>
+        <div class="row g-4 g-md-0 text-center" id="trustBadgesRow">
+            <div class="col-4 trust-bar-item">
+                <span class="trust-bar-icon"><i class="fa-solid fa-truck-fast"></i></span>
                 <span class="small fw-semibold text-dark" id="trustBadgeFrete">Frete grátis em compras acima de R$450</span>
             </div>
-            <div class="col-4">
-                <i class="fa-solid fa-lock text-warning mb-1 d-block" style="font-size: 1.3rem;"></i>
+            <div class="col-4 trust-bar-item">
+                <span class="trust-bar-icon"><i class="fa-solid fa-lock"></i></span>
                 <span class="small fw-semibold text-dark">Compra 100% segura</span>
             </div>
-            <div class="col-4">
-                <i class="fa-solid fa-credit-card text-warning mb-1 d-block" style="font-size: 1.3rem;"></i>
+            <div class="col-4 trust-bar-item">
+                <span class="trust-bar-icon"><i class="fa-solid fa-credit-card"></i></span>
                 <span class="small fw-semibold text-dark" id="trustBadgeParcelamento">Parcele no cartão</span>
             </div>
         </div>
     </div>
 </section>
+
+<style>
+    .trust-bar-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.6rem;
+        position: relative;
+    }
+
+    .trust-bar-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 32px;
+        width: 1px;
+        background: #e9ecef;
+    }
+
+    @media (max-width: 576px) {
+        .trust-bar-item:not(:last-child)::after {
+            display: none;
+        }
+    }
+
+    .trust-bar-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(224, 180, 49, 0.12), rgba(201, 162, 43, 0.12));
+        color: var(--secondary-gold);
+        font-size: 1.05rem;
+    }
+</style>
 
 <!-- Featured Products -->
 <section id="featured" class="py-4 mt-3">

@@ -324,10 +324,70 @@
         }
 
         .store-footer {
-            background-color: var(--surface-card);
-            border-top: 1px solid var(--border-color);
-            padding: 4rem 0;
+            background-color: #161616;
+            color: #b8b8b8;
+            padding: 3.5rem 0 0;
             margin-top: auto;
+        }
+
+        .store-footer h5 {
+            color: #fff;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            margin-bottom: 1.1rem;
+        }
+
+        .store-footer a {
+            color: #b8b8b8;
+        }
+
+        .store-footer a:hover {
+            color: var(--primary-gold);
+        }
+
+        .store-footer .footer-logo {
+            height: 34px;
+            margin-bottom: 1rem;
+        }
+
+        .store-footer .footer-payment-icons i {
+            font-size: 1.7rem;
+            color: #b8b8b8;
+            transition: color 0.2s ease;
+        }
+
+        .store-footer .footer-payment-icons i:hover {
+            color: var(--primary-gold);
+        }
+
+        .store-footer .footer-pix-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 27px;
+            padding: 0 0.6rem;
+            border: 1px solid #3a3a3a;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            color: #b8b8b8;
+        }
+
+        .store-footer hr {
+            border-color: #2c2c2c;
+            margin: 2rem 0 0;
+        }
+
+        .store-footer .footer-bottom {
+            padding: 1.25rem 0;
+            font-size: 0.82rem;
+        }
+
+        .store-footer .footer-bottom a {
+            color: #b8b8b8;
         }
 
         /* Painel de busca da navbar: fica escondido acima da tela e desliza pra baixo,
@@ -919,41 +979,50 @@
         </main>
 
         <!-- Footer -->
-        <footer class="store-footer text-center text-muted">
+        <footer class="store-footer">
             <div class="container">
-                <div class="row mb-4">
-                    <div class="col-md-4 mb-3 mb-md-0">
-                        <h5 class="text-dark mb-3">Contato</h5>
+                <div class="row mb-2">
+                    <div class="col-md-3 mb-4 mb-md-0">
+                        <img src="/static/img/logo.png?v=4" alt="FitPro Store" class="footer-logo">
+                        <p class="small mb-0" style="font-style: italic;">Roupas que acompanham o seu ritmo!</p>
+                    </div>
+                    <div class="col-6 col-md-3 mb-4 mb-md-0">
+                        <h5>Contato</h5>
                         <ul class="list-unstyled">
                             <li class="mb-2">
-                                <a href="https://wa.me/558597293349" target="_blank"
-                                    class="text-decoration-none text-muted">
+                                <a href="https://wa.me/558597293349" target="_blank" class="text-decoration-none">
                                     <i class="fa-brands fa-whatsapp me-2 text-success"></i>(85) 9729-3349
                                 </a>
                             </li>
                             <li class="mb-2">
-                                <a href="https://www.instagram.com/fitprostore_/" target="_blank"
-                                    class="text-decoration-none text-muted">
-                                    <i class="fa-brands fa-instagram me-2 text-danger"></i>@fitprostore_
+                                <a href="https://www.instagram.com/fitprostore_/" target="_blank" class="text-decoration-none">
+                                    <i class="fa-brands fa-instagram me-2"></i>@fitprostore_
                                 </a>
                             </li>
                         </ul>
                     </div>
-                    <div class="col-md-4 mb-3 mb-md-0">
-                        <h5 class="text-dark mb-3">Endereço</h5>
-                        <a href="https://maps.app.goo.gl/XZ2qDYytKWB4MrWw8" target="_blank"
-                            class="text-decoration-none text-muted">
-                            <i class="fa-solid fa-location-dot me-2 text-primary"></i>R. Oitenta, 166, Sen. Carlos
+                    <div class="col-6 col-md-3 mb-4 mb-md-0">
+                        <h5>Endereço</h5>
+                        <a href="https://maps.app.goo.gl/XZ2qDYytKWB4MrWw8" target="_blank" class="text-decoration-none small">
+                            <i class="fa-solid fa-location-dot me-2"></i>R. Oitenta, 166, Sen. Carlos
                             Jereissati<br>Pacatuba - CE, 61814-240
                         </a>
                     </div>
-                    <div class="col-md-4">
-                        <h5 class="text-dark mb-3">Sobre</h5>
-                        <p class="small">𝑹𝒐𝒖𝒑𝒂𝒔 𝒒𝒖𝒆 𝒂𝒄𝒐𝒎𝒑𝒂𝒏𝒉𝒂𝒎 𝒐 𝒔𝒆𝒖 𝒓𝒊𝒕𝒎𝒐!</p>
+                    <div class="col-md-3">
+                        <h5>Formas de Pagamento</h5>
+                        <div class="d-flex align-items-center gap-2 flex-wrap footer-payment-icons">
+                            <span class="footer-pix-badge">PIX</span>
+                            <i class="fa-brands fa-cc-visa" title="Visa"></i>
+                            <i class="fa-brands fa-cc-mastercard" title="Mastercard"></i>
+                            <i class="fa-solid fa-barcode" title="Boleto"></i>
+                        </div>
                     </div>
                 </div>
                 <hr>
-                <p class="mb-0">&copy; {{ current_year }} FitPro Store. Todos os direitos reservados.</p>
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 footer-bottom">
+                    <p class="mb-0">&copy; {{ current_year }} FitPro Store. Todos os direitos reservados.</p>
+                    <a href="/store/politicas">Políticas de Troca e Privacidade</a>
+                </div>
             </div>
         </footer>
     </div>
