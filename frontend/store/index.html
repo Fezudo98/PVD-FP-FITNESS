@@ -126,6 +126,51 @@
             </div>
         </div>
     </div>
+</section>
+
+<!-- Cliente Real -->
+<section class="py-5 cliente-real-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-6 fw-bold text-white mb-2" style="font-family: 'Outfit', sans-serif;">
+                Cliente Real, <span class="text-warning">Resultado Real</span>
+            </h2>
+            <p class="lead" style="font-weight: 300; color: #b8b8b8;">Veja quem já usa e aprova as peças FitPro Store.</p>
+            <div class="mx-auto bg-warning mt-3" style="width: 60px; height: 3px; border-radius: 3px;"></div>
+        </div>
+        <div class="row g-4 justify-content-center">
+            <div class="col-6 col-md-4">
+                <video class="cliente-real-video" controls playsinline preload="none"
+                    poster="/static/img/cliente_real_1_poster.jpg?v=1"
+                    aria-label="Vídeo de cliente real usando peça FitPro Store">
+                    <source src="/static/video/cliente_real_1.mp4?v=1" type="video/mp4">
+                </video>
+            </div>
+            <div class="col-6 col-md-4">
+                <video class="cliente-real-video" controls playsinline preload="none"
+                    poster="/static/img/cliente_real_2_poster.jpg?v=1"
+                    aria-label="Vídeo de cliente real usando peça FitPro Store">
+                    <source src="/static/video/cliente_real_2.mp4?v=1" type="video/mp4">
+                </video>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .cliente-real-section {
+        background-color: #161616;
+    }
+
+    .cliente-real-video {
+        width: 100%;
+        aspect-ratio: 9 / 16;
+        object-fit: cover;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+        background-color: #000;
+    }
+</style>
 
 <!-- Welcome Modal -->
 <div class="modal fade" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true">
