@@ -1401,9 +1401,11 @@ def store_checkout():
 
 def _validar_assinatura_webhook_mp(webhook_secret):
     """Valida o header x-signature do Mercado Pago (HMAC-SHA256), conforme documentação oficial.
-    Retorna True se válida. Se nenhum secret estiver configurado, a checagem é pulada (retorna True)."""
+    Retorna True se válida. Se nenhum secret estiver configurado, falha fechado (retorna False) -
+    aceitar sem validar deixaria qualquer requisição forjar notificações de pagamento aprovado."""
     if not webhook_secret:
-        return True
+        print("WEBHOOK MERCADOPAGO: MERCADOPAGO_WEBHOOK_SECRET não configurado - rejeitando por padrão.")
+        return False
 
     x_signature = request.headers.get('x-signature', '')
     x_request_id = request.headers.get('x-request-id', '')
