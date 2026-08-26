@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, current_app, Response
-from sqlalchemy import func
+from sqlalchemy import func, case, and_, or_
 import math
 import jwt
 import os
@@ -15,7 +15,7 @@ import uuid
 import types
 from ..extensions import db, limiter
 from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, VisitaSite, EventoMarketing, TabelaMedidas, current_brazil_time
-from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html, traduzir_status_detail_mp
+from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html, traduzir_status_detail_mp, calcular_base_elegivel_cupom
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
 from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin, enviar_pagamento_rejeitado, enviar_lembrete_carrinho_abandonado, enviar_aviso_revisao_manual
@@ -353,7 +353,7 @@ def store_product_detail_page(produto_id):
             '@type': 'Offer',
             'url': url_produto,
             'priceCurrency': 'BRL',
-            'price': produto.preco_venda,
+            'price': produto.preco_efetivo,
             'availability': 'https://schema.org/InStock' if produto.quantidade > 0 else 'https://schema.org/OutOfStock',
             'itemCondition': 'https://schema.org/NewCondition'
         }
@@ -456,6 +456,21 @@ def store_get_products():
     tamanhos_selecionados = [t.strip() for t in tamanhos_param.split(',') if t.strip()] if tamanhos_param else []
     preco_min = request.args.get('preco_min', type=float)
     preco_max = request.args.get('preco_max', type=float)
+    apenas_promocao = request.args.get('em_promocao', '').lower() == 'true'
+
+    # Expressão reaproveitada pra saber, por variação, se a promoção está ativa E dentro da
+    # janela de datas agendada agora - mesma regra de Produto.em_promocao, mas em SQL pra poder
+    # agregar por grupo de variações (min/max/HAVING) sem carregar tudo em Python.
+    agora = current_brazil_time()
+    condicao_em_promocao = and_(
+        Produto.promocao_ativa == True,
+        Produto.preco_promocional.isnot(None),
+        or_(Produto.promocao_inicio.is_(None), Produto.promocao_inicio <= agora),
+        or_(Produto.promocao_fim.is_(None), Produto.promocao_fim >= agora)
+    )
+    preco_efetivo_expr = case((condicao_em_promocao, Produto.preco_promocional), else_=Produto.preco_venda)
+    em_promocao_expr = case((condicao_em_promocao, 1), else_=0)
+    promocao_fim_expr = case((condicao_em_promocao, Produto.promocao_fim), else_=None)
 
     # Best Sellers
     best_sellers_query = db.session.query(
@@ -479,32 +494,57 @@ def store_get_products():
     if search:
         filtros_base.append(Produto.nome.ilike(f"%{search}%"))
 
+    # Filtros completos (base + tamanho/preço) usados tanto na query principal quanto na
+    # subquery de "menor preço efetivo" abaixo - precisam ser os mesmos dos dois lados pra
+    # subquery representar o mesmo conjunto de variações que a listagem de fato mostra.
+    filtros_completos = list(filtros_base)
+    if tamanhos_selecionados:
+        filtros_completos.append(Produto.tamanho.in_(tamanhos_selecionados))
+    if preco_min is not None:
+        filtros_completos.append(preco_efetivo_expr >= preco_min)
+    if preco_max is not None:
+        filtros_completos.append(preco_efetivo_expr <= preco_max)
+
+    # Preço "de/por" e selo de oferta pareados com a MESMA variação que determina o menor preço
+    # efetivo do grupo (não apenas min/max independentes) - senão um grupo com uma variação em
+    # promoção e outra sem poderia exibir o preço original de uma variação ao lado do preço
+    # promocional de outra, mostrando um desconto que nenhuma variação real oferece de verdade.
+    menor_efetivo_subq = db.session.query(
+        Produto.produto_base_id.label('grupo_id'),
+        func.min(preco_efetivo_expr).label('menor_efetivo')
+    ).filter(*filtros_completos).group_by(Produto.produto_base_id).subquery()
+
+    variante_do_menor_preco = and_(
+        Produto.produto_base_id == menor_efetivo_subq.c.grupo_id,
+        preco_efetivo_expr == menor_efetivo_subq.c.menor_efetivo
+    )
+    preco_original_pareado_expr = case((variante_do_menor_preco, Produto.preco_venda), else_=None)
+    em_promocao_pareado_expr = case((and_(variante_do_menor_preco, condicao_em_promocao), 1), else_=0)
+    promocao_fim_pareado_expr = case((and_(variante_do_menor_preco, condicao_em_promocao), Produto.promocao_fim), else_=None)
+
     # Base Query
     query = db.session.query(
         func.max(Produto.nome).label('nome'),
-        func.min(Produto.preco_venda).label('min_price'),
-        func.max(Produto.preco_venda).label('max_price'),
+        func.min(preco_efetivo_expr).label('min_price'),
+        func.max(preco_efetivo_expr).label('max_price'),
+        func.max(preco_original_pareado_expr).label('preco_original_min'),
+        func.max(em_promocao_pareado_expr).label('tem_promocao'),
+        func.max(promocao_fim_pareado_expr).label('promocao_fim'),
         func.min(Produto.id).label('id'),
         func.max(Produto.imagem_url).label('imagem_url'),
         func.max(Produto.categoria).label('categoria'),
         func.sum(Produto.quantidade).label('total_stock'),
         func.count(Produto.id).label('variant_count')
-    ).filter(*filtros_base)
-
-    if tamanhos_selecionados:
-        query = query.filter(Produto.tamanho.in_(tamanhos_selecionados))
-    if preco_min is not None:
-        query = query.filter(Produto.preco_venda >= preco_min)
-    if preco_max is not None:
-        query = query.filter(Produto.preco_venda <= preco_max)
+    ).join(menor_efetivo_subq, Produto.produto_base_id == menor_efetivo_subq.c.grupo_id)\
+     .filter(*filtros_completos)
 
     # Sorting
     if sort_by == 'alfabetica':
         query = query.order_by(func.max(Produto.nome).asc())
     elif sort_by == 'preco_crescente':
-        query = query.order_by(func.min(Produto.preco_venda).asc())
+        query = query.order_by(func.min(preco_efetivo_expr).asc())
     elif sort_by == 'preco_decrescente':
-        query = query.order_by(func.min(Produto.preco_venda).desc())
+        query = query.order_by(func.min(preco_efetivo_expr).desc())
     elif sort_by == 'mais_vendidos':
         subquery_sales = db.session.query(
             Produto.produto_base_id.label('p_base_id'),
@@ -519,6 +559,8 @@ def store_get_products():
 
     # Grouping
     query = query.group_by(Produto.produto_base_id)
+    if apenas_promocao:
+        query = query.having(func.max(em_promocao_pareado_expr) == 1)
 
     # Pagination
     total = query.count()
@@ -559,6 +601,9 @@ def store_get_products():
             'nome': item.nome,
             'preco_venda': item.min_price,
             'max_price': item.max_price,
+            'preco_original': item.preco_original_min if item.tem_promocao else None,
+            'em_promocao': bool(item.tem_promocao),
+            'promocao_fim': (item.promocao_fim.isoformat() + '-03:00') if item.promocao_fim else None,
             'imagem_url': item.imagem_url,
             'categoria': item.categoria,
             'total_stock': item.total_stock,
@@ -1204,7 +1249,8 @@ def store_checkout():
     # 2. Processar Itens e Estoque
     total_venda = 0
     itens_venda_objs = []
-    
+    dados_para_cupom = []
+
     for item in itens_data:
         produto = Produto.query.get(item['id_produto'])
         if not produto or not produto.online_ativo:
@@ -1225,19 +1271,24 @@ def store_checkout():
             return jsonify({'erro': f'Estoque insuficiente para {produto.nome}.'}), 400
 
         db.session.refresh(produto)
-        total_venda += produto.preco_venda * qtd
+        total_venda += produto.preco_efetivo * qtd
+        dados_para_cupom.append((produto.id, produto.preco_efetivo, qtd, produto.em_promocao))
 
         itens_venda_objs.append(ItemVenda(
             id_produto=produto.id,
             quantidade=qtd,
-            preco_unitario_momento=produto.preco_venda,
+            preco_unitario_momento=produto.preco_efetivo,
             preco_custo_momento=produto.preco_custo
         ))
-    
+
     # --- CUPOM LOGIC ---
+    # Peças em promoção nunca recebem desconto de cupom por cima - o preço promocional já É o
+    # desconto. subtotal_elegivel_cupom exclui esses itens da base de qualquer cupom "total";
+    # o loop de "produto_especifico" pula esses itens individualmente.
     desconto_total = 0.0
     cupom_aplicado = None
-    
+    ids_produtos_em_promocao, subtotal_elegivel_cupom = calcular_base_elegivel_cupom(dados_para_cupom)
+
     if cupom_id is not None:
         if str(cupom_id) == '0':
             promo_primeira_compra = PromocaoAutomatica.query.filter_by(gatilho='primeira_compra', ativo=True).first()
@@ -1260,21 +1311,21 @@ def store_checkout():
                 has_orders = Venda.query.filter_by(id_cliente=cliente.id).filter(Venda.status != 'Cancelada').count()
                 if has_orders > 0:
                     return jsonify({'erro': f'Cupom {cupom.codigo} inválido para este cliente.'}), 400
-            
+
             if cupom.aplicacao == 'total':
                 if cupom.tipo_desconto == 'percentual':
-                    desconto_total = total_venda * (cupom.valor_desconto / 100)
+                    desconto_total = subtotal_elegivel_cupom * (cupom.valor_desconto / 100)
                 else:
-                    desconto_total = cupom.valor_desconto
+                    desconto_total = min(cupom.valor_desconto, subtotal_elegivel_cupom)
             elif cupom.aplicacao == 'produto_especifico':
                 valid_ids = [p.id for p in cupom.produtos]
                 for item_obj in itens_venda_objs:
-                    if item_obj.id_produto in valid_ids:
+                    if item_obj.id_produto in valid_ids and item_obj.id_produto not in ids_produtos_em_promocao:
                         if cupom.tipo_desconto == 'percentual':
                             desconto_total += (item_obj.preco_unitario_momento * item_obj.quantidade) * (cupom.valor_desconto / 100)
                         else:
                             desconto_total += cupom.valor_desconto * item_obj.quantidade
-            
+
             if desconto_total > total_venda:
                 desconto_total = total_venda
 
@@ -1731,7 +1782,7 @@ def get_client_favoritos(current_client):
             fav_data.append({
                 'id_produto': fav.produto.id,
                 'nome': fav.produto.nome,
-                'preco_venda': fav.produto.preco_venda,
+                'preco_venda': fav.produto.preco_efetivo,
                 'imagem_url': fav.produto.imagem_url,
                 'online_ativo': fav.produto.online_ativo,
                 'data_adicao': fav.data_adicao.strftime('%d/%m/%Y') if fav.data_adicao else None

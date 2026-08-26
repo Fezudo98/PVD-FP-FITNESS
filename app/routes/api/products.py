@@ -19,6 +19,31 @@ ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 def allowed_image_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
+def aplicar_campos_promocao(produto_alvo, dados):
+    """Lê os campos de promoção (checkbox + preço + datas, vindos de request.form como string)
+    e aplica no produto - usada tanto na criação quanto nas duas edições (completa e rápida).
+    Retorna None se tudo certo, ou uma mensagem de erro se o preço promocional for inválido -
+    sem essa checagem, um erro de digitação deixaria a peça marcada como "Oferta" cobrando
+    mais caro que o preço normal."""
+    if 'promocao_ativa' in dados:
+        produto_alvo.promocao_ativa = dados.get('promocao_ativa') in (True, 'true', 'True', '1', 'on', 1)
+    if 'preco_promocional' in dados:
+        valor = dados.get('preco_promocional')
+        produto_alvo.preco_promocional = float(valor) if valor not in (None, '') else None
+
+    if produto_alvo.promocao_ativa and produto_alvo.preco_promocional is not None:
+        if produto_alvo.preco_promocional >= produto_alvo.preco_venda:
+            return f'O preço promocional (R$ {produto_alvo.preco_promocional:.2f}) precisa ser menor que o preço normal (R$ {produto_alvo.preco_venda:.2f}).'
+
+    if 'promocao_inicio' in dados:
+        valor = dados.get('promocao_inicio')
+        produto_alvo.promocao_inicio = datetime.strptime(valor, '%Y-%m-%dT%H:%M') if valor else None
+    if 'promocao_fim' in dados:
+        valor = dados.get('promocao_fim')
+        produto_alvo.promocao_fim = datetime.strptime(valor, '%Y-%m-%dT%H:%M') if valor else None
+
+    return None
+
 
 def obter_ou_criar_produto_base(nome, produto):
     """Vincula um produto (variação) ao produto_base do mesmo nome, criando a base se essa for
@@ -372,6 +397,9 @@ def gerenciar_produtos(current_user):
         produto_alvo.quantidade = quantidade_val
         produto_alvo.descricao = dados.get('descricao')
         produto_alvo.online_ativo = True
+        erro_promocao = aplicar_campos_promocao(produto_alvo, dados)
+        if erro_promocao:
+            return jsonify({'erro': erro_promocao}), 400
         produto_alvo.produto_base_id = obter_ou_criar_produto_base(produto_alvo.nome, produto_alvo).id
 
         imagens_files = request.files.getlist('imagem')
@@ -492,6 +520,11 @@ def edicao_rapida_produto(current_user, produto_id):
         if 'preco_venda' in dados:
             produto.preco_venda = float(dados['preco_venda'])
 
+        erro_promocao = aplicar_campos_promocao(produto, dados)
+        if erro_promocao:
+            db.session.rollback()
+            return jsonify({'erro': erro_promocao}), 400
+
         registrar_log(current_user, "Produto Edição Rápida", f"SKU: {produto.sku}")
         db.session.commit()
         return jsonify(produto.to_dict()), 200
@@ -552,6 +585,10 @@ def gerenciar_produto_especifico(current_user, produto_id):
             produto.tamanho = dados.get('tamanho', produto.tamanho)
             produto.preco_custo = float(dados.get('preco_custo', produto.preco_custo))
             produto.preco_venda = float(dados.get('preco_venda', produto.preco_venda))
+            erro_promocao = aplicar_campos_promocao(produto, dados)
+            if erro_promocao:
+                db.session.rollback()
+                return jsonify({'erro': erro_promocao}), 400
             quantidade_val = int(dados.get('quantidade', produto.quantidade))
             if quantidade_val < 0:
                 db.session.rollback()

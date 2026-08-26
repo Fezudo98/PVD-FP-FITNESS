@@ -14,7 +14,22 @@ let modoNovaVariacao = false; // true = reaproveitando um produto existente (Fas
 let produtosPorNomeCache = {}; // nome exato -> dados completos do produto (pra pré-preencher a nova variação)
 let todosExpandidos = false;
 
+// Converte o ISO com offset que a API devolve (ex: "2026-09-01T20:00:00-03:00") pro formato
+// que o input datetime-local espera (sem segundos nem offset, ex: "2026-09-01T20:00").
+function isoParaDatetimeLocal(iso) {
+    if (!iso) return '';
+    return iso.slice(0, 16);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    const promocaoAtivaCheckbox = document.getElementById('promocao_ativa');
+    const promocaoCamposContainer = document.getElementById('promocaoCamposContainer');
+    if (promocaoAtivaCheckbox) {
+        promocaoAtivaCheckbox.addEventListener('change', () => {
+            promocaoCamposContainer.style.display = promocaoAtivaCheckbox.checked ? 'block' : 'none';
+        });
+    }
+
     // Referências aos elementos do DOM
     const gruposContainer = document.getElementById('produtosGruposContainer');
     const addProdutoBtn = document.getElementById('addProdutoBtn');
@@ -114,6 +129,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="input-group-text bg-dark text-white border-secondary">R$</span>
                         <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary inline-edit-price" value="${v.preco_venda.toFixed(2)}" data-id="${v.id}" data-original="${v.preco_venda}">
                     </div>
+                    ${v.em_promocao ? `
+                        <div class="mt-1">
+                            <span class="badge bg-warning text-dark" title="Em promoção: R$ ${v.preco_promocional.toFixed(2)}">
+                                <i class="fas fa-tag"></i> R$ ${v.preco_promocional.toFixed(2)}
+                            </span>
+                            <button type="button" class="btn btn-sm btn-outline-light border-0 desligar-promocao-btn" title="Desligar promoção agora" data-id="${v.id}" style="padding: 0 4px;">
+                                <i class="fas fa-power-off text-danger"></i>
+                            </button>
+                        </div>
+                    ` : ''}
                 </td>
                 <td>
                     <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary inline-edit-qty" style="width: 70px;" value="${v.quantidade}" data-id="${v.id}" data-original="${v.quantidade}">
@@ -401,6 +426,24 @@ document.addEventListener('DOMContentLoaded', () => {
             inputEl.value = originalValue;
         }
     }
+
+    gruposContainer.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.desligar-promocao-btn');
+        if (!btn) return;
+        if (!confirm('Desligar a promoção dessa variação agora?')) return;
+        try {
+            const res = await fetch(`${API_URL}/api/produtos/${btn.dataset.id}/quick`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'x-access-token': token },
+                body: JSON.stringify({ promocao_ativa: false })
+            });
+            if (!res.ok) throw new Error('Erro ao salvar');
+            showToast('Promoção desligada.');
+            recarregarLista();
+        } catch (err) {
+            showToast(`Erro ao desligar promoção: ${err.message}`);
+        }
+    });
 
     gruposContainer.addEventListener('change', (e) => {
         if (e.target.classList.contains('inline-edit-qty')) {
@@ -792,6 +835,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('quantidade').value = produto.quantidade;
         document.getElementById('descricao').value = produto.descricao || '';
 
+        const promocaoCheckbox = document.getElementById('promocao_ativa');
+        const promocaoCampos = document.getElementById('promocaoCamposContainer');
+        promocaoCheckbox.checked = !!produto.promocao_ativa;
+        promocaoCampos.style.display = promocaoCheckbox.checked ? 'block' : 'none';
+        document.getElementById('preco_promocional').value = produto.preco_promocional ?? '';
+        document.getElementById('promocao_inicio').value = isoParaDatetimeLocal(produto.promocao_inicio);
+        document.getElementById('promocao_fim').value = isoParaDatetimeLocal(produto.promocao_fim);
+
         selectedFiles = [];
         const previewContainer = document.getElementById('imagePreviewContainer');
         previewContainer.innerHTML = '';
@@ -1017,6 +1068,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('barcodePreviewContainer').style.display = 'none';
         document.getElementById('imagePreviewContainer').innerHTML = '';
+        document.getElementById('promocaoCamposContainer').style.display = 'none';
         selectedFiles = [];
         toggleCategoriaInputBtn.textContent = '+';
         toggleCategoriaInputBtn.title = 'Nova Categoria';
@@ -1077,6 +1129,12 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('preco_venda', document.getElementById('preco_venda').value);
         formData.append('quantidade', document.getElementById('quantidade').value);
         formData.append('descricao', document.getElementById('descricao').value);
+
+        const promocaoAtiva = document.getElementById('promocao_ativa').checked;
+        formData.append('promocao_ativa', promocaoAtiva);
+        formData.append('preco_promocional', promocaoAtiva ? document.getElementById('preco_promocional').value : '');
+        formData.append('promocao_inicio', promocaoAtiva ? document.getElementById('promocao_inicio').value : '');
+        formData.append('promocao_fim', promocaoAtiva ? document.getElementById('promocao_fim').value : '');
 
         for (let i = 0; i < selectedFiles.length; i++) {
             formData.append('imagem', selectedFiles[i]);

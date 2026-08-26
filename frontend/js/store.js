@@ -47,6 +47,39 @@ function formatarParcelasProduto(preco, infoParcelamento) {
     return `até ${infoParcelamento.parcelas}x de R$ ${formatBRL(valorParcela)}`;
 }
 
+// Contador "termina em..." usado nos cards e na página de produto quando a promoção tem data
+// de fim agendada. Calculado já no render (pra aparecer certo de cara) e reatualizado sozinho
+// por um intervalo global (ver mais abaixo) - sem precisar tocar em cada lugar que renderiza
+// um card pra manter o relógio andando.
+function formatarContadorPromocao(fimISO) {
+    if (!fimISO) return null;
+    const diff = new Date(fimISO).getTime() - Date.now();
+    if (diff <= 0) return null;
+    const dias = Math.floor(diff / 86400000);
+    const horas = Math.floor((diff / 3600000) % 24);
+    const minutos = Math.floor((diff / 60000) % 60);
+    if (dias > 0) return `Termina em ${dias}d ${horas}h`;
+    if (horas > 0) return `Termina em ${horas}h ${minutos}min`;
+    return `Termina em ${minutos}min`;
+}
+
+function atualizarContadoresPromocao() {
+    document.querySelectorAll('[data-promocao-fim]').forEach(el => {
+        const texto = formatarContadorPromocao(el.dataset.promocaoFim);
+        if (texto) {
+            el.textContent = texto;
+            el.style.display = '';
+        } else {
+            el.style.display = 'none';
+        }
+    });
+}
+
+if (!window.__promocaoCountdownInterval) {
+    window.__promocaoCountdownInterval = setInterval(atualizarContadoresPromocao, 30000);
+    document.addEventListener('DOMContentLoaded', atualizarContadoresPromocao);
+}
+
 // Card de produto minimalista compartilhado (foto em foco, texto discreto embaixo) - usado na
 // home, listagem, relacionados e sugestões do carrinho, pra manter o mesmo visual em todo
 // lugar sem duplicar a marcação em cada arquivo.
@@ -56,10 +89,24 @@ function renderProdutoCardMinimal(p, infoParcelamento) {
         priceDisplay = `A partir de R$ ${formatBRL(p.preco_venda)}`;
     }
 
+    let precoHtml = `<div class="product-card-minimal-preco">${priceDisplay}</div>`;
+    if (p.em_promocao && p.preco_original) {
+        precoHtml = `
+            <div class="product-card-minimal-preco product-card-minimal-preco-promo">
+                <span class="product-card-preco-original">R$ ${formatBRL(p.preco_original)}</span>
+                <span class="product-card-preco-atual">R$ ${formatBRL(p.preco_venda)}</span>
+            </div>
+        `;
+    }
+
     const img = p.imagem_url ? `/uploads/${p.imagem_url}` : 'https://via.placeholder.com/400x520?text=Sem+Imagem';
     const parcelasTexto = formatarParcelasProduto(p.preco_venda, infoParcelamento);
+    const contadorTexto = p.em_promocao ? formatarContadorPromocao(p.promocao_fim) : null;
 
     const tags = [];
+    if (p.em_promocao) {
+        tags.push(`<span class="product-card-tag product-card-tag-oferta"><i class="fa-solid fa-tag me-1"></i>Oferta</span>`);
+    }
     if (p.total_stock !== undefined && p.total_stock > 0 && p.total_stock <= 5) {
         tags.push(`<span class="product-card-tag product-card-tag-estoque">Últimas ${p.total_stock} unid.</span>`);
     }
@@ -75,7 +122,8 @@ function renderProdutoCardMinimal(p, infoParcelamento) {
             </div>
             <div class="product-card-minimal-info">
                 <div class="product-card-minimal-nome" title="${p.nome}">${p.nome}</div>
-                <div class="product-card-minimal-preco">${priceDisplay}</div>
+                ${precoHtml}
+                ${contadorTexto ? `<div class="product-card-countdown" data-promocao-fim="${p.promocao_fim}">${contadorTexto}</div>` : ''}
                 ${parcelasTexto ? `<div class="product-card-minimal-parcelas">${parcelasTexto}</div>` : ''}
             </div>
         </a>

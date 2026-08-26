@@ -57,6 +57,15 @@ class Produto(db.Model):
     destaque = db.Column(db.Boolean, default=False)
     deletado = db.Column(db.Boolean, default=False)
 
+    # Promoção por variação (SKU) - preço reduzido com agendamento opcional. promocao_ativa é
+    # o interruptor mestre (permite desligar na hora sem mexer nas datas); as datas, quando
+    # preenchidas, restringem a janela em que a promoção vale de fato mesmo com o interruptor
+    # ligado, pra Michele poder agendar com antecedência sem precisar lembrar de desativar depois.
+    preco_promocional = db.Column(db.Float, nullable=True)
+    promocao_ativa = db.Column(db.Boolean, default=False)
+    promocao_inicio = db.Column(db.DateTime, nullable=True)
+    promocao_fim = db.Column(db.DateTime, nullable=True)
+
     # Campos para Frete (Correios/Transportadora)
     peso = db.Column(db.Float, default=0.3, nullable=True) # em kg
     altura = db.Column(db.Integer, default=5, nullable=True) # em cm
@@ -66,15 +75,34 @@ class Produto(db.Model):
     # Relacionamento com imagens adicionais
     imagens = db.relationship('ProdutoImagem', backref='produto', lazy=True, cascade="all, delete-orphan")
 
+    @property
+    def em_promocao(self):
+        if not self.promocao_ativa or self.preco_promocional is None:
+            return False
+        agora = current_brazil_time()
+        if self.promocao_inicio and agora < self.promocao_inicio:
+            return False
+        if self.promocao_fim and agora > self.promocao_fim:
+            return False
+        return True
+
+    @property
+    def preco_efetivo(self):
+        return self.preco_promocional if self.em_promocao else self.preco_venda
+
     def to_dict(self):
-        return { 
-            'id': self.id, 'sku': self.sku, 'nome': self.nome, 'categoria': self.categoria, 
-            'cor': self.cor, 'cor_hex': self.cor_hex, 'tamanho': self.tamanho, 'preco_custo': self.preco_custo, 
-            'preco_venda': self.preco_venda, 'quantidade': self.quantidade, 
-            'imagem_url': self.imagem_url, 'limite_estoque_baixo': self.limite_estoque_baixo, 
+        return {
+            'id': self.id, 'sku': self.sku, 'nome': self.nome, 'categoria': self.categoria,
+            'cor': self.cor, 'cor_hex': self.cor_hex, 'tamanho': self.tamanho, 'preco_custo': self.preco_custo,
+            'preco_venda': self.preco_venda, 'quantidade': self.quantidade,
+            'imagem_url': self.imagem_url, 'limite_estoque_baixo': self.limite_estoque_baixo,
             'codigo_barras_url': self.codigo_barras_url,
             'online_ativo': self.online_ativo, 'descricao': self.descricao, 'destaque': self.destaque,
             'peso': self.peso, 'altura': self.altura, 'largura': self.largura, 'comprimento': self.comprimento,
+            'preco_promocional': self.preco_promocional, 'promocao_ativa': self.promocao_ativa,
+            'promocao_inicio': (self.promocao_inicio.isoformat() + '-03:00') if self.promocao_inicio else None,
+            'promocao_fim': (self.promocao_fim.isoformat() + '-03:00') if self.promocao_fim else None,
+            'em_promocao': self.em_promocao, 'preco_efetivo': self.preco_efetivo,
             'imagens': [img.to_dict() for img in sorted(self.imagens, key=lambda x: x.ordem or 0)]
         }
 

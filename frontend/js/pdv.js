@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cartItemsDiv.innerHTML = '<div class="list-group-item text-center">Carrinho vazio</div>';
         } else {
             cart.forEach(item => {
-                const itemSubtotal = item.quantidade * item.preco_venda;
+                const itemSubtotal = item.quantidade * (item.preco_efetivo ?? item.preco_venda);
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'list-group-item d-flex justify-content-between align-items-center';
                 itemDiv.innerHTML = `<div>${item.nome} <br><small><button class="btn btn-sm btn-outline-secondary py-0 px-2 adjust-qty-btn" data-id="${item.id}" data-action="decrease">-</button><span class="mx-2">${item.quantidade}</span><button class="btn btn-sm btn-outline-secondary py-0 px-2 adjust-qty-btn" data-id="${item.id}" data-action="increase">+</button></small></div><div class="d-flex align-items-center"><strong class="me-3">R$ ${itemSubtotal.toFixed(2)}</strong><button class="btn btn-sm btn-outline-danger py-0 px-2 remove-item-btn" data-id="${item.id}">X</button></div>`;
@@ -240,9 +240,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateTotals() {
-        let subtotal = cart.reduce((sum, item) => sum + (item.quantidade * item.preco_venda), 0);
+        let subtotal = cart.reduce((sum, item) => sum + (item.quantidade * (item.preco_efetivo ?? item.preco_venda)), 0);
         let totalDiscountAmount = 0;
-        let subtotalParaCalculo = subtotal;
+        // Peças em promoção nunca recebem desconto de cupom por cima (mesma regra aplicada no
+        // servidor em registrar_venda) - subtotalParaCalculo, usado nos cupons "total", parte
+        // só da soma dos itens fora de promoção, senão a prévia mostrada ao caixa diverge do
+        // valor que a venda de fato grava.
+        let subtotalParaCalculo = cart.reduce((sum, item) => {
+            if (item.em_promocao) return sum;
+            return sum + (item.quantidade * (item.preco_efetivo ?? item.preco_venda));
+        }, 0);
+        const subtotalNaoPromocionalOriginal = subtotalParaCalculo;
 
         if (appliedCoupons.length > 0) {
             const cuponsOrdenados = [...appliedCoupons].sort((a, b) => {
@@ -257,8 +265,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     baseCalculo = subtotalParaCalculo;
                 } else { // 'produto_especifico'
                     baseCalculo = cart.reduce((sum, cartItem) => {
-                        if (coupon.produtos_validos_ids.includes(cartItem.id)) {
-                            return sum + (cartItem.quantidade * cartItem.preco_venda);
+                        if (coupon.produtos_validos_ids.includes(cartItem.id) && !cartItem.em_promocao) {
+                            return sum + (cartItem.quantidade * (cartItem.preco_efetivo ?? cartItem.preco_venda));
                         }
                         return sum;
                     }, 0);
@@ -299,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
             totalDiscountAmount += descontoAniversario;
         }
 
-        totalDiscountAmount = Math.min(totalDiscountAmount, subtotal);
+        totalDiscountAmount = Math.min(totalDiscountAmount, subtotalNaoPromocionalOriginal);
 
         if (totalDiscountAmount > 0) {
             totalDiscountValueSpan.textContent = `- R$ ${totalDiscountAmount.toFixed(2)}`;

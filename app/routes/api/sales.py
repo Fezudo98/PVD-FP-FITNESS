@@ -2,7 +2,7 @@ from flask import request, jsonify, current_app, Response
 from . import api_bp
 from ...extensions import db
 from ...models import Venda, ItemVenda, Pagamento, Cupom, MovimentacaoCaixa, Produto, Cliente, Configuracao, EventoMarketing, current_brazil_time
-from ...utils import token_required, registrar_log, salvar_recibo_html, gerar_recibo_html
+from ...utils import token_required, registrar_log, salvar_recibo_html, gerar_recibo_html, calcular_base_elegivel_cupom
 from ...services.etiqueta_service import gerar_etiqueta_me
 from ...services.meta_capi_service import enviar_evento_purchase
 from ...extensions import limiter
@@ -37,35 +37,45 @@ def registrar_venda(current_user):
         subtotal_produtos = 0
         produtos_no_carrinho_ids = [item['id_produto'] for item in itens_venda_data]
         produtos_no_carrinho = Produto.query.filter(Produto.id.in_(produtos_no_carrinho_ids)).all()
-        
+
         produtos_map = {p.id: p for p in produtos_no_carrinho}
+        dados_para_cupom = []
 
         for item_data in itens_venda_data:
             produto = produtos_map.get(item_data['id_produto'])
             if not produto: return jsonify({'erro': f'Produto ID {item_data["id_produto"]} não encontrado.'}), 400
-            subtotal_produtos += produto.preco_venda * item_data['quantidade']
+            subtotal_produtos += produto.preco_efetivo * item_data['quantidade']
+            dados_para_cupom.append((produto.id, produto.preco_efetivo, item_data['quantidade'], produto.em_promocao))
 
         desconto_total_calculado = 0.0
         cupons_aplicados_obj = []
-        subtotal_para_calculo = subtotal_produtos
+        # Peças em promoção nunca recebem desconto de cupom por cima (o preço promocional já É
+        # o desconto) - subtotal_para_calculo, usado nos cupons "total", parte só da soma dos
+        # itens fora de promoção; o loop "produto_especifico" pula esses itens individualmente.
+        # subtotal_elegivel_original preserva esse valor antes dos cupons "total" decrementarem
+        # subtotal_para_calculo, pra usar como teto do desconto total mais abaixo - descontar
+        # contra subtotal_produtos (que inclui itens em promoção) permitiria, empilhando vários
+        # cupons "produto_especifico", que o desconto combinado vaze pro valor do item promocional.
+        ids_produtos_em_promocao, subtotal_para_calculo = calcular_base_elegivel_cupom(dados_para_cupom)
+        subtotal_elegivel_original = subtotal_para_calculo
 
         if cupons_codigos:
             cupons_from_db = Cupom.query.filter(
                 Cupom.codigo.in_([c.upper() for c in cupons_codigos]), Cupom.ativo==True
             ).all()
-            
+
             cupons_ordenados = sorted(cupons_from_db, key=lambda c: (c.tipo_desconto != 'percentual', c.valor_desconto), reverse=True)
-            
+
             for cupom in cupons_ordenados:
                 base_de_calculo = 0
                 if cupom.aplicacao == 'total':
                     base_de_calculo = subtotal_para_calculo
                 else:
                     for item_data in itens_venda_data:
-                        if item_data['id_produto'] in cupom.produtos_validos_ids:
+                        if item_data['id_produto'] in cupom.produtos_validos_ids and item_data['id_produto'] not in ids_produtos_em_promocao:
                              produto_atual = produtos_map.get(item_data['id_produto'])
-                             base_de_calculo += produto_atual.preco_venda * item_data['quantidade']
-                
+                             base_de_calculo += produto_atual.preco_efetivo * item_data['quantidade']
+
                 desconto_rodada = 0
                 if cupom.tipo_desconto == 'percentual':
                     desconto_rodada = (base_de_calculo * cupom.valor_desconto) / 100
@@ -76,8 +86,8 @@ def registrar_venda(current_user):
                 if cupom.aplicacao == 'total':
                     subtotal_para_calculo -= desconto_rodada
                 cupons_aplicados_obj.append(cupom)
-        
-        desconto_total_calculado = min(desconto_total_calculado, subtotal_produtos)
+
+        desconto_total_calculado = min(desconto_total_calculado, subtotal_elegivel_original)
 
         # Recompensa automática de primeira avaliação: aplicada e consumida (uso único) por
         # cima dos cupons manuais, se o cliente tiver uma disponível e ainda válida.
@@ -156,9 +166,9 @@ def registrar_venda(current_user):
                 db.session.rollback()
                 return jsonify({'erro': f'Estoque insuficiente para {produto.nome}.'}), 400
             nova_venda.itens.append(ItemVenda(
-                id_produto=produto.id, 
-                quantidade=quantidade_venda, 
-                preco_unitario_momento=produto.preco_venda,
+                id_produto=produto.id,
+                quantidade=quantidade_venda,
+                preco_unitario_momento=produto.preco_efetivo,
                 preco_custo_momento=produto.preco_custo
             ))
 

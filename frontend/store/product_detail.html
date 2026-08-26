@@ -62,7 +62,14 @@
                     <span class="text-muted small fw-semibold" id="ratingCount"></span>
                 </div>
 
-                <h2 class="product-detail-price" id="productPrice">R$ --,--</h2>
+                <div id="productOfertaTag" class="mb-1" style="display: none;">
+                    <span class="product-card-tag product-card-tag-oferta"><i class="fa-solid fa-tag me-1"></i>Oferta</span>
+                </div>
+                <div class="d-flex align-items-baseline gap-2 flex-wrap">
+                    <span class="product-detail-price-original" id="productPriceOriginal" style="display: none;"></span>
+                    <h2 class="product-detail-price" id="productPrice">R$ --,--</h2>
+                </div>
+                <div class="product-card-countdown mb-2" id="productCountdown" style="display: none;" data-promocao-fim=""></div>
                 <div class="text-muted small mb-4" id="productParcelamento"></div>
 
                 <!-- Options -->
@@ -309,6 +316,13 @@
         font-weight: 700;
         color: var(--primary-gold);
         margin-bottom: 0.15rem;
+    }
+
+    .product-detail-price-original {
+        font-size: 1rem;
+        font-weight: 400;
+        color: #999;
+        text-decoration: line-through;
     }
 
     .product-detail-label {
@@ -786,7 +800,7 @@
                 content_type: 'product',
                 content_name: currentProduct.nome,
                 content_category: currentProduct.categoria || undefined,
-                value: currentProduct.preco_venda,
+                value: currentProduct.preco_efetivo,
                 currency: 'BRL'
             });
 
@@ -834,8 +848,25 @@
     function renderProductInfo(product) {
         document.title = `${product.nome} | FitPro Store`;
         document.getElementById('productName').textContent = product.nome;
-        document.getElementById('productPrice').textContent = `R$ ${formatBRL(product.preco_venda)}`;
-        carregarParcelamento(product.preco_venda);
+        document.getElementById('productPrice').textContent = `R$ ${formatBRL(product.preco_efetivo)}`;
+        carregarParcelamento(product.preco_efetivo);
+
+        const ofertaTag = document.getElementById('productOfertaTag');
+        const priceOriginalEl = document.getElementById('productPriceOriginal');
+        const countdownEl = document.getElementById('productCountdown');
+        if (product.em_promocao) {
+            ofertaTag.style.display = '';
+            priceOriginalEl.textContent = `R$ ${formatBRL(product.preco_venda)}`;
+            priceOriginalEl.style.display = '';
+            if (product.promocao_fim) {
+                countdownEl.dataset.promocaoFim = product.promocao_fim;
+                atualizarContadoresPromocao();
+            }
+        } else {
+            ofertaTag.style.display = 'none';
+            priceOriginalEl.style.display = 'none';
+            countdownEl.style.display = 'none';
+        }
         document.getElementById('productDescription').textContent = product.descricao || 'Sem descrição disponível.';
         document.getElementById('productCategory').textContent = product.categoria || 'Geral';
         checkSizeGuide(product.categoria);
@@ -1140,7 +1171,7 @@
             }
             cart.push({
                 id: finalProduct.id, quantity: qty, size: finalProduct.tamanho || null, color: finalProduct.cor || null,
-                nome: finalProduct.nome, price: finalProduct.preco_venda, image: finalProduct.imagem_url
+                nome: finalProduct.nome, price: finalProduct.preco_efetivo, image: finalProduct.imagem_url
             });
         }
         localStorage.setItem('fp_fitness_cart', JSON.stringify(cart));
@@ -1149,7 +1180,7 @@
             content_ids: [String(finalProduct.id)],
             content_type: 'product',
             content_name: finalProduct.nome,
-            value: finalProduct.preco_venda,
+            value: finalProduct.preco_efetivo,
             currency: 'BRL'
         });
         Swal.fire({
@@ -1190,7 +1221,7 @@
         } else {
             cart.push({
                 id: finalProduct.id, quantity: qty, size: finalProduct.tamanho || null, color: finalProduct.cor || null,
-                nome: finalProduct.nome, price: finalProduct.preco_venda, image: finalProduct.imagem_url
+                nome: finalProduct.nome, price: finalProduct.preco_efetivo, image: finalProduct.imagem_url
             });
         }
         localStorage.setItem('fp_fitness_cart', JSON.stringify(cart));
@@ -1199,7 +1230,7 @@
             content_ids: [String(finalProduct.id)],
             content_type: 'product',
             content_name: finalProduct.nome,
-            value: finalProduct.preco_venda,
+            value: finalProduct.preco_efetivo,
             currency: 'BRL'
         });
 

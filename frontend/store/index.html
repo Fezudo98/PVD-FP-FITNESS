@@ -72,6 +72,21 @@
     }
 </style>
 
+<!-- Ofertas (só aparece se houver ao menos 1 produto em promoção agora) -->
+<section id="ofertas" class="py-4 mt-3 d-none">
+    <div class="container py-4">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold text-dark mb-2" style="font-family: 'Outfit', sans-serif;">
+                <span class="text-warning">Ofertas</span> Imperdíveis
+            </h2>
+            <p class="text-muted lead" style="font-weight: 300;">Peças selecionadas com preço especial por tempo limitado.</p>
+            <div class="mx-auto bg-warning mt-3" style="width: 60px; height: 3px; border-radius: 3px;"></div>
+        </div>
+
+        <div class="row g-4" id="ofertasProductsContainer"></div>
+    </div>
+</section>
+
 <!-- Featured Products -->
 <section id="featured" class="py-4 mt-3">
     <div class="container py-4">
@@ -368,6 +383,7 @@
     let promoPrimeiraCompra = null;
 
     document.addEventListener('DOMContentLoaded', async function () {
+        loadOfertas();
         loadFeaturedProducts();
         checkParcelamentoBadge();
         await checkPromos();
@@ -525,6 +541,30 @@
             }
         } catch (e) {
             console.error('Erro ao carregar badge de parcelamento:', e);
+        }
+    }
+
+    async function loadOfertas() {
+        try {
+            const [response, infoParcelamento] = await Promise.all([
+                fetch('/api/store/products?em_promocao=true&per_page=8'),
+                obterParcelamentoInfo()
+            ]);
+            const data = await response.json();
+            const section = document.getElementById('ofertas');
+            const container = document.getElementById('ofertasProductsContainer');
+
+            if (data.produtos && data.produtos.length > 0) {
+                container.innerHTML = data.produtos.map(p => `
+                    <div class="col-6 col-md-3">
+                        ${renderProdutoCardMinimal(p, infoParcelamento)}
+                    </div>
+                `).join('');
+                section.classList.remove('d-none');
+                atualizarContadoresPromocao();
+            }
+        } catch (error) {
+            console.error('Erro ao carregar ofertas:', error);
         }
     }
 

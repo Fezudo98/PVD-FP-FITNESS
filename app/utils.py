@@ -9,6 +9,24 @@ from datetime import datetime
 from .extensions import db
 from .models import Log, Usuario, Cliente
 
+def calcular_base_elegivel_cupom(itens):
+    """Peças em promoção nunca recebem desconto de cupom por cima (o preço promocional já É o
+    desconto) - usado tanto no checkout da loja online (store.py) quanto no PDV (sales.py) pra
+    evitar que a regra fique duplicada e divirja entre os dois fluxos de venda.
+
+    itens: iterável de tuplas (id_produto, preco_unitario, quantidade, em_promocao).
+    Retorna (ids_em_promocao: set, subtotal_elegivel: float) - subtotal_elegivel é a soma dos
+    itens fora de promoção, a única base válida pra cupons "total" e pro cap final de desconto;
+    ids_em_promocao é usado pra pular esses itens no loop de cupom "produto_especifico"."""
+    ids_em_promocao = set()
+    subtotal_elegivel = 0.0
+    for id_produto, preco_unitario, quantidade, em_promocao in itens:
+        if em_promocao:
+            ids_em_promocao.add(id_produto)
+        else:
+            subtotal_elegivel += preco_unitario * quantidade
+    return ids_em_promocao, subtotal_elegivel
+
 def validate_cpf(cpf):
     # Remove chars non-digits
     cpf = ''.join(filter(str.isdigit, cpf))
