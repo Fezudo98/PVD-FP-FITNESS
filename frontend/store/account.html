@@ -499,10 +499,11 @@
 
                                     ${getTrackingContent(order)}
 
-                                    ${order.status === 'Pendente' ? `
+                                    ${order.status === 'Pendente' || (order.status === 'Cancelada' && order.status_detail_mp) ? `
                                     <button class="btn btn-outline-success btn-sm rounded-pill px-4" onclick="retryPayment(${order.id}, this)">
                                         <i class="fas fa-rotate-right me-1"></i> Tentar Pagar Novamente
-                                    </button>
+                                    </button>` : ''}
+                                    ${order.status === 'Pendente' ? `
                                     <button class="btn btn-outline-danger btn-sm rounded-pill px-4" onclick="cancelarPedidoPendente(${order.id}, this)">
                                         <i class="fas fa-xmark me-1"></i> Cancelar Pedido
                                     </button>` : ''}

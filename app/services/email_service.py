@@ -2,6 +2,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
+from urllib.parse import quote
 from flask import current_app
 
 
@@ -153,11 +154,51 @@ def enviar_pagamento_rejeitado(venda, status_detail=None):
         {motivo_html}
         <p>Isso pode acontecer por diversos motivos e nem sempre indica um problema com o seu cartão. Não se preocupe: nenhum valor foi cobrado e o estoque dos produtos já foi liberado novamente.</p>
         <p><strong>Dica:</strong> tentar novamente pagando com <strong>PIX</strong> costuma ter aprovação mais rápida do que cartão de crédito.</p>
-        <a href="https://www.lojafpfitness.com.br/store/produtos" style="display:inline-block;margin-top:10px;padding:12px 24px;background:linear-gradient(135deg,#e0b431,#c9a22b);color:#000000;text-decoration:none;font-weight:bold;border-radius:50px;">Tentar novamente</a>
+        <a href="https://www.lojafpfitness.com.br/store/conta" style="display:inline-block;margin-top:10px;padding:12px 24px;background:linear-gradient(135deg,#e0b431,#c9a22b);color:#000000;text-decoration:none;font-weight:bold;border-radius:50px;">Tentar novamente</a>
+        <p style="margin-top:16px;">Prefere ajuda de uma pessoa de verdade? A gente resolve com você:</p>
+        <a href="https://wa.me/558597293349?text={quote(f'Oi! Meu pagamento do pedido #{venda.id} na FitPro Store não foi aprovado, será que consegue me ajudar?')}" style="display:inline-block;padding:12px 24px;background:#25d366;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:50px;">Falar no WhatsApp</a>
     '''
 
     html = _template_base(f'Pagamento não aprovado - Pedido #{venda.id}', corpo)
     return _enviar_email(venda.cliente.email, f'Pagamento não aprovado - Pedido #{venda.id} - FitPro Store', html)
+
+
+def enviar_aviso_pagamento_rejeitado_admin(venda, status_detail=None):
+    """Avisa a lojista na hora que um pedido foi rejeitado pelo antifraude do Mercado Pago -
+    diferente da revisão manual (que é para pedidos JÁ pagos e suspeitos), esse é pra pedido que
+    NEM chegou a ser pago. Dá um link direto de WhatsApp pro cliente, pra ela poder tentar
+    recuperar a venda na hora (ex: sugerir PIX, fechar manualmente pelo PDV) - sem esse aviso,
+    a lojista só fica sabendo se o cliente reclamar ou se ela checar o painel por conta própria."""
+    destinatario = current_app.config.get('ADMIN_NOTIFICATION_EMAIL') or current_app.config.get('MAIL_USERNAME')
+    if not destinatario:
+        return False
+
+    from ..utils import traduzir_status_detail_mp
+    motivo_traduzido = traduzir_status_detail_mp(status_detail) or 'não informado pelo Mercado Pago'
+
+    cliente_nome = venda.cliente.nome if venda.cliente else 'Cliente não identificado'
+    telefone_digitos = ''.join(filter(str.isdigit, venda.cliente.telefone or '')) if venda.cliente else ''
+    whatsapp_html = ''
+    if telefone_digitos:
+        link_wa = f'https://wa.me/55{telefone_digitos}?text={quote(f"Oi {cliente_nome.split()[0]}! Vi que seu pagamento do pedido #{venda.id} na FitPro Store não passou. Quer tentar de novo com PIX ou de outra forma?")}'
+        whatsapp_html = f'<a href="{link_wa}" style="display:inline-block;margin-top:10px;padding:12px 24px;background:#25d366;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:50px;">Falar com {cliente_nome.split()[0]} no WhatsApp</a>'
+
+    corpo = f'''
+        <p>Um pagamento foi <strong>recusado</strong> pelo antifraude do Mercado Pago agora há pouco. 📉</p>
+        <p><strong>Pedido:</strong> #{venda.id}</p>
+        <p><strong>Cliente:</strong> {cliente_nome} {f'({venda.cliente.email})' if venda.cliente and venda.cliente.email else ''}</p>
+        <p style="font-size:18px;font-weight:bold;color:#c9a22b;">Total: R$ {_fmt_brl(venda.total_venda)}</p>
+        <p><strong>Motivo do Mercado Pago:</strong> {motivo_traduzido}</p>
+        <p>O cliente já recebeu um e-mail sugerindo tentar de novo com PIX, mas entrar em contato direto costuma recuperar a venda mais rápido.</p>
+        {whatsapp_html}
+    '''
+
+    html = _template_base(
+        f'Pagamento recusado - Pedido #{venda.id}', corpo,
+        rodape_link='https://www.lojafpfitness.com.br/loja_online.html',
+        rodape_texto='Ver no painel administrativo'
+    )
+    return _enviar_email(destinatario, f'📉 Pagamento recusado - Pedido #{venda.id} - FitPro Store', html)
 
 
 def enviar_lembrete_carrinho_abandonado(venda):

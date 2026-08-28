@@ -18,7 +18,7 @@ from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, Avali
 from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html, traduzir_status_detail_mp, calcular_base_elegivel_cupom
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
-from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin, enviar_pagamento_rejeitado, enviar_lembrete_carrinho_abandonado, enviar_aviso_revisao_manual
+from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin, enviar_pagamento_rejeitado, enviar_aviso_pagamento_rejeitado_admin, enviar_lembrete_carrinho_abandonado, enviar_aviso_revisao_manual
 from ..services.meta_capi_service import enviar_evento_purchase
 import mercadopago
 import threading
@@ -1125,14 +1125,24 @@ def criar_preferencia_mercadopago(venda, cliente, device_id=None):
             "currency_id": "BRL"
         }]
 
+    # first_name/last_name separados (em vez de só "name" combinado) porque é o formato que o
+    # schema de payer da API de Preferências documenta e que o modelo de risco do MP usa - um
+    # nome inteiro num campo só é tratado como dado incompleto.
+    partes_nome = (cliente.nome or '').split(maxsplit=1)
     payer = {
         "name": cliente.nome,
+        "first_name": partes_nome[0] if partes_nome else '',
+        "last_name": partes_nome[1] if len(partes_nome) > 1 else '',
         "email": cliente.email,
-        "identification": {
-            "type": "CPF",
-            "number": cliente.cpf.replace('.', '').replace('-', '') if cliente.cpf else ""
-        }
     }
+    # Sem CPF, não manda o campo "identification" - um number="" (string vazia) mandado antes
+    # parecia um dado de identificação inválido pro antifraude, o que provavelmente pesa mais
+    # contra a aprovação do que simplesmente não informar identificação nenhuma.
+    if cliente.cpf:
+        payer["identification"] = {
+            "type": "CPF",
+            "number": cliente.cpf.replace('.', '').replace('-', '')
+        }
 
     # Telefone e endereço completos: mais um sinal de compra legítima pro antifraude (perfil de
     # pagador incompleto é um dos fatores que mais pesa contra a aprovação de cartão).
@@ -1567,6 +1577,10 @@ def mercadopago_webhook():
                                     enviar_pagamento_rejeitado(venda, status_detail)
                                 except Exception as e:
                                     print(f"Erro ao enviar e-mail de pagamento rejeitado da venda {venda.id}: {e}")
+                                try:
+                                    enviar_aviso_pagamento_rejeitado_admin(venda, status_detail)
+                                except Exception as e:
+                                    print(f"Erro ao enviar aviso de pagamento rejeitado (admin) da venda {venda.id}: {e}")
 
                     # Lógica para Estorno/Chargeback de vendas já Pagas
                     elif venda.status in ['Concluída', 'Em Transporte', 'Entregue']:
@@ -1670,6 +1684,7 @@ def get_client_orders(current_client):
             'data': venda.data_hora.strftime('%d/%m/%Y %H:%M'),
             'total': venda.total_venda,
             'status': venda.status,
+            'status_detail_mp': venda.status_detail_mp,
             'itens': itens,
             'taxa_entrega': venda.taxa_entrega,
             'forma_pagamento': forma_pgto,
@@ -1684,17 +1699,44 @@ def get_client_orders(current_client):
 @store_bp.route('/api/client/orders/<int:venda_id>/retry_payment', methods=['POST'])
 @client_token_required
 def retry_client_order_payment(current_client, venda_id):
-    """Gera um novo link de pagamento para um pedido ainda Pendente (ex: cliente saiu da
-    página do Mercado Pago sem concluir). Reaproveita a mesma venda/itens já reservados,
-    sem duplicar estoque nem criar um pedido novo."""
+    """Gera um novo link de pagamento para um pedido Pendente (ex: cliente saiu da página do
+    Mercado Pago sem concluir) OU Cancelado por rejeição de pagamento (status_detail_mp
+    preenchido) - nesse segundo caso, o estoque já foi devolvido quando o pedido foi cancelado,
+    então precisa ser re-reservado antes de reabrir o pagamento. Pedidos cancelados por outro
+    motivo (sem status_detail_mp, ex: cancelamento manual) continuam sem esse caminho."""
     venda = Venda.query.filter_by(id=venda_id, id_cliente=current_client.id).first()
     if not venda:
         return jsonify({'erro': 'Pedido não encontrado.'}), 404
 
     # Re-checa o status na hora, o mais perto possível da ação: evita reabrir pagamento de
     # um pedido que acabou de ser confirmado (webhook) ou cancelado (abandono) nesse meio-tempo.
-    if venda.status != 'Pendente':
+    era_rejeicao = venda.status == 'Cancelada' and bool(venda.status_detail_mp)
+    if venda.status != 'Pendente' and not era_rejeicao:
         return jsonify({'erro': f'Este pedido não está mais pendente (status atual: {venda.status}).'}), 400
+
+    itens_decrementados = []
+    if era_rejeicao:
+        # Mesmo decremento atômico e condicional do checkout: o estoque foi devolvido na
+        # rejeição, então pode ter sido vendido pra outra pessoa nesse meio-tempo.
+        for item in venda.itens:
+            if not item.produto:
+                continue
+            affected = db.session.query(Produto).filter(
+                Produto.id == item.id_produto,
+                Produto.quantidade >= item.quantidade
+            ).update({Produto.quantidade: Produto.quantidade - item.quantidade}, synchronize_session=False)
+            if affected == 0:
+                # Desfaz as reservas já feitas nesse loop antes de devolver o erro.
+                for id_produto_ok, qtd_ok in itens_decrementados:
+                    db.session.query(Produto).filter(Produto.id == id_produto_ok).update(
+                        {Produto.quantidade: Produto.quantidade + qtd_ok}, synchronize_session=False
+                    )
+                db.session.rollback()
+                return jsonify({'erro': f'"{item.produto.nome}" não tem mais estoque suficiente - não é possível tentar pagar de novo.'}), 409
+            itens_decrementados.append((item.id_produto, item.quantidade))
+
+        venda.atualizar_status('Pendente')
+        db.session.commit()
 
     dados = request.get_json(silent=True) or {}
     device_id = dados.get('device_id')
@@ -1702,6 +1744,16 @@ def retry_client_order_payment(current_client, venda_id):
 
     if erro_mp:
         print("MERCADO PAGO ERROR (retry):", erro_mp, flush=True)
+        # A preferência do MP falhou depois do estoque já ter sido re-reservado - devolve o
+        # pedido pro estado cancelado original em vez de deixar estoque preso sem link de
+        # pagamento nenhum.
+        if era_rejeicao:
+            for id_produto_ok, qtd_ok in itens_decrementados:
+                db.session.query(Produto).filter(Produto.id == id_produto_ok).update(
+                    {Produto.quantidade: Produto.quantidade + qtd_ok}, synchronize_session=False
+                )
+            venda.atualizar_status('Cancelada', motivo=venda.motivo_cancelamento)
+            db.session.commit()
         return jsonify({'erro': erro_mp}), 500
 
     return jsonify({'init_point': init_point})
