@@ -122,6 +122,37 @@
                         <i class="fas fa-undo me-2"></i> Devolução grátis em até 7 dias
                     </div>
                 </div>
+
+                <!-- Destaques do Produto -->
+                <div class="mt-3 pt-3 product-detail-divider">
+                    <div class="product-highlights-grid">
+                        <div class="product-highlight">
+                            <i class="fa-solid fa-wind"></i>
+                            <span>Tecido<br>Respirável</span>
+                        </div>
+                        <div class="product-highlight">
+                            <i class="fa-solid fa-arrows-left-right"></i>
+                            <span>Alta<br>Elasticidade</span>
+                        </div>
+                        <div class="product-highlight">
+                            <i class="fa-solid fa-shirt"></i>
+                            <span>Caimento<br>Perfeito</span>
+                        </div>
+                        <div class="product-highlight">
+                            <i class="fa-solid fa-eye-slash"></i>
+                            <span>Não<br>Transparece</span>
+                        </div>
+                        <div class="product-highlight">
+                            <i class="fa-solid fa-feather"></i>
+                            <span>Toque<br>Macio</span>
+                        </div>
+                        <div class="product-highlight">
+                            <i class="fa-solid fa-crown"></i>
+                            <span>Estilo<br>Único</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Product Description (Moved here for better mobile UX) -->
                 <div class="mt-3 pt-3 product-detail-divider">
                     <h5 class="product-detail-section-title">Descrição do Produto</h5>
@@ -344,6 +375,41 @@
 
     .product-detail-divider {
         border-top: 1px solid var(--border-color);
+    }
+
+    .product-highlights-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem 0.5rem;
+        text-align: center;
+    }
+
+    .product-highlight {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .product-highlight i {
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(224, 180, 49, 0.12), rgba(201, 162, 43, 0.12));
+        color: var(--secondary-gold);
+        font-size: 1.05rem;
+    }
+
+    .product-highlight span {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--text-primary);
+        line-height: 1.3;
     }
 
     .product-detail-qty {
@@ -821,16 +887,29 @@
         if (!section || !container) return;
 
         try {
-            const params = new URLSearchParams({ per_page: 5 });
-            if (categoria) params.set('categoria', categoria);
-            const [res, infoParcelamento] = await Promise.all([
-                fetch(`/api/store/products?${params.toString()}`),
+            const paramsCategoria = new URLSearchParams({ per_page: 8 });
+            if (categoria) paramsCategoria.set('categoria', categoria);
+
+            // Muitas categorias do catálogo têm só 1-2 peças, então filtrar só pela mesma
+            // categoria costuma esvaziar essa seção - busca em paralelo os mais vendidos do
+            // catálogo inteiro pra completar a lista quando a categoria não rende o suficiente.
+            const [resCategoria, resGeral, infoParcelamento] = await Promise.all([
+                fetch(`/api/store/products?${paramsCategoria.toString()}`),
+                fetch('/api/store/products?per_page=8'),
                 obterParcelamentoInfo()
             ]);
-            if (!res.ok) return;
-            const data = await res.json();
+            if (!resCategoria.ok) return;
+            const dataCategoria = await resCategoria.json();
+            const dataGeral = resGeral.ok ? await resGeral.json() : { produtos: [] };
 
-            const relacionados = (data.produtos || []).filter(p => p.nome !== nomeAtual).slice(0, 4);
+            const vistos = new Set();
+            const relacionados = [];
+            for (const p of [...(dataCategoria.produtos || []), ...(dataGeral.produtos || [])]) {
+                if (p.nome === nomeAtual || vistos.has(p.id)) continue;
+                vistos.add(p.id);
+                relacionados.push(p);
+                if (relacionados.length === 4) break;
+            }
             if (relacionados.length === 0) return;
 
             container.innerHTML = relacionados.map(p => `
