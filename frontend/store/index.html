@@ -8,9 +8,9 @@
 {% block og_url %}https://lojafpfitness.com.br/store{% endblock %}
 
 {% block content %}
-<!-- Promo Banner (arte pronta com o cupom de primeira compra) -->
-<a href="/store/produtos" class="d-none d-block" id="promoBanner" title="Ver coleção">
-    <img src="/static/img/banner_frete_gratis.jpg?v=1" alt="Frete grátis nas compras acima de R$450,00 e parcelamento em até 3x sem juros no cartão" class="w-100 d-block">
+<!-- Promo Banner (destaque de produto - Macacão Varsiva) -->
+<a href="/store/produto/1240" class="d-block" id="promoBanner" title="Ver Macacão Varsiva">
+    <img src="/static/img/banner_macacao_varsiva.jpg?v=1" alt="Macacão modelador Varsiva, com recorte nas costas e tecido que respira e não marca" class="w-100 d-block">
 </a>
 
 <!-- Barra de Confiança -->
@@ -505,13 +505,6 @@
                 perkAvaliacaoEl.textContent = `+${primeiraAvaliacao.percent}% OFF`;
             }
 
-            const banner = document.getElementById('promoBanner');
-            if (promoPrimeiraCompra && promoPrimeiraCompra.ativo && promoPrimeiraCompra.codigo) {
-                banner.classList.remove('d-none');
-            } else {
-                banner.classList.add('d-none');
-            }
-
             // Badge de frete usa o valor minimo real configurado (nunca hardcoded, pra nao
             // ficar desatualizado se o valor mudar).
             const freteBadge = document.getElementById('trustBadgeFrete');
@@ -520,9 +513,6 @@
             }
         } catch (e) {
             console.error('Erro ao carregar promos:', e);
-            // Hide on error
-            const banner = document.getElementById('promoBanner');
-            if (banner) banner.classList.add('d-none');
         }
     }
 
