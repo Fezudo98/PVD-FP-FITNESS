@@ -235,7 +235,7 @@ async function loadProducts() {
         const container = document.getElementById('productsContainer');
         if (!container) return;
 
-        if (currentPage === 1) container.innerHTML = '';
+        container.innerHTML = '';
 
         if (data.categorias) renderCategoriesSidebar(data.categorias);
         if (data.tamanhos_disponiveis) renderSizeFilters(data.tamanhos_disponiveis);
@@ -253,30 +253,56 @@ async function loadProducts() {
                 </div>
             `).join('');
 
-            container.insertAdjacentHTML('beforeend', html);
-
-            // Handle Load More button
-            const loadMoreBtn = document.getElementById('loadMoreBtn');
-            if (loadMoreBtn) {
-                loadMoreBtn.style.display = data.pagina_atual < data.total_paginas ? 'inline-block' : 'none';
-            }
+            container.innerHTML = html;
         } else {
-            if (currentPage === 1) {
-                container.innerHTML = '<div class="col-12 text-center text-muted py-5"><p class="mb-0">Nenhum produto encontrado com esses filtros.</p></div>';
-            }
-            const loadMoreBtn = document.getElementById('loadMoreBtn');
-            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+            container.innerHTML = '<div class="col-12 text-center text-muted py-5"><p class="mb-0">Nenhum produto encontrado com esses filtros.</p></div>';
         }
+
+        renderPagination(data.pagina_atual, data.total_paginas);
     } catch (error) {
         console.error('Erro ao carregar produtos:', error);
-        if (currentPage === 1) {
-            const container = document.getElementById('productsContainer');
-            if (container) container.innerHTML = '<div class="col-12 text-center text-danger"><p>Erro ao carregar produtos.</p></div>';
-        }
+        const container = document.getElementById('productsContainer');
+        if (container) container.innerHTML = '<div class="col-12 text-center text-danger"><p>Erro ao carregar produtos.</p></div>';
+        const paginationEl = document.getElementById('paginationContainer');
+        if (paginationEl) paginationEl.innerHTML = '';
     }
 }
 
-function loadMore() {
-    currentPage++;
+// Paginação numérica: sempre mostra primeira, última, a atual e as vizinhas, com "..." pro
+// resto - evita uma fileira de 30 botões quando o catálogo cresce, sem perder a navegação
+// direta que o "Carregar Mais" infinito não dava (voltar pra uma página especifica).
+function renderPagination(paginaAtual, totalPaginas) {
+    const container = document.getElementById('paginationContainer');
+    if (!container) return;
+
+    if (!totalPaginas || totalPaginas <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const paginas = new Set([1, totalPaginas, paginaAtual, paginaAtual - 1, paginaAtual + 1]);
+    const paginasOrdenadas = [...paginas].filter(p => p >= 1 && p <= totalPaginas).sort((a, b) => a - b);
+
+    let html = `<button ${paginaAtual === 1 ? 'disabled' : ''} onclick="irParaPagina(${paginaAtual - 1})" title="Anterior"><i class="fa-solid fa-chevron-left"></i></button>`;
+
+    let anterior = 0;
+    for (const p of paginasOrdenadas) {
+        if (p - anterior > 1) {
+            html += `<span class="pagination-ellipsis">&hellip;</span>`;
+        }
+        html += `<button class="${p === paginaAtual ? 'active' : ''}" onclick="irParaPagina(${p})">${p}</button>`;
+        anterior = p;
+    }
+
+    html += `<button ${paginaAtual === totalPaginas ? 'disabled' : ''} onclick="irParaPagina(${paginaAtual + 1})" title="Próxima"><i class="fa-solid fa-chevron-right"></i></button>`;
+
+    container.innerHTML = html;
+}
+
+function irParaPagina(pagina) {
+    if (pagina < 1) return;
+    currentPage = pagina;
     loadProducts();
+    const container = document.getElementById('productsContainer');
+    if (container) container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }

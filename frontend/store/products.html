@@ -8,15 +8,21 @@
 {% block og_url %}https://lojafpfitness.com.br/store/produtos{% endblock %}
 
 {% block content %}
-<section class="py-4 py-md-5 bg-light" style="min-height: 80vh;">
+<section class="py-5 bg-white" style="min-height: 80vh;">
     <div class="container py-3 py-md-4">
-        <nav aria-label="breadcrumb" class="small mb-2">
+        <nav aria-label="breadcrumb" class="small mb-3">
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="/store" class="text-decoration-none text-muted">Início</a></li>
                 <li class="breadcrumb-item active text-dark fw-semibold" aria-current="page">Produtos</li>
             </ol>
         </nav>
-        <h1 class="fw-bold text-dark mb-4" style="font-family: 'Outfit', sans-serif;">Produtos</h1>
+
+        <div class="text-center mb-5">
+            <div class="text-uppercase small fw-bold text-warning mb-2" style="letter-spacing: 2px;">Catálogo Completo</div>
+            <h1 class="display-5 fw-bold text-dark mb-2" style="font-family: 'Outfit', sans-serif;">Nossos Produtos</h1>
+            <p class="text-muted lead" style="font-weight: 300;">Peças pensadas pra acompanhar seu ritmo, do treino ao dia a dia.</p>
+            <div class="mx-auto bg-warning mt-3" style="width: 60px; height: 3px; border-radius: 3px;"></div>
+        </div>
 
         <div class="row g-4">
             <!-- Sidebar de filtros: coluna fixa em telas grandes (lg+), acordeao recolhivel no
@@ -30,7 +36,7 @@
                     <i class="fa-solid fa-sliders me-2"></i>Filtros
                 </button>
                 <div class="collapse d-lg-block" id="filtrosCollapse">
-                    <div class="bg-white rounded-4 shadow-sm border p-4">
+                    <div class="bg-white rounded-4 p-4 filters-sidebar-card">
                         <!-- Categorias -->
                         <div class="mb-4">
                             <h6 class="fw-bold text-uppercase small mb-3" style="letter-spacing: 1px;">Categorias</h6>
@@ -180,6 +186,16 @@
                         color: var(--primary-gold);
                     }
 
+                    .category-link {
+                        transition: color 0.15s ease, padding-left 0.15s ease;
+                        display: inline-block;
+                    }
+
+                    .category-link:hover {
+                        color: var(--secondary-gold) !important;
+                        padding-left: 3px;
+                    }
+
                     .category-link.active {
                         color: var(--primary-gold) !important;
                         font-weight: 700 !important;
@@ -189,12 +205,31 @@
                         cursor: pointer;
                     }
 
-                    .filter-chip {
-                        background: #fff;
+                    .form-check-input:checked {
+                        background-color: var(--primary-gold);
+                        border-color: var(--primary-gold);
+                    }
+
+                    .form-check-input:focus {
+                        border-color: var(--primary-gold);
+                        box-shadow: 0 0 0 0.2rem rgba(224, 180, 49, 0.25);
+                    }
+
+                    /* Sombra suave e generosa em vez do shadow-sm chapado do Bootstrap - mesmo
+                       espírito visual dos cards de produto já refinados no resto do site. */
+                    .filters-sidebar-card {
                         border: 1px solid var(--border-color);
+                        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+                    }
+
+                    .filter-chip {
+                        background: rgba(224, 180, 49, 0.12);
+                        border: 1px solid rgba(224, 180, 49, 0.35);
+                        color: var(--secondary-gold);
                         border-radius: 50px;
                         padding: 0.3rem 0.9rem;
                         font-size: 0.8rem;
+                        font-weight: 600;
                         display: inline-flex;
                         align-items: center;
                         gap: 0.5rem;
@@ -205,7 +240,55 @@
                         background: none;
                         padding: 0;
                         line-height: 1;
-                        color: #999;
+                        color: var(--secondary-gold);
+                        opacity: 0.65;
+                        transition: opacity 0.15s ease;
+                    }
+
+                    .filter-chip button:hover {
+                        opacity: 1;
+                    }
+
+                    /* Paginação numérica - número ativo em destaque dourado, resto neutro. */
+                    .pagination-premium {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        gap: 0.4rem;
+                        flex-wrap: wrap;
+                    }
+
+                    .pagination-premium button {
+                        min-width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        border: 1px solid var(--border-color);
+                        background: #fff;
+                        color: var(--text-primary);
+                        font-weight: 600;
+                        font-size: 0.9rem;
+                        transition: all 0.15s ease;
+                    }
+
+                    .pagination-premium button:hover:not(:disabled):not(.active) {
+                        border-color: var(--primary-gold);
+                        color: var(--secondary-gold);
+                    }
+
+                    .pagination-premium button.active {
+                        background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
+                        border-color: transparent;
+                        color: #000;
+                    }
+
+                    .pagination-premium button:disabled {
+                        opacity: 0.35;
+                        cursor: default;
+                    }
+
+                    .pagination-premium .pagination-ellipsis {
+                        color: var(--border-color);
+                        padding: 0 0.3rem;
                     }
 
                 </style>
@@ -219,11 +302,10 @@
                     </div>
                 </div>
 
-                <!-- Pagination (Simplified) -->
+                <!-- Paginação numérica -->
                 <div class="row mt-5">
-                    <div class="col-12 text-center">
-                        <button class="btn btn-outline-dark rounded-pill px-4" id="loadMoreBtn" onclick="loadMore()"
-                            style="display: none;">Carregar Mais</button>
+                    <div class="col-12">
+                        <div class="pagination-premium" id="paginationContainer"></div>
                     </div>
                 </div>
             </div>
@@ -233,5 +315,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/frontend/js/products.js?v=3"></script>
+<script src="/frontend/js/products.js?v=4"></script>
 {% endblock %}

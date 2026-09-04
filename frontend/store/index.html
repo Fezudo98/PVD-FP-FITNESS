@@ -8,10 +8,308 @@
 {% block og_url %}https://lojafpfitness.com.br/store{% endblock %}
 
 {% block content %}
-<!-- Promo Banner (destaque de produto - Macacão Varsiva) -->
-<a href="/store/produto/1240" class="d-block" id="promoBanner" title="Ver Macacão Varsiva">
-    <img src="/static/img/banner_macacao_varsiva.jpg?v=1" alt="Macacão modelador Varsiva, com recorte nas costas e tecido que respira e não marca" class="w-100 d-block">
-</a>
+<!-- Hero (fotos profissionais da coleção) - em telas grandes, dividido em duas metades: painel
+     de texto fixo à esquerda + fotos alternando à direita (evita esticar a foto por cima da
+     tela inteira, que ficava borrada em monitores largos - cada metade agora exibe a foto
+     numa área bem mais próxima da resolução real dela, sem upscaling perceptível). No mobile
+     continua em tela cheia com o texto sobreposto na própria foto (não cabe dividir ao meio
+     numa tela estreita). Crossfade próprio em vez do componente Carousel do Bootstrap, que
+     travava a transição de forma consistente nesse layout. -->
+<div class="hero-split">
+    <div class="hero-text-panel">
+        <div class="hero-text-eyebrow">Linha Treino</div>
+        <h2 class="hero-text-title">Feito pra acompanhar seu ritmo</h2>
+        <a href="/store/produtos" class="btn hero-text-btn">Ver Coleção</a>
+    </div>
+    <div id="heroCarousel" class="hero-carousel">
+        <div class="hero-carousel-track">
+            <div class="hero-slide active" data-slide="0">
+                <a href="/store/produtos" class="d-block hero-slide-link">
+                    <img src="/static/img/hero_1.jpg?v=2" alt="Coleção FitPro Store" loading="eager" fetchpriority="high">
+                    <div class="hero-slide-overlay">
+                        <div class="hero-slide-eyebrow">Linha Treino</div>
+                        <h2 class="hero-slide-title">Feito pra acompanhar seu ritmo</h2>
+                        <span class="btn hero-slide-btn">Ver Coleção</span>
+                    </div>
+                </a>
+            </div>
+            <div class="hero-slide" data-slide="1">
+                <a href="/store/produtos" class="d-block hero-slide-link">
+                    <img src="/static/img/hero_2.jpg?v=2" alt="Coleção FitPro Store" loading="lazy">
+                    <div class="hero-slide-overlay">
+                        <div class="hero-slide-eyebrow">Linha Treino</div>
+                        <h2 class="hero-slide-title">Feito pra acompanhar seu ritmo</h2>
+                        <span class="btn hero-slide-btn">Ver Coleção</span>
+                    </div>
+                </a>
+            </div>
+            <div class="hero-slide" data-slide="2">
+                <a href="/store/produtos" class="d-block hero-slide-link">
+                    <img src="/static/img/hero_3.jpg?v=2" alt="Coleção FitPro Store" loading="lazy">
+                    <div class="hero-slide-overlay">
+                        <div class="hero-slide-eyebrow">Linha Treino</div>
+                        <h2 class="hero-slide-title">Feito pra acompanhar seu ritmo</h2>
+                        <span class="btn hero-slide-btn">Ver Coleção</span>
+                    </div>
+                </a>
+            </div>
+            <div class="hero-slide" data-slide="3">
+                <a href="/store/produtos" class="d-block hero-slide-link">
+                    <img src="/static/img/hero_4.jpg?v=2" alt="Coleção FitPro Store" loading="lazy">
+                    <div class="hero-slide-overlay">
+                        <div class="hero-slide-eyebrow">Linha Treino</div>
+                        <h2 class="hero-slide-title">Feito pra acompanhar seu ritmo</h2>
+                        <span class="btn hero-slide-btn">Ver Coleção</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+        <button type="button" class="hero-carousel-prev" aria-label="Slide anterior">
+            <span class="hero-carousel-arrow"><i class="fa-solid fa-chevron-left"></i></span>
+        </button>
+        <button type="button" class="hero-carousel-next" aria-label="Próximo slide">
+            <span class="hero-carousel-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+        </button>
+        <div class="hero-carousel-dots">
+            <button type="button" class="hero-dot active" data-slide="0" aria-label="Slide 1"></button>
+            <button type="button" class="hero-dot" data-slide="1" aria-label="Slide 2"></button>
+            <button type="button" class="hero-dot" data-slide="2" aria-label="Slide 3"></button>
+            <button type="button" class="hero-dot" data-slide="3" aria-label="Slide 4"></button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hero-text-panel {
+        display: none;
+    }
+
+    .hero-carousel {
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+    }
+
+    .hero-carousel-track {
+        position: relative;
+        width: 100%;
+        height: min(640px, 62vw);
+        min-height: 320px;
+    }
+
+    @media (min-width: 768px) {
+        .hero-split {
+            display: flex;
+        }
+
+        .hero-text-panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            width: 50%;
+            height: 560px;
+            padding: 0 4rem;
+            background-color: #161616;
+        }
+
+        .hero-carousel {
+            width: 50%;
+            height: 560px;
+        }
+
+        .hero-carousel-track {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* No painel dividido, o texto já vive no painel fixo à esquerda - a legenda sobreposta
+           em cima da própria foto (usada no mobile) fica redundante e some. */
+        .hero-carousel .hero-slide-overlay {
+            display: none;
+        }
+    }
+
+    .hero-slide {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        z-index: 1;
+        pointer-events: none;
+        transition: opacity 0.9s ease;
+    }
+
+    .hero-slide.active {
+        opacity: 1;
+        z-index: 2;
+        pointer-events: auto;
+    }
+
+    .hero-slide-link,
+    .hero-slide-link img {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+
+    .hero-carousel .hero-slide img {
+        object-fit: cover;
+        object-position: center 18%;
+    }
+
+    .hero-slide-link {
+        position: relative;
+        color: inherit;
+    }
+
+    .hero-slide-overlay {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        padding: 3rem 2.5rem 2.5rem;
+        background: linear-gradient(0deg, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0) 100%);
+        color: #fff;
+    }
+
+    .hero-slide-eyebrow {
+        color: var(--primary-gold);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-size: 0.8rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .hero-slide-title {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 700;
+        font-size: clamp(1.6rem, 4vw, 2.6rem);
+        max-width: 520px;
+        margin-bottom: 1.1rem;
+        line-height: 1.15;
+    }
+
+    .hero-slide-btn {
+        background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
+        color: #000;
+        font-weight: 700;
+        border-radius: 50px;
+        padding: 0.65rem 1.75rem;
+    }
+
+    .hero-text-eyebrow {
+        color: var(--primary-gold);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-size: 0.85rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .hero-text-title {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 700;
+        font-size: clamp(1.8rem, 2.8vw, 2.8rem);
+        color: #fff;
+        max-width: 420px;
+        margin-bottom: 1.5rem;
+        line-height: 1.2;
+    }
+
+    .hero-text-btn {
+        background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
+        color: #000;
+        font-weight: 700;
+        border-radius: 50px;
+        padding: 0.75rem 2.25rem;
+        align-self: flex-start;
+    }
+
+    .hero-carousel-prev,
+    .hero-carousel-next {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 3;
+        border: none;
+        background: none;
+        padding: 0;
+    }
+
+    .hero-carousel-prev {
+        left: 1.25rem;
+    }
+
+    .hero-carousel-next {
+        right: 1.25rem;
+    }
+
+    .hero-carousel-arrow {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.35);
+        color: #fff;
+        font-size: 0.9rem;
+        transition: background 0.15s ease;
+    }
+
+    .hero-carousel-prev:hover .hero-carousel-arrow,
+    .hero-carousel-next:hover .hero-carousel-arrow {
+        background: rgba(0, 0, 0, 0.55);
+    }
+
+    .hero-carousel-dots {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 1rem;
+        z-index: 3;
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .hero-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        border: none;
+        background: var(--primary-gold);
+        opacity: 0.5;
+        padding: 0;
+        transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .hero-dot.active {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+
+    @media (max-width: 576px) {
+        .hero-slide-overlay {
+            padding: 1.75rem 1.25rem 1.5rem;
+        }
+
+        .hero-carousel-arrow {
+            width: 34px;
+            height: 34px;
+            font-size: 0.75rem;
+        }
+
+        .hero-carousel-prev {
+            left: 0.5rem;
+        }
+
+        .hero-carousel-next {
+            right: 0.5rem;
+        }
+    }
+</style>
 
 <!-- Barra de Confiança -->
 <section class="py-4 bg-white border-bottom trust-bar">
@@ -42,13 +340,17 @@
         position: relative;
     }
 
+    .trust-bar-item {
+        padding: 0 1.5rem;
+    }
+
     .trust-bar-item:not(:last-child)::after {
         content: '';
         position: absolute;
         right: 0;
         top: 50%;
         transform: translateY(-50%);
-        height: 32px;
+        height: 40px;
         width: 1px;
         background: #e9ecef;
     }
@@ -73,7 +375,7 @@
 </style>
 
 <!-- Ofertas (só aparece se houver ao menos 1 produto em promoção agora) -->
-<section id="ofertas" class="py-4 mt-3 d-none">
+<section id="ofertas" class="py-5 d-none">
     <div class="container py-4">
         <div class="text-center mb-5">
             <h2 class="display-5 fw-bold text-dark mb-2" style="font-family: 'Outfit', sans-serif;">
@@ -88,7 +390,7 @@
 </section>
 
 <!-- Featured Products -->
-<section id="featured" class="py-4 mt-3">
+<section id="featured" class="py-5">
     <div class="container py-4">
         <div class="text-center mb-5">
             <h2 class="display-5 fw-bold text-dark mb-2" style="font-family: 'Outfit', sans-serif;">
@@ -114,13 +416,14 @@
 </section>
 
 <!-- Categories/Banner -->
-<section class="py-4 bg-light mb-5">
-    <div class="container pb-4">
+<section class="py-5 bg-light">
+    <div class="container py-4">
         <div class="row g-4">
             <div class="col-md-6">
                 <div class="card bg-dark text-white border-0 overflow-hidden h-100 position-relative category-card shadow-sm rounded-4">
-                    <img src="/static/img/macacao.jpg" class="card-img opacity-50 transition-scale" alt="Macacão"
+                    <img src="/static/img/macacao.jpg" class="card-img transition-scale" alt="Macacão"
                         style="height: 320px; object-fit: cover;">
+                    <div class="category-card-gradient"></div>
                     <div class="card-img-overlay d-flex flex-column justify-content-center align-items-start p-5 z-2">
                         <h3 class="card-title display-6 fw-bold">Macacão</h3>
                         <p class="card-text fs-5" style="font-weight: 300;">A peça mais amada pelas nossas clientes.</p>
@@ -130,8 +433,9 @@
             </div>
             <div class="col-md-6">
                 <div class="card bg-dark text-white border-0 overflow-hidden h-100 position-relative category-card shadow-sm rounded-4">
-                    <img src="/static/img/blusa_slim.jpg" class="card-img opacity-50 transition-scale" alt="Blusa Slim"
+                    <img src="/static/img/blusa_slim.jpg" class="card-img transition-scale" alt="Blusa Slim"
                         style="height: 320px; object-fit: cover;">
+                    <div class="category-card-gradient"></div>
                     <div class="card-img-overlay d-flex flex-column justify-content-center align-items-start p-5 z-2">
                         <h3 class="card-title display-6 fw-bold">Blusa Slim</h3>
                         <p class="card-text fs-5" style="font-weight: 300;">Conforto e caimento perfeito pro treino.</p>
@@ -142,6 +446,18 @@
         </div>
     </div>
 </section>
+
+<style>
+    /* Overlay em gradiente (escuro embaixo pro texto, claro em cima mostrando a foto de
+       verdade) em vez da opacidade lisa anterior, que apagava a foto inteira por igual -
+       acabamento de vitrine editorial em vez de "foto desbotada". */
+    .category-card-gradient {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(0deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.05) 100%);
+        z-index: 1;
+    }
+</style>
 
 <!-- Cliente Real -->
 <section class="py-5 cliente-real-section">
@@ -380,9 +696,49 @@
 
 {% block scripts %}
 <script>
+    // Hero rotativo: crossfade próprio (setInterval + opacity) em vez do Carousel do Bootstrap,
+    // que travava a transição de forma consistente nesse layout - ver comentário no HTML.
+    function initHeroCarousel() {
+        const carousel = document.getElementById('heroCarousel');
+        if (!carousel) return;
+        const slides = [...carousel.querySelectorAll('.hero-slide')];
+        const dots = [...carousel.querySelectorAll('.hero-dot')];
+        if (slides.length === 0) return;
+
+        let indiceAtual = 0;
+        let timer = null;
+
+        function irParaSlide(indice) {
+            indiceAtual = (indice + slides.length) % slides.length;
+            slides.forEach((s, i) => s.classList.toggle('active', i === indiceAtual));
+            dots.forEach((d, i) => d.classList.toggle('active', i === indiceAtual));
+        }
+
+        function reiniciarAutoplay() {
+            clearInterval(timer);
+            timer = setInterval(() => irParaSlide(indiceAtual + 1), 5000);
+        }
+
+        carousel.querySelector('.hero-carousel-next')?.addEventListener('click', () => {
+            irParaSlide(indiceAtual + 1);
+            reiniciarAutoplay();
+        });
+        carousel.querySelector('.hero-carousel-prev')?.addEventListener('click', () => {
+            irParaSlide(indiceAtual - 1);
+            reiniciarAutoplay();
+        });
+        dots.forEach((dot, i) => dot.addEventListener('click', () => {
+            irParaSlide(i);
+            reiniciarAutoplay();
+        }));
+
+        reiniciarAutoplay();
+    }
+
     let promoPrimeiraCompra = null;
 
     document.addEventListener('DOMContentLoaded', async function () {
+        initHeroCarousel();
         loadOfertas();
         loadFeaturedProducts();
         checkParcelamentoBadge();

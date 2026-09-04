@@ -170,9 +170,13 @@ let clienteRecompensaAniversarioCheckout = null; // Desconto automático de "ani
 
 function updateCartCount() {
     const count = cart.reduce((acc, item) => acc + item.quantity, 0);
-    // Update all badges (mobile and desktop)
+    // Update all badges (mobile and desktop) - some com "0" fixo o tempo todo poluía a navbar
+    // com carrinho vazio (padrão comum em e-commerce é só mostrar o selo quando há algo).
     const badges = document.querySelectorAll('.cart-count-badge');
-    badges.forEach(badge => badge.textContent = count);
+    badges.forEach(badge => {
+        badge.textContent = count;
+        badge.style.display = count > 0 ? '' : 'none';
+    });
 }
 
 function addToCart(productId, nome, price, image, stock = 999) {
@@ -911,15 +915,18 @@ async function initStoreMarquee() {
     const track = document.getElementById('storeMarqueeTrack');
     if (!track) return;
 
+    // Cada item leva um ícone (mesma linguagem visual da barra de confiança e dos cards de
+    // produto, que já usam ícone + texto em vez de texto puro) - ajuda a escanear a barra
+    // rolando de relance, sem precisar ler a frase inteira.
     const itens = [];
     try {
         const res = await fetch('/api/store/config');
         const config = await res.json();
         if (config.desconto_frete) {
-            itens.push(`Frete grátis em compras acima de R$ ${formatBRL(config.desconto_frete.valor_minimo)}`);
+            itens.push({ icone: 'fa-truck-fast', texto: `Frete grátis em compras acima de R$ ${formatBRL(config.desconto_frete.valor_minimo)}` });
         }
         if (config.primeira_compra && config.primeira_compra.ativo && config.primeira_compra.codigo) {
-            itens.push(`${config.primeira_compra.percent}% OFF na primeira compra com o cupom ${config.primeira_compra.codigo}`);
+            itens.push({ icone: 'fa-gift', texto: `${config.primeira_compra.percent}% OFF na primeira compra com o cupom ${config.primeira_compra.codigo}` });
         }
     } catch (e) {
         console.error('Erro ao carregar config da marquee:', e);
@@ -931,7 +938,7 @@ async function initStoreMarquee() {
         const opcoes = dataParcelas.opcoes || [];
         if (opcoes.length > 0) {
             const maxParcelas = opcoes[opcoes.length - 1].parcelas;
-            itens.push(`Parcelamento em até ${maxParcelas}x no cartão`);
+            itens.push({ icone: 'fa-credit-card', texto: `Parcelamento em até ${maxParcelas}x no cartão` });
         }
     } catch (e) {
         console.error('Erro ao carregar parcelamento da marquee:', e);
@@ -944,7 +951,7 @@ async function initStoreMarquee() {
 
     // Duplica a lista uma vez: a animação desloca -50% do track, então a segunda cópia
     // emenda exatamente onde a primeira termina, sem "salto" visual no loop.
-    const htmlItens = itens.map(txt => `<span class="store-marquee-item">${txt}</span>`).join('');
+    const htmlItens = itens.map(item => `<span class="store-marquee-item"><i class="fa-solid ${item.icone}"></i>${item.texto}</span>`).join('');
     track.innerHTML = htmlItens + htmlItens;
 }
 

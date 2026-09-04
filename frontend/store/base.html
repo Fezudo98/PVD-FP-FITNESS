@@ -115,8 +115,21 @@
 
         /* Menu principal com acabamento editorial (maiúsculas + letter-spacing) e sublinhado
            dourado no hover/página ativa via box-shadow inset - evita usar ::after, que colidiria
-           com o caret do dropdown "Categorias" (Bootstrap já usa ::after pra desenhar a seta). */
+           com o caret do dropdown "Categorias" (Bootstrap já usa ::after pra desenhar a seta).
+           white-space:nowrap evita "Mais Vendidos" quebrar em duas linhas - um item mais alto
+           que os outros desalinhava verticalmente tudo que vinha depois dele na barra (ex:
+           "Políticas" ficava mais baixo que o ícone de busca ao lado). align-items:center nos
+           dois contêineres flex reforça o alinhamento independente de qualquer variação de
+           altura entre os itens. */
+        .store-navbar .navbar-collapse,
+        .store-navbar .navbar-nav {
+            align-items: center;
+        }
+
         .store-navbar .navbar-nav .nav-link {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
             color: var(--text-primary);
             font-weight: 600;
             font-size: 0.82rem;
@@ -220,7 +233,7 @@
 
         /* No mobile a navbar vira um menu colapsado vertical - a grade de 3 colunas fica
            espremida demais ali dentro, então volta a ser uma lista simples de 1 coluna. */
-        @media (max-width: 991.98px) {
+        @media (max-width: 1199.98px) {
             #navCategoriasMenu.mega-menu-categorias {
                 min-width: 0;
                 max-width: none;
@@ -294,11 +307,17 @@
         .store-marquee-item {
             display: inline-flex;
             align-items: center;
+            gap: 0.5rem;
             font-size: 0.75rem;
             font-weight: 700;
             letter-spacing: 0.5px;
             text-transform: uppercase;
             white-space: nowrap;
+        }
+
+        .store-marquee-item i {
+            font-size: 0.8rem;
+            opacity: 0.85;
         }
 
         .store-marquee-item::after {
@@ -896,7 +915,7 @@
                     <!-- Itens injetados via JS (store.js) com dados reais (frete/parcelamento) -->
                 </div>
             </div>
-            <nav class="navbar navbar-expand-lg navbar-light store-navbar py-2">
+            <nav class="navbar navbar-expand-xl navbar-light store-navbar py-2">
             <div class="container">
                 <a class="navbar-brand d-flex align-items-center gap-2" href="/store">
                     <img src="/static/img/logo.png?v=4" alt="FitPro Store" style="max-height: 52px;"
@@ -905,14 +924,14 @@
 
                 <div class="d-flex align-items-center ms-auto">
                     <!-- Mobile Search Toggle (visible < lg, fica ao lado do carrinho mobile) -->
-                    <button type="button" class="btn btn-link text-dark position-relative d-lg-none me-1 store-search-toggle"
+                    <button type="button" class="btn btn-link text-dark position-relative d-xl-none me-1 store-search-toggle"
                         title="Buscar produtos" aria-label="Buscar produtos" aria-expanded="false"
                         aria-controls="storeSearchBar">
                         <i class="fa-solid fa-magnifying-glass fa-lg"></i>
                     </button>
 
                     <!-- Mobile Cart (Visible < lg) -->
-                    <a href="/store/carrinho" class="btn btn-link text-dark position-relative d-lg-none me-2"
+                    <a href="/store/carrinho" class="btn btn-link text-dark position-relative d-xl-none me-2"
                         id="cartBtnMobile">
                         <i class="fa-solid fa-cart-shopping fa-lg"></i>
                         <span
@@ -940,19 +959,19 @@
                         <li class="nav-item"><a class="nav-link" href="/store/politicas">Políticas</a></li>
                     </ul>
 
-                    <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-4">
                         <!-- Desktop Search Toggle -->
-                        <button type="button" class="btn btn-link text-dark position-relative d-none d-lg-block store-search-toggle"
+                        <button type="button" class="btn btn-link text-dark position-relative d-none d-xl-block store-search-toggle"
                             title="Buscar produtos" aria-label="Buscar produtos" aria-expanded="false"
                             aria-controls="storeSearchBar">
                             <i class="fa-solid fa-magnifying-glass fa-lg"></i>
                         </button>
                         <!-- Desktop Favorites -->
-                        <a href="/store/conta" onclick="setTimeout(()=>document.getElementById('favorites-tab')?.click(), 500)" class="btn btn-link text-dark position-relative d-none d-lg-block" title="Meus Favoritos">
+                        <a href="/store/conta" onclick="setTimeout(()=>document.getElementById('favorites-tab')?.click(), 500)" class="btn btn-link text-dark position-relative d-none d-xl-block" title="Meus Favoritos">
                             <i class="fa-regular fa-heart fa-lg text-danger"></i>
                         </a>
                         <!-- Desktop Cart (Hidden < lg) -->
-                        <a href="/store/carrinho" class="btn btn-link text-dark position-relative d-none d-lg-block"
+                        <a href="/store/carrinho" class="btn btn-link text-dark position-relative d-none d-xl-block"
                             id="cartBtn">
                             <i class="fa-solid fa-cart-shopping fa-lg"></i>
                             <span
@@ -1153,7 +1172,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Device ID do Mercado Pago: reduz falsos positivos do antifraude deles no checkout -->
     <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
-    <script src="/frontend/js/store.js?v=22"></script>
+    <script src="/frontend/js/store.js?v=23"></script>
     {% block scripts %}{% endblock %}
 </body>
 
