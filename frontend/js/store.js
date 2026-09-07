@@ -866,6 +866,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initStoreMarquee().then(ajustarOffsetBarraFixa);
     initNavCategorias();
     initSemJurosBanner();
+    initHolidayNotice();
     marcarNavAtiva();
     if (window.location.pathname.includes('/checkout')) {
         autoFillCheckout();
@@ -899,6 +900,37 @@ async function initSemJurosBanner() {
 function closeSemJurosBanner() {
     document.getElementById('semJurosBanner').classList.add('d-none');
     localStorage.setItem('semJurosBannerFechado', '1');
+}
+
+// Aviso de feriado sem entrega por motoboy: lista de datas (feriados/pontos facultativos sem
+// entrega expressa), cada uma com sua mensagem. Comparação usa a data de hoje no horário de
+// Brasília (não o fuso do navegador do cliente), então funciona igual pra qualquer visitante.
+// Passado o dia, a condição simplesmente deixa de bater e o aviso some sozinho - não precisa
+// remover código nem lembrar de tirar o aviso do ar depois do feriado.
+const HOLIDAY_NOTICES = [
+    { data: '2026-09-07', texto: 'Hoje é feriado (Independência do Brasil) e não haverá entregas por motoboy. Pedidos serão despachados no próximo dia útil.' },
+];
+
+function initHolidayNotice() {
+    const banner = document.getElementById('holidayNoticeBar');
+    if (!banner) return;
+
+    const hojeBrasil = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+    const feriado = HOLIDAY_NOTICES.find(h => h.data === hojeBrasil);
+    if (!feriado) return;
+
+    if (localStorage.getItem('holidayNoticeFechado') === feriado.data) return;
+
+    document.getElementById('holidayNoticeText').textContent = feriado.texto;
+    banner.classList.remove('d-none');
+    ajustarOffsetBarraFixa();
+}
+
+function closeHolidayNotice() {
+    const hojeBrasil = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+    document.getElementById('holidayNoticeBar').classList.add('d-none');
+    localStorage.setItem('holidayNoticeFechado', hojeBrasil);
+    ajustarOffsetBarraFixa();
 }
 
 window.addEventListener('load', ajustarOffsetBarraFixa);

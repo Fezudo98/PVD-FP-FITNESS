@@ -279,6 +279,52 @@
             }
         }
 
+        /* Aviso de feriado (sem entrega por motoboy hoje). Fica dentro do bloco fixo do topo
+           (.store-top-fixed), acima da barra de promoções, pois é informação urgente do dia -
+           precisa aparecer imediatamente, sem exigir rolagem. A altura desse bloco é medida
+           dinamicamente por ajustarOffsetBarraFixa() em store.js, então some/aparece sem
+           precisar mexer em nenhum outro offset. O JS só exibe esse aviso na data exata do
+           feriado configurada (holidayNoticeData em store.js) - passado esse dia, some sozinho. */
+        .holiday-notice-bar {
+            background: linear-gradient(135deg, #b91c1c, #7f1d1d);
+            color: #fff;
+        }
+
+        .holiday-notice-bar .holiday-notice-text {
+            font-size: 0.85rem;
+        }
+
+        .holiday-notice-bar .holiday-notice-close {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            line-height: 1;
+            color: #fff;
+            opacity: 0.7;
+            cursor: pointer;
+            padding: 0 0.25rem;
+        }
+
+        .holiday-notice-bar .holiday-notice-close:hover {
+            opacity: 1;
+        }
+
+        @media (max-width: 576px) {
+            .holiday-notice-bar .holiday-notice-text {
+                font-size: 0.78rem;
+            }
+
+            .holiday-notice-bar .holiday-notice-close {
+                position: static;
+                transform: none;
+                margin-left: 0.25rem;
+            }
+        }
+
         /* Barra de promoções rolando no topo (frete/parcelamento), fixa acima da navbar. */
         .store-top-fixed {
             position: fixed;
@@ -910,6 +956,13 @@
     <div class="d-flex flex-column min-vh-100">
         <!-- Barra de promoções + Navbar (bloco fixo no topo) -->
         <div class="store-top-fixed">
+            <div id="holidayNoticeBar" class="holiday-notice-bar d-none">
+                <div class="container d-flex align-items-center justify-content-center gap-2 position-relative py-2">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span id="holidayNoticeText" class="holiday-notice-text fw-bold text-center"></span>
+                    <button type="button" class="holiday-notice-close" aria-label="Fechar" onclick="closeHolidayNotice()">&times;</button>
+                </div>
+            </div>
             <div class="store-marquee" id="storeMarquee">
                 <div class="store-marquee-track" id="storeMarqueeTrack">
                     <!-- Itens injetados via JS (store.js) com dados reais (frete/parcelamento) -->
@@ -1172,7 +1225,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Device ID do Mercado Pago: reduz falsos positivos do antifraude deles no checkout -->
     <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
-    <script src="/frontend/js/store.js?v=23"></script>
+    <script src="/frontend/js/store.js?v=24"></script>
     {% block scripts %}{% endblock %}
 </body>
 
