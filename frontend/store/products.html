@@ -8,7 +8,7 @@
 {% block og_url %}https://lojafpfitness.com.br/store/produtos{% endblock %}
 
 {% block content %}
-<section class="py-5 bg-white" style="min-height: 80vh;">
+<section class="py-5" style="min-height: 80vh;">
     <div class="container py-3 py-md-4">
         <nav aria-label="breadcrumb" class="small mb-3">
             <ol class="breadcrumb mb-0">
@@ -19,7 +19,7 @@
 
         <div class="text-center mb-5">
             <div class="text-uppercase small fw-bold text-warning mb-2" style="letter-spacing: 2px;">Catálogo Completo</div>
-            <h1 class="display-5 fw-bold text-dark mb-2" style="font-family: 'Outfit', sans-serif;">Nossos Produtos</h1>
+            <h1 class="display-5 fw-bold mb-2">Nossos Produtos</h1>
             <p class="text-muted lead" style="font-weight: 300;">Peças pensadas pra acompanhar seu ritmo, do treino ao dia a dia.</p>
             <div class="mx-auto bg-warning mt-3" style="width: 60px; height: 3px; border-radius: 3px;"></div>
         </div>
@@ -99,9 +99,8 @@
                             </button>
                         </div>
                         <div class="dropdown" style="flex: 0 0 auto;">
-                            <button class="btn premium-filter rounded-pill shadow-sm border-0 py-2 px-4 text-dark fw-bold dropdown-toggle sort-dropdown-btn"
-                                type="button" id="sortDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false"
-                                style="background-color: #ffffff;">
+                            <button class="btn premium-filter rounded-pill shadow-sm border-0 py-2 px-4 fw-bold dropdown-toggle sort-dropdown-btn"
+                                type="button" id="sortDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
                                 <span id="sortDropdownLabel">Mais Vendidos</span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end sort-dropdown-menu" aria-labelledby="sortDropdownBtn">
@@ -118,29 +117,20 @@
                 <div class="d-flex flex-wrap gap-2 mb-3" id="activeFiltersChips"></div>
 
                 <style>
-                    /* /css/style.css define .form-control com tema escuro globalmente (usado no
-                       painel admin) - isolado aqui pra nao vazar pros campos de preco da loja. */
-                    .price-range-input {
-                        background-color: #ffffff !important;
-                        color: var(--text-primary) !important;
-                        border: 1px solid var(--border-color) !important;
-                    }
-
-                    .price-range-input::placeholder {
-                        color: #adb5bd;
-                    }
-
-                    .price-range-input:focus {
-                        background-color: #ffffff !important;
-                        color: var(--text-primary) !important;
-                        border-color: var(--primary-gold) !important;
-                        box-shadow: 0 0 0 0.2rem rgba(224, 180, 49, 0.25) !important;
+                    .premium-filter {
+                        background-color: var(--bg-panel);
+                        color: var(--cream);
                     }
 
                     .premium-filter:focus {
                         border-color: var(--primary-gold) !important;
                         box-shadow: 0 0 0 0.25rem rgba(224, 180, 49, 0.25) !important;
                         outline: none;
+                    }
+
+                    .sort-dropdown-btn {
+                        background-color: var(--bg-panel) !important;
+                        color: var(--cream) !important;
                     }
 
                     /* Dropdown de ordenação - substitui o <select> nativo (cujo menu aberto o
@@ -263,7 +253,7 @@
                         height: 40px;
                         border-radius: 50%;
                         border: 1px solid var(--border-color);
-                        background: #fff;
+                        background: var(--bg-panel);
                         color: var(--text-primary);
                         font-weight: 600;
                         font-size: 0.9rem;

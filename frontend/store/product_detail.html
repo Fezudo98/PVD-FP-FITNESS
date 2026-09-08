@@ -198,7 +198,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow-lg">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold" style="font-family: 'Outfit', sans-serif;">Avaliar Produto</h5>
+                <h5 class="modal-title fw-bold">Avaliar Produto</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body pt-2">
@@ -278,7 +278,7 @@
         object-fit: cover;
         border-radius: 8px;
         cursor: pointer;
-        border: 2px solid #dee2e6;
+        border: 2px solid var(--border-color);
     }
 
     /* Product Zoom Styles - Desktop Only (pan-zoom on hover) */
@@ -334,7 +334,6 @@
        .product-card-minimal-*): tipografia discreta, sem pílulas/sombras pesadas, dourado da
        marca em vez do amarelo padrão do Bootstrap. */
     .product-detail-name {
-        font-family: 'Outfit', sans-serif;
         font-size: clamp(1.4rem, 2.6vw, 1.9rem);
         font-weight: 700;
         line-height: 1.2;
@@ -427,12 +426,13 @@
     }
 
     .product-detail-btn-primary {
-        background: var(--text-primary);
-        color: #fff;
+        background: var(--steel);
+        border-color: var(--border-color) !important;
+        color: var(--text-primary);
     }
 
     @media (hover: hover) {
-        .product-detail-btn-primary:hover { opacity: 0.88; color: #fff; }
+        .product-detail-btn-primary:hover { background: var(--surface-card); color: var(--text-primary); }
     }
 
     .product-detail-btn-accent {
@@ -466,9 +466,9 @@
     }
 
     .btn-check:checked + .product-detail-size-btn {
-        background: var(--text-primary);
-        border-color: var(--text-primary);
-        color: #fff;
+        background: var(--primary-gold);
+        border-color: var(--primary-gold);
+        color: #1a1410;
     }
 </style>
 
@@ -536,7 +536,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 rounded-4 shadow-lg">
             <div class="modal-header">
-                <h5 class="modal-title fw-bold" style="font-family: 'Outfit', sans-serif;">
+                <h5 class="modal-title fw-bold">
                     <i class="fas fa-ruler-combined me-2" style="color: var(--primary-gold);"></i>Guia de Medidas
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>

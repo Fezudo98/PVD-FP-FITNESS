@@ -297,7 +297,7 @@ function renderCartPage() {
                             <img src="${item.image ? '/uploads/' + item.image : 'https://via.placeholder.com/50'}" alt="${item.nome || 'Produto'}" class="w-100 h-100 transition-scale" style="object-fit: cover;">
                         </a>
                         <div>
-                            <h6 class="mb-1 fw-bold" style="font-family: 'Outfit', sans-serif;">
+                            <h6 class="mb-1 fw-bold">
                                 <a href="/store/produto/${item.id}" class="text-dark text-decoration-none hover-warning transition-color">${item.nome || 'Produto sem nome'}</a>
                             </h6>
                             ${item.size ? `<small class="text-muted fw-semibold">Tamanho: ${item.size}</small>` : ''}
@@ -306,10 +306,10 @@ function renderCartPage() {
                 </td>
                 <td class="text-dark fw-semibold">R$ ${formatBRL(price)}</td>
                 <td>
-                    <div class="input-group input-group-sm rounded-pill border overflow-hidden" style="width: 110px; background-color: #f8f9fa;">
-                        <button class="btn btn-light border-0 text-dark fw-bold px-3" onclick="updateQuantity(${item.id}, -1)">-</button>
+                    <div class="input-group input-group-sm rounded-pill border overflow-hidden" style="width: 110px; background-color: var(--steel);">
+                        <button class="btn border-0 text-dark fw-bold px-3" onclick="updateQuantity(${item.id}, -1)">-</button>
                         <input type="text" class="form-control text-center bg-transparent border-0 text-dark fw-bold p-0" value="${quantity}" readonly>
-                        <button class="btn btn-light border-0 text-dark fw-bold px-3" onclick="updateQuantity(${item.id}, 1)">+</button>
+                        <button class="btn border-0 text-dark fw-bold px-3" onclick="updateQuantity(${item.id}, 1)">+</button>
                     </div>
                 </td>
                 <td class="text-dark fw-bold h6 mb-0">R$ ${formatBRL(subtotal)}</td>
@@ -847,7 +847,7 @@ function ajustarOffsetBarraFixa() {
 // "Produtos" cobrir tanto /store/produtos quanto /store/produto/<id> de detalhe).
 function marcarNavAtiva() {
     const path = window.location.pathname;
-    document.querySelectorAll('.store-navbar .navbar-nav > .nav-item > .nav-link[href]').forEach(link => {
+    document.querySelectorAll('.sidebar-nav a[href]').forEach(link => {
         const href = link.getAttribute('href');
         if (!href || href.startsWith('javascript:')) return;
         const linkPath = href.split('?')[0];
@@ -987,11 +987,12 @@ async function initStoreMarquee() {
     track.innerHTML = htmlItens + htmlItens;
 }
 
-// Dropdown "Categorias" da navbar: populado com as categorias reais de produto (mesma fonte
-// que a pagina de produtos usa), nunca uma lista fixa que pode ficar desatualizada.
+// Categorias da sidebar (offcanvas): populada com as categorias reais de produto (mesma fonte
+// que a pagina de produtos usa), nunca uma lista fixa que pode ficar desatualizada. Compartilhada
+// por index.html e store/base.html - antes era duplicada inline em cada template.
 async function initNavCategorias() {
-    const menu = document.getElementById('navCategoriasMenu');
-    if (!menu) return;
+    const box = document.getElementById('sidebarCategorias');
+    if (!box) return;
 
     try {
         const res = await fetch('/api/store/products?per_page=1');
@@ -999,19 +1000,16 @@ async function initNavCategorias() {
         const categorias = data.categorias || [];
 
         if (categorias.length === 0) {
-            menu.innerHTML = '<li><span class="dropdown-item-text text-muted small">Nenhuma categoria disponível</span></li>';
+            box.innerHTML = '<span class="text-muted small">Nenhuma categoria disponível</span>';
             return;
         }
 
-        menu.innerHTML =
-            '<li class="mega-menu-titulo">Categorias</li>' +
-            categorias.map(cat =>
-                `<li><a class="dropdown-item" href="/store/produtos?categoria=${encodeURIComponent(cat)}">${escapeHtml(cat)}</a></li>`
-            ).join('') +
-            '<li class="mega-menu-rodape"><a class="dropdown-item" href="/store/produtos">Ver todos os produtos <i class="fa-solid fa-arrow-right-long ms-1"></i></a></li>';
+        box.innerHTML = categorias.map(cat =>
+            `<a href="/store/produtos?categoria=${encodeURIComponent(cat)}">${escapeHtml(cat)}</a>`
+        ).join('');
     } catch (e) {
-        console.error('Erro ao carregar categorias da navbar:', e);
-        menu.innerHTML = '<li><span class="dropdown-item-text text-muted small">Erro ao carregar</span></li>';
+        console.error('Erro ao carregar categorias da sidebar:', e);
+        box.innerHTML = '<span class="text-muted small">Erro ao carregar</span>';
     }
 }
 

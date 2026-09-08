@@ -1,10 +1,10 @@
 {% extends "store/base.html" %}
 
 {% block content %}
-<section class="py-5 bg-light" style="min-height: 80vh;">
+<section class="py-5" style="min-height: 80vh;">
     <div class="container py-5">
-        <h1 class="display-4 fw-bold text-dark mb-5 text-center" style="font-family: 'Outfit', sans-serif;">
-            Seu <span class="text-warning">Carrinho</span>
+        <h1 class="display-4 fw-bold mb-5 text-center">
+            Seu <span class="gold">Carrinho</span>
         </h1>
 
         <div class="row g-5">
@@ -17,7 +17,7 @@
                         <table class="table table-borderless align-middle mb-0" id="cartTable">
                             <thead class="border-bottom">
                                 <tr class="text-muted text-uppercase small"
-                                    style="font-family: 'Inter', sans-serif; letter-spacing: 1px;">
+                                    style="letter-spacing: 1px;">
                                     <th scope="col" class="py-3" style="width: 45%;">Produto</th>
                                     <th scope="col" class="py-3" style="width: 20%;">Preço</th>
                                     <th scope="col" class="py-3" style="width: 15%;">Qtd.</th>
@@ -58,12 +58,12 @@
 
             <!-- Summary -->
             <div class="col-lg-4">
-                <div class="p-4 p-md-5 rounded-4 position-sticky border-0 shadow-lg"
-                    style="top: 100px; background-color: #121212; color: #fff;">
+                <div class="p-4 p-md-5 rounded-4 position-sticky shadow-lg"
+                    style="top: 100px; background-color: var(--steel); color: #fff; border: 1px solid var(--steel-line);">
                     <!-- Ambient Glow -->
-                    <div class="position-absolute top-0 end-0 w-100 h-100 rounded-4" style="background: radial-gradient(circle at top right, rgba(255, 193, 7, 0.15), transparent 60%); pointer-events: none;"></div>
-                    
-                    <h4 class="fw-bold text-white mb-4 position-relative z-2" style="font-family: 'Outfit', sans-serif;">Resumo do Pedido</h4>
+                    <div class="position-absolute top-0 end-0 w-100 h-100 rounded-4" style="background: radial-gradient(circle at top right, rgba(224, 180, 49, 0.15), transparent 60%); pointer-events: none;"></div>
+
+                    <h4 class="fw-bold text-white mb-4 position-relative z-2">Resumo do Pedido</h4>
 
                     <div class="d-flex justify-content-between mb-3 position-relative z-2">
                         <span class="text-light text-opacity-75">Subtotal</span>

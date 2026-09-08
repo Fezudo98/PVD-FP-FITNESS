@@ -1,0 +1,431 @@
+/* Sistema de design compartilhado da loja (editorial dark/dourado) - usado por index.html e por
+   store/base.html (herdado por todas as outras páginas). Extraído do CSS que nasceu em index.html;
+   qualquer ajuste de header/sidebar/footer/botões feito aqui vale pra loja inteira de uma vez. */
+:root {
+  --bg: #121110;
+  --bg-panel: #18100f;
+  --steel: #2E2B27;
+  --steel-line: #3a3631;
+  --gold: #e0b431;
+  --gold-bright: #f0d178;
+  --wine: #4B1F2E;
+  --wine-bright: #7A2F45;
+  --cream: #EFE8DC;
+  --cream-dim: #B9AFA0;
+  --radius: 10px;
+  --maxw: 1180px;
+
+  /* Aliases do tema antigo (base.html pré-reforma) - várias páginas internas ainda referenciam
+     esses nomes no CSS próprio delas. Mantém tudo funcionando enquanto cada página é reskinada
+     na Fase 2; nenhuma cor deve "sumir" silenciosamente por falta da variável. */
+  --bg-body: var(--bg);
+  --surface-card: var(--bg-panel);
+  --text-primary: var(--cream);
+  --border-color: var(--steel-line);
+  --primary-gold: var(--gold);
+  --secondary-gold: var(--gold-bright);
+  --radius-lg: var(--radius);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--cream);
+  font-family: 'Manrope', sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+h1, h2, h3, .display { font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; margin: 0; color: var(--cream); }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+.gold { color: var(--gold-bright); }
+
+/* ---------- Header ---------- */
+/* Posicionamento fixo mora em .store-top-fixed (o pai) - o header em si fica em fluxo normal
+   dentro daquele wrapper, empilhado abaixo do marquee/aviso de feriado quando eles existem.
+   Um position:fixed aqui colidiria com o do pai (dois fixed empilhados ficam sobrepostos no
+   topo da viewport em vez de um abaixo do outro). */
+.site-header {
+  padding: 18px 0;
+  transition: background .4s ease, padding .4s ease, border-color .4s ease;
+  border-bottom: 1px solid transparent;
+  background: rgba(18,17,16,0.92);
+  backdrop-filter: blur(10px);
+}
+.site-header.scrolled { padding: 12px 0; border-color: var(--steel-line); }
+.header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: none; padding: 0 24px; }
+@media (min-width: 768px) { .header-row { padding: 0 32px; } }
+.brand-logo { height: 32px; width: auto; }
+.header-actions { display: flex; align-items: center; gap: 14px; }
+.header-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid var(--gold);
+  color: var(--gold-bright);
+  padding: 9px 18px;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.04em;
+  font-family: 'Manrope', sans-serif;
+  border-radius: 50px;
+  transition: background .25s ease, color .25s ease;
+  white-space: nowrap;
+}
+.header-cta:hover { background: var(--gold); color: #1a1410; }
+@media (max-width: 767.98px) { .header-cta span.cta-label { display: none; } .header-cta { padding: 9px 12px; } }
+
+.header-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  position: relative;
+  width: 40px; height: 40px;
+  color: var(--cream);
+  font-size: 17px;
+  border: none; background: none; padding: 0;
+  transition: color .2s ease;
+}
+.header-icon-btn:hover { color: var(--gold-bright); }
+.header-icon-badge {
+  position: absolute; top: 2px; right: 2px;
+  min-width: 16px; height: 16px; padding: 0 3px;
+  border-radius: 50px;
+  background: var(--wine-bright);
+  color: #fff;
+  font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+}
+
+/* Dropdown de conta (populado por updateAuthUI() do store.js) - só reestiliza cores pro tema escuro. */
+#authButtons .btn-outline-warning {
+  border-color: var(--gold); color: var(--gold-bright); border-radius: 50px;
+}
+#authButtons .btn-outline-warning:hover { background: var(--gold); color: #1a1410; }
+#authButtons .dropdown-menu { background: var(--bg-panel); border: 1px solid var(--steel-line); }
+#authButtons .dropdown-item { color: var(--cream-dim); }
+#authButtons .dropdown-item:hover { background: var(--steel); color: var(--cream); }
+#authButtons .btn-link { color: var(--cream) !important; }
+#authButtons .btn-link:hover { color: var(--gold-bright) !important; }
+
+/* ---------- Sidebar (offcanvas) ---------- */
+/* z-index acima da barra fixa/busca (1060/1056) - o menu principal do site nunca deve ficar
+   escondido atrás do painel de busca, mesmo se os dois estiverem abertos ao mesmo tempo. */
+.site-sidebar { background: var(--bg-panel); color: var(--cream); width: 320px; border-left: 1px solid var(--steel-line); z-index: 1070; }
+.offcanvas-backdrop { z-index: 1065; }
+.site-sidebar .offcanvas-header { border-bottom: 1px solid var(--steel-line); padding: 20px 24px; }
+.site-sidebar .btn-close { filter: invert(1) grayscale(100%) brightness(1.8); }
+.site-sidebar .offcanvas-body { padding: 24px; }
+.sidebar-nav { list-style: none; margin: 0 0 24px; padding: 0; }
+.sidebar-nav li a {
+  display: block; padding: 13px 4px; font-weight: 700; font-size: 15px;
+  border-bottom: 1px solid var(--steel-line); color: var(--cream);
+  transition: color .2s ease, padding-left .2s ease;
+}
+.sidebar-nav li a:hover { color: var(--gold-bright); padding-left: 8px; }
+.sidebar-nav li a.active { color: var(--gold-bright); }
+.sidebar-kicker { color: var(--gold-bright); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; margin: 22px 0 10px; }
+.sidebar-categorias { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.sidebar-categorias a {
+  border: 1px solid var(--steel-line); border-radius: 50px; padding: 7px 14px;
+  font-size: 12.5px; font-weight: 600; color: var(--cream-dim);
+  transition: border-color .2s ease, color .2s ease;
+}
+.sidebar-categorias a:hover { border-color: var(--gold); color: var(--gold-bright); }
+.sidebar-cta { margin-top: 26px; display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- Barra fixa do topo: aviso de feriado + marquee de promoções, empilhados acima do
+   header. store.js (ajustarOffsetBarraFixa/initHolidayNotice/initStoreMarquee) mede a altura real
+   desse bloco e ajusta o espaço reservado no <main> - não depende de nenhum valor fixo aqui. */
+.store-top-fixed { position: fixed; top: 0; left: 0; right: 0; z-index: 1060; }
+
+.holiday-notice-bar { background: linear-gradient(135deg, #b91c1c, #7f1d1d); color: #fff; }
+.holiday-notice-bar .holiday-notice-text { font-size: 0.85rem; font-family: 'Manrope', sans-serif; }
+.holiday-notice-bar .holiday-notice-close {
+  position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  background: none; border: none; font-size: 1.4rem; line-height: 1;
+  color: #fff; opacity: 0.7; cursor: pointer; padding: 0 0.25rem;
+}
+.holiday-notice-bar .holiday-notice-close:hover { opacity: 1; }
+@media (max-width: 576px) {
+  .holiday-notice-bar .holiday-notice-text { font-size: 0.78rem; }
+  .holiday-notice-bar .holiday-notice-close { position: static; transform: none; margin-left: 0.25rem; }
+}
+
+.store-marquee {
+  background: linear-gradient(135deg, var(--gold), var(--gold-bright));
+  color: #1a1410;
+  overflow: hidden; white-space: nowrap; height: 34px;
+  display: flex; align-items: center;
+}
+.store-marquee-track { display: inline-flex; width: max-content; animation: store-marquee-scroll 26s linear infinite; }
+.store-marquee-item {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  font-family: 'Manrope', sans-serif; white-space: nowrap;
+}
+.store-marquee-item i { font-size: 0.8rem; opacity: 0.85; }
+.store-marquee-item::after { content: "•"; margin: 0 2.5rem; opacity: 0.55; }
+@keyframes store-marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .store-marquee-track { animation: none; } }
+@media (max-width: 768px) {
+  .store-marquee { height: 28px; }
+  .store-marquee-item { font-size: 0.65rem; }
+  .store-marquee-item::after { margin: 0 1.5rem; }
+}
+
+/* Painel de busca: desliza abaixo da barra fixa (top ajustado por JS), sem empurrar conteúdo. */
+.store-search-bar {
+  position: fixed; left: 0; right: 0;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--steel-line);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+  z-index: 1055;
+  transform: translateY(-10px); opacity: 0; visibility: hidden; pointer-events: none;
+  transition: transform 0.2s ease, opacity 0.2s ease, visibility 0.2s;
+}
+.store-search-bar.show { transform: translateY(0); opacity: 1; visibility: visible; pointer-events: auto; }
+.store-search-wrapper { position: relative; max-width: 420px; width: 100%; }
+.store-search-form { width: 100%; border: 1px solid var(--steel-line); transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+.store-search-form:focus-within { border-color: var(--gold); box-shadow: 0 0 0 0.2rem rgba(224,180,49,0.2); }
+.store-search-form .input-group-text { background: var(--bg-panel) !important; color: var(--cream-dim); border: none; padding-left: 1.25rem; padding-right: 0.5rem; }
+.store-search-form input.form-control { background: var(--bg-panel) !important; color: var(--cream) !important; border: none !important; box-shadow: none !important; padding: 0.6rem 0.75rem; }
+.store-search-form input.form-control:focus { background: var(--bg-panel) !important; color: var(--cream) !important; }
+.store-search-form input.form-control::placeholder { color: var(--cream-dim); }
+.store-search-form button[type="submit"] { background: linear-gradient(135deg, var(--gold), var(--gold-bright)); color: #1a1410; border: none; padding: 0.6rem 1.5rem; font-weight: 700; }
+.store-search-form button[type="submit"]:hover { filter: brightness(0.95); }
+
+.store-search-results {
+  display: none; position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+  background: var(--bg-panel); border: 1px solid var(--steel-line); border-radius: var(--radius);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.4); max-height: 70vh; overflow-y: auto; z-index: 1056;
+}
+.store-search-results.show { display: block; }
+.store-search-result-item {
+  display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.9rem;
+  color: var(--cream); text-decoration: none; border-bottom: 1px solid var(--steel-line);
+  transition: background-color 0.15s ease;
+}
+.store-search-result-item:last-of-type { border-bottom: none; }
+.store-search-result-item:hover, .store-search-result-item:focus, .store-search-result-item.active { background-color: var(--steel); color: var(--cream); }
+.store-search-result-item img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: var(--steel); }
+.store-search-result-item .result-nome { font-size: 0.9rem; font-weight: 500; line-height: 1.25; }
+.store-search-result-item .result-preco { font-size: 0.82rem; color: var(--gold-bright); font-weight: 600; }
+.store-search-results-footer { display: block; text-align: center; padding: 0.7rem; font-size: 0.85rem; font-weight: 600; color: var(--gold-bright); text-decoration: none; background: var(--steel); }
+.store-search-results-footer:hover { color: var(--cream); }
+.store-search-results-empty, .store-search-results-loading { padding: 1rem; text-align: center; font-size: 0.88rem; color: var(--cream-dim); }
+
+/* Banner de parcelamento sem juros, dentro do <main> (herda o offset já reservado). */
+.sem-juros-banner { background: linear-gradient(135deg, var(--gold), var(--gold-bright)); color: #1a1410; }
+.sem-juros-banner-close {
+  position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  background: none; border: none; font-size: 1.4rem; line-height: 1;
+  color: #1a1410; opacity: 0.6; cursor: pointer; padding: 0 0.25rem;
+}
+.sem-juros-banner-close:hover { opacity: 1; }
+@media (max-width: 576px) { .sem-juros-banner-close { position: static; transform: none; margin-left: 0.25rem; } }
+
+/* ---------- Botões / seções (reaproveitados nas páginas internas) ---------- */
+.btn-hero {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 15px 26px; font-weight: 700; font-size: 14px; letter-spacing: 0.02em;
+  font-family: 'Manrope', sans-serif;
+  border-radius: 50px;
+  transition: transform .25s ease, background .25s ease, border-color .25s ease;
+}
+.btn-hero-primary { background: var(--gold-bright); color: #1a1410; }
+.btn-hero-primary:hover { transform: translateY(-2px); background: #f0d178; color: #1a1410; }
+.btn-hero-ghost { border: 1px solid var(--steel-line); color: var(--cream); }
+.btn-hero-ghost:hover { border-color: var(--gold); color: var(--gold-bright); }
+
+.section-head { max-width: 640px; margin-bottom: 52px; }
+.section-head .kicker { color: var(--gold-bright); font-size: 13px; letter-spacing: 0.06em; margin-bottom: 14px; display:flex; align-items:center; gap:10px; }
+.section-head .kicker .rule { width: 34px; height: 1px; background: var(--gold); }
+.section-head h2 { font-size: clamp(2rem, 4vw, 2.9rem); line-height: 1.02; }
+.section-head p { margin-top: 18px; color: var(--cream-dim); font-size: 16px; max-width: 52ch; }
+
+/* Cards de produto (grid de listagem, sugestões de carrinho, relacionados, mais vendidos). */
+.products-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+@media (max-width: 900px) { .products-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
+
+.product-card-dark { display: block; }
+.product-card-dark-img { position: relative; overflow: hidden; border-radius: var(--radius); aspect-ratio: 3/4; background: var(--steel); border: 1px solid var(--steel-line); }
+.product-card-dark-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.2,.7,.2,1); }
+.product-card-dark:hover .product-card-dark-img img { transform: scale(1.06); }
+.product-card-dark-tags { position: absolute; top: 10px; left: 10px; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.product-card-dark-tag { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 9px; border-radius: 50px; color: #fff; }
+.product-card-dark-tag-oferta { background: var(--wine-bright); }
+.product-card-dark-tag-vendido { background: var(--gold-bright); color: #1a1410; }
+.product-card-dark-tag-estoque { background: rgba(18,17,16,0.85); border: 1px solid var(--steel-line); }
+.product-card-dark-info { padding-top: 14px; }
+.product-card-dark-nome { font-size: 14.5px; color: var(--cream); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.product-card-dark-preco { font-family: 'Big Shoulders Display'; font-weight: 800; font-size: 18px; color: var(--gold-bright); margin-top: 4px; }
+.product-card-dark-preco-original { font-family: 'Manrope'; font-weight: 500; font-size: 13px; color: var(--cream-dim); text-decoration: line-through; margin-right: 8px; }
+.product-card-dark-countdown { font-size: 12px; color: var(--wine-bright); margin-top: 4px; font-weight: 700; }
+.product-card-dark-parcelas { font-size: 12px; color: var(--cream-dim); margin-top: 2px; }
+
+/* Card de produto "minimal" (renderProdutoCardMinimal em store.js) - usado na listagem de
+   produtos, sugestões do carrinho e relacionados. Mesma linguagem visual do .product-card-dark
+   da home (cards de produto), classes diferentes porque a função em store.js é mais antiga e
+   compartilhada por várias páginas. */
+.product-card-minimal { color: inherit; display: block; }
+.product-card-minimal-img { position: relative; overflow: hidden; border-radius: var(--radius); aspect-ratio: 3/4; background: var(--steel); border: 1px solid var(--steel-line); }
+.product-card-minimal-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .45s ease; }
+@media (hover: hover) { .product-card-minimal:hover .product-card-minimal-img img { transform: scale(1.05); } }
+.product-card-tags { position: absolute; top: 0.6rem; left: 0.6rem; display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; z-index: 2; }
+.product-card-tag { background: rgba(18,17,16,0.85); border: 1px solid var(--steel-line); color: #fff; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.28rem 0.55rem; border-radius: 50px; white-space: nowrap; }
+.product-card-tag-estoque { background: rgba(224,180,49,0.95); color: #1a1410; border: none; }
+.product-card-tag-oferta { background: var(--wine-bright); border: none; }
+.product-card-minimal-info { padding-top: 0.65rem; }
+.product-card-minimal-nome { font-size: 0.88rem; font-weight: 500; color: var(--cream); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.product-card-minimal-preco { font-family: 'Big Shoulders Display'; font-weight: 800; font-size: 1.05rem; color: var(--gold-bright); margin-top: 0.2rem; }
+.product-card-minimal-preco-promo { display: flex; align-items: baseline; gap: 0.45rem; }
+.product-card-preco-original { font-family: 'Manrope'; font-size: 0.78rem; font-weight: 500; color: var(--cream-dim); text-decoration: line-through; }
+.product-card-preco-atual { font-family: 'Big Shoulders Display'; font-weight: 800; color: var(--gold-bright); }
+.product-card-countdown { font-size: 0.72rem; font-weight: 700; color: var(--wine-bright); margin-top: 0.15rem; }
+.product-card-minimal-parcelas { font-size: 0.76rem; color: var(--cream-dim); margin-top: 0.1rem; }
+.badge-gold { background: linear-gradient(135deg, var(--gold), var(--gold-bright)); color: #1a1410; font-weight: 600; }
+.badge-best-seller { background: linear-gradient(135deg, var(--wine), var(--wine-bright)); color: #fff; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
+
+/* ---------- Footer ---------- */
+footer.site-footer { padding: 64px 0 34px; border-top: 1px solid var(--steel-line); background: var(--bg); margin-top: auto; }
+.footer-top { display: flex; justify-content: space-between; gap: 40px; flex-wrap: wrap; padding-bottom: 40px; border-bottom: 1px solid var(--steel-line); }
+.footer-brand img { height: 30px; margin-bottom: 16px; }
+.footer-brand p { color: var(--cream-dim); font-size: 14px; max-width: 34ch; }
+.footer-col h4 { font-family:'Manrope'; font-size: 13px; letter-spacing: 0.06em; color: var(--gold-bright); margin-bottom: 14px; font-weight: 700; }
+.footer-col a, .footer-col p { display: block; color: var(--cream-dim); font-size: 14.5px; margin-bottom: 10px; }
+.footer-col a:hover { color: var(--cream); }
+.footer-payment-icons { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.footer-payment-icons i { font-size: 1.5rem; color: var(--cream-dim); }
+.footer-pix-badge { display: inline-flex; align-items: center; justify-content: center; height: 24px; padding: 0 0.6rem; border: 1px solid var(--steel-line); border-radius: 4px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.3px; color: var(--cream-dim); }
+.footer-bottom { padding-top: 26px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #7a746a; }
+.footer-bottom a { color: #7a746a; }
+.footer-bottom a:hover { color: var(--gold-bright); }
+@media (max-width: 560px) { .footer-top { flex-direction: column; } }
+
+.wa-float {
+  position: fixed; right: 20px; bottom: 20px; z-index: 90;
+  background: var(--gold-bright); color: #1a1410; padding: 14px 20px;
+  font-weight: 800; font-size: 13px; font-family:'Big Shoulders Display'; letter-spacing: 0.02em;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45); border-radius: 50px;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+
+/* ---------- Formulários dentro de páginas internas (produtos, checkout, conta...) - o resto do
+   sistema (painel admin) usa /css/style.css com tema escuro fixo; aqui os inputs seguem os
+   mesmos tokens do resto da loja. */
+main .form-control, main .form-select,
+.swal2-popup .form-control, .swal2-popup .form-select {
+  background-color: var(--bg-panel) !important;
+  color: var(--cream) !important;
+  border: 1px solid var(--steel-line) !important;
+}
+main .form-control:focus, main .form-select:focus,
+.swal2-popup .form-control:focus, .swal2-popup .form-select:focus {
+  background-color: var(--bg-panel) !important;
+  color: var(--cream) !important;
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 0.2rem rgba(224,180,49,0.2) !important;
+}
+main .form-control::placeholder { color: var(--cream-dim); opacity: 1; }
+
+/* ---------- Bootstrap redefinido pro tema escuro dentro do <main> ---------- */
+/* Todas as páginas internas da loja (produtos, conta, checkout...) são exclusivamente desse
+   tema - nunca misturadas com o tema claro do painel admin. Por isso redefinir o SIGNIFICADO
+   dessas classes utilitárias do Bootstrap uma vez só aqui é mais robusto (e sustentável) do que
+   trocar bg-white/text-dark/text-muted centena por centena em cada página. Escopado a <main>
+   pra nunca vazar pro header/sidebar/footer, que já têm seu próprio estilo. */
+main .bg-white, main .bg-light { background-color: var(--bg-panel) !important; }
+main .text-dark { color: var(--cream) !important; }
+main .text-muted, main .text-secondary { color: var(--cream-dim) !important; }
+main .border, main .border-top, main .border-bottom, main .border-start, main .border-end { border-color: var(--steel-line) !important; }
+main .shadow-sm { box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important; }
+main .shadow { box-shadow: 0 12px 32px rgba(0,0,0,0.4) !important; }
+main .card { background-color: var(--bg-panel); border-color: var(--steel-line); color: var(--cream); }
+main .table { color: var(--cream); }
+main hr { border-color: var(--steel-line); opacity: 1; }
+main .list-group-item { background-color: var(--bg-panel); border-color: var(--steel-line); color: var(--cream); }
+main .dropdown-menu { background-color: var(--bg-panel); border: 1px solid var(--steel-line); }
+main .dropdown-item { color: var(--cream-dim); }
+main .dropdown-item:hover, main .dropdown-item:focus { background-color: var(--steel); color: var(--cream); }
+main .breadcrumb-item.active { color: var(--gold-bright) !important; }
+main .breadcrumb-item + .breadcrumb-item::before { color: var(--cream-dim); }
+main .modal-content { background-color: var(--bg-panel); color: var(--cream); border: 1px solid var(--steel-line); }
+main .modal-header, main .modal-footer { border-color: var(--steel-line); }
+main .btn-close { filter: invert(1) grayscale(100%) brightness(1.8); }
+main .nav-pills .nav-link { color: var(--cream-dim); background-color: transparent; border: 1px solid var(--border-color); }
+main .nav-pills .nav-link.active { background-color: var(--primary-gold) !important; color: #1a1410 !important; border-color: var(--primary-gold); }
+main .nav-tabs { border-color: var(--steel-line); }
+main .nav-tabs .nav-link { color: var(--cream-dim); border-color: transparent; }
+main .nav-tabs .nav-link.active, main .nav-tabs .nav-link:hover { color: var(--gold-bright) !important; background-color: transparent; border-color: var(--steel-line) var(--steel-line) var(--bg-panel); }
+main .accordion-item { background-color: var(--bg-panel); border-color: var(--steel-line); color: var(--cream); }
+main .accordion-button { background-color: var(--bg-panel); color: var(--cream); box-shadow: none; }
+main .accordion-button:not(.collapsed) { background-color: var(--steel); color: var(--gold-bright) !important; box-shadow: none; }
+main .accordion-button::after { filter: invert(1) grayscale(1) brightness(1.8); }
+main .accordion-button:focus { box-shadow: 0 0 0 0.2rem rgba(224,180,49,0.2); }
+main .btn-warning { background-color: var(--gold); border-color: var(--gold); color: #1a1410; font-weight: 700; }
+main .btn-warning:hover { background-color: var(--gold-bright); border-color: var(--gold-bright); color: #1a1410; }
+main .btn-outline-warning { color: var(--gold-bright); border-color: var(--gold); }
+main .btn-outline-warning:hover { background-color: var(--gold); color: #1a1410; }
+main .btn-outline-dark { color: var(--cream); border-color: var(--steel-line); }
+main .btn-outline-dark:hover { background-color: var(--steel); color: var(--cream); border-color: var(--steel-line); }
+main .btn-dark { background-color: var(--steel); border-color: var(--steel-line); color: var(--cream); }
+main .btn-dark:hover { background-color: var(--bg-panel); border-color: var(--steel-line); color: var(--cream); }
+main .btn-link { color: var(--gold-bright); }
+main .page-link { background-color: var(--bg-panel); border-color: var(--steel-line); color: var(--cream); }
+main .page-link:hover { background-color: var(--steel); color: var(--gold-bright); }
+main .page-item.active .page-link { background-color: var(--gold); border-color: var(--gold); color: #1a1410; }
+main .badge.bg-secondary { background-color: var(--steel) !important; }
+/* Badges com fundo colorido do Bootstrap (bg-warning/bg-info/bg-light etc.) usam text-dark de
+   propósito pra manter contraste contra um fundo claro e saturado - isso não muda com o tema da
+   página, diferente do texto solto sobre o fundo da página (onde text-dark vira cream acima).
+   Sem essa exceção, o alias genérico deixaria esses badges com texto claro sobre fundo claro. */
+main .badge.bg-warning, main .badge.bg-info, main .badge.bg-light,
+main .badge.bg-success, main .badge.bg-danger, main .badge.bg-primary {
+    color: #1a1410 !important;
+}
+main .spinner-border.text-warning { color: var(--gold-bright) !important; }
+main .offcanvas { background-color: var(--bg-panel); color: var(--cream); }
+
+/* Marca d'água discreta sobre fotos de produto (protege contra reuso sem crédito). */
+.product-img-wrapper { position: relative; overflow: hidden; }
+.product-img-wrapper::after,
+#productCarousel .carousel-item::after {
+  content: "@fitprostore_";
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.7rem;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 5;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  font-family: 'Manrope', sans-serif;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+#productCarousel .carousel-item { position: relative; }
+
+/* ---------- Utilitários de hover/transição reaproveitados em várias páginas ---------- */
+.transition-scale { transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+.hover-zoom-container:hover .transition-scale,
+.category-card:hover .transition-scale,
+.product-card:hover .transition-scale { transform: scale(1.08); }
+.transition-color { transition: color 0.3s ease; }
+.hover-warning:hover { color: var(--gold-bright) !important; }
+
+/* ---------- SweetAlert2 com a identidade visual da loja ---------- */
+.swal2-popup { background: var(--bg-panel); border-radius: var(--radius); font-family: 'Manrope', sans-serif; padding-bottom: 1.75rem; }
+.swal2-title { font-family: 'Big Shoulders Display', sans-serif; font-size: 1.5rem; color: var(--cream); }
+.swal2-html-container { color: var(--cream-dim); opacity: 0.9; }
+.swal2-styled.swal2-confirm { background-color: var(--gold) !important; color: #1a1410 !important; font-weight: 700; border-radius: 50px; padding: 0.6rem 1.75rem; box-shadow: none !important; }
+.swal2-styled.swal2-confirm:hover { background-color: var(--gold-bright) !important; }
+.swal2-styled.swal2-confirm:focus { box-shadow: 0 0 0 3px rgba(224,180,49,0.35) !important; }
+.swal2-styled.swal2-cancel { border-radius: 50px; padding: 0.6rem 1.75rem; font-weight: 600; }
+.swal2-icon.swal2-warning { border-color: var(--gold); color: var(--gold); }
+.swal2-icon.swal2-info { border-color: var(--gold-bright); color: var(--gold-bright); }
+.swal2-icon.swal2-success { border-color: var(--gold); color: var(--gold); }
+.swal2-icon.swal2-success [class^='swal2-success-line'] { background-color: var(--gold) !important; }
+.swal2-icon.swal2-success .swal2-success-ring { border-color: rgba(224,180,49,0.3); }
+.swal2-timer-progress-bar { background: var(--gold); }
+.swal2-toast { background: var(--bg-panel) !important; }
+.swal2-toast .swal2-title { font-size: 1rem; }

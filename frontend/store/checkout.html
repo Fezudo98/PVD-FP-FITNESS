@@ -1,40 +1,33 @@
 {% extends "store/base.html" %}
 
 {% block content %}
-<section class="py-5 bg-light" style="min-height: 80vh;">
+<section class="py-5" style="min-height: 80vh;">
     <div class="container py-5">
-        <h1 class="display-4 fw-bold text-dark mb-5 text-center" style="font-family: 'Outfit', sans-serif;">
-            Finalizar <span class="text-warning">Compra</span>
+        <h1 class="display-4 fw-bold mb-5 text-center">
+            Finalizar <span class="gold">Compra</span>
         </h1>
 
         <style>
-            .form-control:not(.bg-dark), .form-select {
+            .form-control, .form-select {
                 padding: 0.85rem 1.25rem !important;
                 border-radius: 0.75rem !important;
-                background-color: #f8f9fa !important;
-                border: 1px solid #e9ecef !important;
+                background-color: var(--bg-panel) !important;
+                border: 1px solid var(--border-color) !important;
+                color: var(--text-primary) !important;
                 box-shadow: none !important;
                 transition: all 0.3s ease;
             }
-            .form-control:focus:not(.bg-dark), .form-select:focus {
-                background-color: #ffffff !important;
-                border-color: #ffc107 !important;
-                box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.15) !important;
+            .form-control:focus, .form-select:focus {
+                background-color: var(--bg-panel) !important;
+                border-color: var(--primary-gold) !important;
+                box-shadow: 0 0 0 0.25rem rgba(224, 180, 49, 0.2) !important;
             }
-            .form-control.bg-dark {
-                padding: 0.85rem 1.25rem !important;
-                border-radius: 0.75rem !important;
-            }
-            .form-control.bg-dark:focus {
-                border-color: #ffc107 !important;
-                box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.15) !important;
-            }
-            .form-control.bg-dark:-webkit-autofill,
-            .form-control.bg-dark:-webkit-autofill:hover,
-            .form-control.bg-dark:-webkit-autofill:focus {
-                -webkit-box-shadow: 0 0 0 1000px #212529 inset !important;
-                -webkit-text-fill-color: #ffffff !important;
-                caret-color: #ffffff;
+            .form-control:-webkit-autofill,
+            .form-control:-webkit-autofill:hover,
+            .form-control:-webkit-autofill:focus {
+                -webkit-box-shadow: 0 0 0 1000px var(--bg-panel) inset !important;
+                -webkit-text-fill-color: var(--cream) !important;
+                caret-color: var(--cream);
             }
 
             .checkout-mobile-bar {
@@ -42,8 +35,9 @@
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background-color: #121212;
-                box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25);
+                background-color: var(--steel);
+                border-top: 1px solid var(--steel-line);
+                box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
                 z-index: 1020;
                 padding-bottom: env(safe-area-inset-bottom, 0);
             }
@@ -64,7 +58,7 @@
                 <div class="p-4 p-md-5 rounded-4 bg-white border-0 shadow-sm position-relative overflow-hidden">
                     <!-- Accent Line -->
                     <div class="position-absolute top-0 start-0 w-100 bg-warning" style="height: 4px;"></div>
-                    <h4 class="fw-bold text-dark mb-4" style="font-family: 'Outfit', sans-serif;">Seus Dados</h4>
+                    <h4 class="fw-bold text-dark mb-4">Seus Dados</h4>
                     <form id="checkoutForm">
                         <div class="row g-3">
                             <div class="col-md-6">
@@ -101,7 +95,7 @@
                                     id="dataNascimento" style="padding: 0.75rem;">
                             </div>
 
-                            <h5 class="fw-bold text-dark mt-4 mb-3" style="font-family: 'Outfit', sans-serif;">Endereço
+                            <h5 class="fw-bold text-dark mt-4 mb-3">Endereço
                                 de Entrega</h5>
 
                             <!-- CEP First -->
@@ -186,7 +180,7 @@
                             </div>
                         </div>
 
-                        <h5 class="fw-bold text-dark mt-5 mb-3" style="font-family: 'Outfit', sans-serif;">Pagamento</h5>
+                        <h5 class="fw-bold text-dark mt-5 mb-3">Pagamento</h5>
                         <div class="alert bg-dark text-white border-0 rounded-4 shadow-sm position-relative overflow-hidden" role="alert">
                             <!-- Ambient Glow -->
                             <div class="position-absolute top-0 end-0 w-100 h-100 rounded-4" style="background: radial-gradient(circle at top right, rgba(255, 193, 7, 0.15), transparent 60%); pointer-events: none;"></div>
@@ -204,8 +198,8 @@
 
             <!-- Order Summary -->
             <div class="col-lg-4">
-                <div id="orderSummaryCard" class="p-4 p-md-5 rounded-4 position-sticky border-0 shadow-lg"
-                    style="top: 100px; background-color: #121212; color: #fff;">
+                <div id="orderSummaryCard" class="p-4 p-md-5 rounded-4 position-sticky shadow-lg"
+                    style="top: 100px; background-color: var(--steel); color: #fff; border: 1px solid var(--steel-line);">
                     <!-- Ambient Glow -->
                     <div class="position-absolute top-0 end-0 w-100 h-100 rounded-4" style="background: radial-gradient(circle at top right, rgba(255, 193, 7, 0.15), transparent 60%); pointer-events: none;"></div>
                     
@@ -213,7 +207,7 @@
                         <i class="fa-solid fa-gift me-2"></i><span id="avaliacaoRewardText"></span>
                     </div>
 
-                    <h4 class="fw-bold text-white mb-4 position-relative z-2" style="font-family: 'Outfit', sans-serif;">Resumo do Pedido</h4>
+                    <h4 class="fw-bold text-white mb-4 position-relative z-2">Resumo do Pedido</h4>
                     <ul class="list-group list-group-flush mb-3 bg-transparent position-relative z-2" id="checkoutItems">
                         <!-- Items injected via JS -->
                     </ul>
