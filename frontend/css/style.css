@@ -8,6 +8,18 @@
     /* Um cinza um pouco mais claro para o card */
     --cor-texto: #f8f9fa;
     /* Texto branco/claro */
+
+    /* Tokens compartilhados com a vitrine (/frontend/css/store-theme.css) - usados apenas pelos
+       componentes novos da Home do painel (prefixo .dash-), pra alinhar a identidade visual do
+       painel à da loja sem reescrever o tema das páginas administrativas já existentes. */
+    --dash-gold: #e0b431;
+    --dash-gold-bright: #f0d178;
+    --dash-wine-bright: #7A2F45;
+    --dash-cream: #EFE8DC;
+    --dash-cream-dim: #B9AFA0;
+    --dash-panel: #18100f;
+    --dash-line: rgba(239, 232, 220, 0.09);
+    --dash-radius: 10px;
 }
 
 body {
@@ -66,11 +78,14 @@ body {
 
 /* --- Estilos da Página Principal (Dashboard) --- */
 
+/* A logo borrada ao fundo (aparência de "template admin genérico") deu lugar a um fundo escuro
+   limpo com um glow discreto, no mesmo espírito do .hero-glow da vitrine (/store) - reforça a
+   identidade sem competir com o texto/dados por cima. */
 .background-container {
-    background-image: url('/logo.jpg');
-    background-size: cover;
-    background-position: center center;
-    filter: blur(8px) brightness(0.4);
+    background:
+        radial-gradient(circle at 85% 0%, rgba(224, 180, 49, 0.10), transparent 45%),
+        radial-gradient(circle at 10% 100%, rgba(122, 47, 69, 0.16), transparent 55%),
+        var(--cor-fundo);
     position: fixed;
     top: 0;
     left: 0;
@@ -83,10 +98,32 @@ body {
     z-index: 1050;
     /* Ensure on top of background effects */
     position: relative;
+    background-color: rgba(18, 17, 16, 0.92) !important;
+    border-bottom: 1px solid var(--dash-line);
+    backdrop-filter: blur(10px);
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
 }
 
 .navbar.fixed-top {
     position: fixed;
+}
+
+.navbar .btn-outline-light,
+.navbar .btn-outline-warning {
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.navbar .btn-outline-warning {
+    border-color: var(--dash-gold);
+    color: var(--dash-gold-bright);
+}
+
+.navbar .btn-outline-warning:hover {
+    background-color: var(--dash-gold);
+    color: #1a1410;
 }
 
 .dropdown-menu {
@@ -371,7 +408,7 @@ h4 {
     }
 }
 
-/* ===== ATUALIZADO: Estilos do Display de Saldo ===== */
+/* ===== Display de Saldo de Caixa (legado - ainda referenciado por caixa.html) ===== */
 .cash-balance-display {
     background-color: transparent;
     border: 2px solid rgba(224, 180, 49, 0.5);
@@ -425,14 +462,15 @@ h4 {
     border: 1px solid #dee2e6;
 }
 
-/* ===== Painel Administrativo - Grade de Módulos ===== */
+/* ===== Painel Administrativo - Grade de Módulos (área "Gerenciamento", secundária ao
+   dashboard) - tiles compactos ícone+título em vez dos blocos grandes anteriores. ===== */
 .admin-section-label {
-    color: rgba(248, 249, 250, 0.5);
-    font-size: 0.75rem;
+    color: var(--dash-cream-dim);
+    font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    margin: 1.5rem 0 0.75rem;
+    margin: 1.5rem 0 0.6rem;
 }
 
 .admin-section-label:first-of-type {
@@ -440,33 +478,33 @@ h4 {
 }
 
 .admin-tile {
-    background: linear-gradient(155deg, #2a2a2a 0%, #212121 100%);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 14px;
-    padding: 1.25rem 1rem;
+    background: rgba(239, 232, 220, 0.03);
+    border: 1px solid var(--dash-line);
+    border-radius: 10px;
+    padding: 0.85rem 0.75rem;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 0.65rem;
     text-decoration: none;
     color: var(--cor-texto);
     height: 100%;
     width: 100%;
-    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    min-height: 56px;
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
 .admin-tile:hover,
 .admin-tile:focus-visible {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    transform: translateY(-2px);
     color: var(--cor-texto);
-    background: linear-gradient(155deg, #303030 0%, #242424 100%);
+    background: rgba(239, 232, 220, 0.06);
 }
 
 .admin-tile .tile-icon {
-    width: 46px;
-    height: 46px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -475,38 +513,350 @@ h4 {
     transition: background 0.18s ease;
 }
 
+.admin-tile .tile-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
 .admin-tile .tile-label {
     font-weight: 600;
-    font-size: 0.92rem;
-    text-align: center;
+    font-size: 0.85rem;
+    text-align: left;
     line-height: 1.25;
 }
 
 .admin-tile.tile-vendas .tile-icon {
     background: rgba(224, 180, 49, 0.14);
-    color: var(--cor-principal);
+    color: var(--dash-gold);
 }
 
 .admin-tile.tile-vendas:hover {
-    border-color: var(--cor-principal);
+    border-color: var(--dash-gold);
 }
 
 .admin-tile.tile-conteudo .tile-icon {
-    background: rgba(91, 192, 190, 0.16);
-    color: #5bc0be;
+    background: rgba(122, 47, 69, 0.22);
+    color: var(--dash-wine-bright);
 }
 
 .admin-tile.tile-conteudo:hover {
-    border-color: #5bc0be;
+    border-color: var(--dash-wine-bright);
 }
 
 .admin-tile.tile-sistema .tile-icon {
-    background: rgba(138, 148, 166, 0.18);
-    color: #b8c0cc;
+    background: rgba(185, 175, 160, 0.14);
+    color: var(--dash-cream-dim);
 }
 
 .admin-tile.tile-sistema:hover {
-    border-color: #8a94a6;
+    border-color: var(--dash-cream-dim);
 }
 
-/* Animations */
+/* ======================================================================= */
+/* ===== Home do Painel - Dashboard de Gestão (prefixo .dash-, novo) ===== */
+/* ======================================================================= */
+
+.dash-shell {
+    max-width: 1180px;
+}
+
+/* Header de boas-vindas */
+.dash-welcome-kicker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--dash-gold-bright);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.dash-welcome-kicker .rule {
+    width: 28px;
+    height: 1px;
+    background: var(--dash-gold);
+}
+
+.dash-welcome-title {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.7rem, 3.4vw, 2.4rem);
+    color: var(--dash-cream);
+    margin: 0 0 1.5rem;
+    line-height: 1.05;
+}
+
+.dash-welcome-title span {
+    color: var(--dash-gold-bright);
+}
+
+/* Grid de KPIs */
+.dash-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+@media (min-width: 768px) {
+    .dash-kpi-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+    }
+}
+
+.dash-kpi-card {
+    background: rgba(239, 232, 220, 0.03);
+    border: 1px solid var(--dash-line);
+    border-radius: var(--dash-radius);
+    padding: 0.85rem 0.9rem;
+    min-width: 0;
+}
+
+@media (min-width: 768px) {
+    .dash-kpi-card {
+        padding: 1rem 1.1rem;
+    }
+}
+
+.dash-kpi-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--dash-cream-dim);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+    line-height: 1.25;
+}
+
+@media (min-width: 768px) {
+    .dash-kpi-label {
+        font-size: 0.72rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+.dash-kpi-value {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.25rem, 2.6vw, 1.65rem);
+    color: var(--dash-gold-bright);
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dash-kpi-value.is-loading {
+    color: var(--dash-cream-dim);
+    opacity: 0.5;
+}
+
+/* Linha do Caixa */
+.dash-cash-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(239, 232, 220, 0.03);
+    border: 1px solid var(--dash-line);
+    border-radius: var(--dash-radius);
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 14px;
+    text-decoration: none;
+    color: var(--dash-cream);
+    transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.dash-cash-row:hover,
+.dash-cash-row:focus-visible {
+    border-color: var(--dash-gold);
+    background: rgba(224, 180, 49, 0.05);
+    color: var(--dash-cream);
+}
+
+.dash-cash-row-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.dash-cash-row-info i {
+    color: var(--dash-gold);
+    font-size: 1.05rem;
+    flex-shrink: 0;
+}
+
+.dash-cash-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dash-cream-dim);
+    display: block;
+}
+
+.dash-cash-value {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: var(--dash-cream);
+}
+
+.dash-cash-cta {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--dash-gold-bright);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Alertas operacionais */
+.dash-alerts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.dash-alert-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(122, 47, 69, 0.08);
+    border: 1px solid rgba(122, 47, 69, 0.35);
+    border-radius: 8px;
+    padding: 0.6rem 0.9rem;
+    text-decoration: none;
+    color: var(--dash-cream);
+    font-size: 0.86rem;
+    transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.dash-alert-item:hover,
+.dash-alert-item:focus-visible {
+    border-color: var(--dash-wine-bright);
+    background: rgba(122, 47, 69, 0.16);
+    color: var(--dash-cream);
+}
+
+.dash-alert-item .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--dash-wine-bright);
+    flex-shrink: 0;
+}
+
+.dash-alert-item .dash-alert-arrow {
+    margin-left: auto;
+    color: var(--dash-cream-dim);
+    flex-shrink: 0;
+}
+
+.dash-alerts-empty {
+    color: var(--dash-cream-dim);
+    font-size: 0.85rem;
+    padding: 0.5rem 0.1rem;
+}
+
+/* Card do gráfico */
+.dash-chart-card {
+    background: rgba(239, 232, 220, 0.03);
+    border: 1px solid var(--dash-line);
+    border-radius: var(--dash-radius);
+    padding: 1.1rem 1.1rem 0.6rem;
+    margin-bottom: 20px;
+}
+
+.dash-chart-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 0.75rem;
+}
+
+.dash-chart-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--dash-cream-dim);
+}
+
+.dash-chart-wrap {
+    position: relative;
+    height: 200px;
+}
+
+@media (min-width: 768px) {
+    .dash-chart-wrap {
+        height: 240px;
+    }
+}
+
+/* Ações rápidas */
+.dash-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+@media (min-width: 576px) {
+    .dash-quick-actions {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.dash-quick-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0.7rem 0.6rem;
+    border-radius: 50px;
+    border: 1px solid var(--dash-line);
+    color: var(--dash-cream);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: none;
+    text-align: center;
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.dash-quick-action:hover,
+.dash-quick-action:focus-visible {
+    border-color: var(--dash-gold);
+    color: var(--dash-cream);
+    transform: translateY(-2px);
+}
+
+.dash-quick-action.is-primary {
+    background: var(--dash-gold-bright);
+    border-color: var(--dash-gold-bright);
+    color: #1a1410;
+}
+
+.dash-quick-action.is-primary:hover {
+    background: #f0d178;
+    color: #1a1410;
+}
+
+/* Cabeçalho da seção "Gerenciamento" */
+.dash-manage-title {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 800;
+    font-size: 1.3rem;
+    color: var(--dash-cream);
+    margin: 0 0 0.25rem;
+}
