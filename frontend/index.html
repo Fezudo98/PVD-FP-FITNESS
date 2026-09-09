@@ -14,11 +14,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css">
+    <!-- A versao no URL evita que uma publicacao nova misture HTML atual com CSS antigo. -->
+    <link rel="stylesheet" href="/css/style.css?v=20260909-2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
-<body>
+<body class="dashboard-page">
     <div class="background-container"></div>
 
     <!-- Barra de Navegação Superior -->
@@ -68,78 +69,123 @@
     </nav>
 
     <!-- Conteúdo Principal -->
-    <main class="container main-content mt-4 dash-shell">
+    <main class="container main-content dash-shell">
 
-        <div class="dash-welcome-kicker"><span class="rule"></span> Visão geral de hoje</div>
-        <h2 class="dash-welcome-title">Bem-vindo(a), <span id="userName"></span></h2>
-
-        <!-- KPIs de hoje (somente admin - dados de faturamento/lucro) -->
-        <div id="dashKpiSection">
-            <div class="dash-kpi-grid" id="dashKpiGrid">
-                <div class="dash-kpi-card">
-                    <div class="dash-kpi-label"><i class="fas fa-sack-dollar"></i> Faturamento hoje</div>
-                    <div class="dash-kpi-value is-loading" id="kpiFaturamento">—</div>
-                </div>
-                <div class="dash-kpi-card">
-                    <div class="dash-kpi-label"><i class="fas fa-receipt"></i> Vendas hoje</div>
-                    <div class="dash-kpi-value is-loading" id="kpiVendas">—</div>
-                </div>
-                <div class="dash-kpi-card">
-                    <div class="dash-kpi-label"><i class="fas fa-tag"></i> Ticket médio</div>
-                    <div class="dash-kpi-value is-loading" id="kpiTicket">—</div>
-                </div>
-                <div class="dash-kpi-card">
-                    <div class="dash-kpi-label"><i class="fas fa-chart-line"></i> Lucro estimado</div>
-                    <div class="dash-kpi-value is-loading" id="kpiLucro">—</div>
-                </div>
+        <header class="dash-page-header">
+            <div>
+                <div class="dash-welcome-kicker"><span class="rule"></span> Central de gestão</div>
+                <h1 class="dash-welcome-title">Olá, <span id="userName"></span></h1>
+                <p class="dash-welcome-copy">Acompanhe a operação de hoje e acesse rapidamente o que precisa de atenção.</p>
             </div>
-
-            <!-- Caixa -->
-            <a href="/caixa.html" class="dash-cash-row">
-                <div class="dash-cash-row-info">
-                    <i class="fas fa-cash-register"></i>
-                    <div>
-                        <span class="dash-cash-label">Saldo em caixa</span>
-                        <span class="dash-cash-value" id="dashSaldoCaixa">R$ —</span>
-                    </div>
-                </div>
-                <span class="dash-cash-cta">Gerenciar caixa <i class="fas fa-arrow-right ms-1"></i></span>
+            <a href="/pdv.html" class="dash-primary-action">
+                <i class="fas fa-plus" aria-hidden="true"></i>
+                <span>Nova venda</span>
             </a>
+        </header>
 
-            <!-- Alertas operacionais -->
-            <div class="dash-alerts" id="dashAlerts"></div>
-
-            <!-- Gráfico: vendas dos últimos 7 dias -->
-            <div class="dash-chart-card">
-                <div class="dash-chart-head">
-                    <span class="dash-chart-title">Vendas · últimos 7 dias</span>
-                </div>
-                <div class="dash-chart-wrap">
-                    <canvas id="dashVendas7dChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Ações rápidas -->
-        <div class="dash-quick-actions">
+        <!-- Ações rápidas permanecem disponíveis para administradores e vendedores. -->
+        <nav class="dash-quick-actions" aria-label="Ações rápidas">
             <a href="/pdv.html" class="dash-quick-action is-primary">
-                <i class="fas fa-plus"></i> Nova venda
+                <i class="fas fa-plus" aria-hidden="true"></i> Nova venda
             </a>
             <a href="/estoque.html" class="dash-quick-action">
-                <i class="fas fa-box-seam"></i> Estoque
+                <i class="fas fa-boxes-stacked" aria-hidden="true"></i> Estoque
             </a>
             <a href="/clientes.html" class="dash-quick-action">
-                <i class="fas fa-users"></i> Clientes
+                <i class="fas fa-users" aria-hidden="true"></i> Clientes
             </a>
             <a href="/loja_online.html" class="dash-quick-action position-relative">
-                <i class="fas fa-bag-shopping"></i> Pedidos
+                <i class="fas fa-bag-shopping" aria-hidden="true"></i> Pedidos
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger loja-online-badge"
                     style="display: none; z-index: 10;">0</span>
             </a>
-        </div>
+        </nav>
+
+        <!-- KPIs de hoje (somente admin - dados de faturamento/lucro) -->
+        <section id="dashKpiSection" aria-labelledby="dashOverviewTitle" aria-busy="true">
+            <div class="dash-section-heading">
+                <div>
+                    <span class="dash-section-eyebrow">Hoje</span>
+                    <h2 id="dashOverviewTitle">Visão geral</h2>
+                </div>
+                <span class="dash-live-indicator"><span aria-hidden="true"></span> Dados atuais</span>
+            </div>
+
+            <div class="dash-kpi-grid" id="dashKpiGrid" aria-live="polite">
+                <div class="dash-kpi-card">
+                    <div class="dash-kpi-icon"><i class="fas fa-sack-dollar" aria-hidden="true"></i></div>
+                    <div class="dash-kpi-label">Faturamento</div>
+                    <div class="dash-kpi-value is-loading" id="kpiFaturamento">—</div>
+                    <span class="dash-kpi-context">vendas concluídas hoje</span>
+                </div>
+                <div class="dash-kpi-card">
+                    <div class="dash-kpi-icon"><i class="fas fa-receipt" aria-hidden="true"></i></div>
+                    <div class="dash-kpi-label">Vendas</div>
+                    <div class="dash-kpi-value is-loading" id="kpiVendas">—</div>
+                    <span class="dash-kpi-context">pedidos finalizados</span>
+                </div>
+                <div class="dash-kpi-card">
+                    <div class="dash-kpi-icon"><i class="fas fa-tag" aria-hidden="true"></i></div>
+                    <div class="dash-kpi-label">Ticket médio</div>
+                    <div class="dash-kpi-value is-loading" id="kpiTicket">—</div>
+                    <span class="dash-kpi-context">valor médio por venda</span>
+                </div>
+                <div class="dash-kpi-card">
+                    <div class="dash-kpi-icon"><i class="fas fa-chart-line" aria-hidden="true"></i></div>
+                    <div class="dash-kpi-label">Lucro estimado</div>
+                    <div class="dash-kpi-value is-loading" id="kpiLucro">—</div>
+                    <span class="dash-kpi-context">estimativa do dia</span>
+                </div>
+            </div>
+
+            <div class="dash-operation-grid">
+                <!-- Gráfico: vendas dos últimos 7 dias -->
+                <article class="dash-surface dash-chart-card">
+                    <div class="dash-card-head">
+                        <div>
+                            <span class="dash-section-eyebrow">Desempenho</span>
+                            <h3>Vendas dos últimos 7 dias</h3>
+                        </div>
+                        <a href="/relatorios.html" class="dash-card-link">Relatório <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+                    </div>
+                    <div class="dash-chart-wrap">
+                        <canvas id="dashVendas7dChart" aria-label="Gráfico de vendas dos últimos sete dias" role="img"></canvas>
+                        <p class="dash-chart-status" id="dashChartStatus" hidden></p>
+                    </div>
+                </article>
+
+                <aside class="dash-management-column" aria-label="Situação operacional">
+                    <a href="/caixa.html" class="dash-surface dash-cash-card">
+                        <div class="dash-cash-row-info">
+                            <span class="dash-cash-icon"><i class="fas fa-cash-register" aria-hidden="true"></i></span>
+                            <div>
+                                <span class="dash-cash-label">Saldo em caixa</span>
+                                <span class="dash-cash-value" id="dashSaldoCaixa">R$ —</span>
+                            </div>
+                        </div>
+                        <span class="dash-cash-cta">Abrir caixa <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+                    </a>
+
+                    <article class="dash-surface dash-alert-card">
+                        <div class="dash-card-head">
+                            <div>
+                                <span class="dash-section-eyebrow">Operação</span>
+                                <h3>Pendências</h3>
+                            </div>
+                        </div>
+                        <div class="dash-alerts" id="dashAlerts" aria-live="polite"></div>
+                    </article>
+                </aside>
+            </div>
+        </section>
 
         <div id="admin-panel" class="d-none">
-            <h4 class="dash-manage-title">Gerenciamento</h4>
+            <div class="dash-section-heading dash-management-heading">
+                <div>
+                    <span class="dash-section-eyebrow">Administração</span>
+                    <h2 class="dash-manage-title">Áreas de gestão</h2>
+                </div>
+            </div>
 
             <p class="admin-section-label">Vendas &amp; Catálogo</p>
             <div class="row g-3">
@@ -318,8 +364,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/js/theme_manager.js?v=2"></script>
-    <script src="/js/main.js?v=9"></script>
-    <script src="/js/dashboard.js?v=1"></script>
+    <script src="/js/main.js?v=10"></script>
+    <script src="/js/dashboard.js?v=2"></script>
 
 </body>
 
