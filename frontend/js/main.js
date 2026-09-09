@@ -352,15 +352,14 @@ function updateBadges(count) {
         }
     }
 
-    const btnBadge = document.getElementById('lojaOnlineBadge');
-    if (btnBadge) {
+    document.querySelectorAll('.loja-online-badge').forEach(btnBadge => {
         if (count > 0) {
             btnBadge.textContent = count;
             btnBadge.style.display = 'block';
         } else {
             btnBadge.style.display = 'none';
         }
-    }
+    });
 }
 
 // --- Lógica da Página Loja Online ---

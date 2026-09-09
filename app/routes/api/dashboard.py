@@ -1,10 +1,98 @@
 from flask import request, jsonify
 from . import api_bp
 from ...extensions import db
-from ...models import Log, MovimentacaoCaixa, Venda, Pagamento, ItemVenda, Produto, Usuario, Configuracao, VisitaSite
+from ...models import Log, MovimentacaoCaixa, Venda, Pagamento, ItemVenda, Produto, Usuario, Configuracao, VisitaSite, current_brazil_time
 from ...utils import token_required
 from datetime import datetime, timedelta
 from sqlalchemy import func
+
+@api_bp.route('/api/dashboard/resumo', methods=['GET'])
+@token_required
+def get_dashboard_resumo(current_user):
+    """Agregador da Home do painel: KPIs de hoje, gráfico dos últimos 7 dias, alertas
+    operacionais e saldo de caixa numa única resposta, reaproveitando os mesmos critérios de
+    'venda concluída' já usados em /api/relatorios/dashboard - sem endpoints duplicados nem
+    N+1 (uma query de Venda+itens para o dia, uma agregada para os 7 dias, o resto são
+    contagens simples já indexadas)."""
+    if current_user.role != 'admin':
+        return jsonify({'message': 'Acesso negado.'}), 403
+
+    agora = current_brazil_time()
+    inicio_hoje = datetime(agora.year, agora.month, agora.day)
+    fim_hoje = inicio_hoje + timedelta(days=1)
+    inicio_grafico = inicio_hoje - timedelta(days=6)  # hoje + 6 dias anteriores = 7 dias
+
+    valid_statuses = ['Concluída', 'Entregue', 'Pronto para retirada']
+
+    # --- KPIs de hoje ---
+    vendas_hoje = Venda.query.filter(
+        Venda.data_hora >= inicio_hoje, Venda.data_hora < fim_hoje,
+        Venda.status.in_(valid_statuses)
+    ).all()
+
+    receita_hoje = sum(v.total_venda for v in vendas_hoje)
+    taxas_hoje = sum((v.taxa_entrega or 0.0) for v in vendas_hoje)
+    receita_liquida_hoje = receita_hoje - taxas_hoje
+    custo_hoje = sum(
+        i.quantidade * (i.preco_custo_momento if i.preco_custo_momento is not None else (i.produto.preco_custo if i.produto else 0))
+        for v in vendas_hoje for i in v.itens
+    )
+    qtd_vendas_hoje = len(vendas_hoje)
+
+    kpis = {
+        'faturamento_hoje': round(receita_hoje, 2),
+        'vendas_hoje': qtd_vendas_hoje,
+        'ticket_medio_hoje': round(receita_hoje / qtd_vendas_hoje, 2) if qtd_vendas_hoje else 0.0,
+        'lucro_estimado_hoje': round(receita_liquida_hoje - custo_hoje, 2),
+    }
+
+    # --- Gráfico: últimos 7 dias ---
+    vendas_periodo = db.session.query(
+        func.date(Venda.data_hora).label('dia'), func.sum(Venda.total_venda).label('total')
+    ).filter(
+        Venda.data_hora >= inicio_grafico, Venda.data_hora < fim_hoje,
+        Venda.status.in_(valid_statuses)
+    ).group_by('dia').order_by('dia').all()
+    totais_por_dia = {r.dia: r.total for r in vendas_periodo}
+
+    grafico_7dias = []
+    for i in range(7):
+        dia = inicio_grafico + timedelta(days=i)
+        chave = dia.strftime('%Y-%m-%d')
+        grafico_7dias.append({
+            'data': dia.strftime('%d/%m'),
+            'total': round(totais_por_dia.get(chave, 0.0), 2)
+        })
+
+    # --- Alertas operacionais ---
+    estoque_baixo = Produto.query.filter(
+        Produto.deletado == False, Produto.quantidade > 0, Produto.quantidade <= Produto.limite_estoque_baixo
+    ).count()
+    sem_estoque = Produto.query.filter(Produto.deletado == False, Produto.quantidade == 0).count()
+
+    pedidos_aguardando_envio = Venda.query.filter(
+        Venda.status.in_(['Concluída', 'Em separação'])
+    ).count()
+
+    alertas = {
+        'estoque_baixo': estoque_baixo,
+        'sem_estoque': sem_estoque,
+        'pedidos_aguardando_envio': pedidos_aguardando_envio,
+    }
+
+    # --- Caixa ---
+    saldo_caixa = db.session.query(func.sum(MovimentacaoCaixa.valor)).scalar() or 0.0
+    movimentou_hoje = db.session.query(MovimentacaoCaixa.id).filter(
+        MovimentacaoCaixa.timestamp >= inicio_hoje, MovimentacaoCaixa.timestamp < fim_hoje
+    ).first() is not None
+
+    caixa = {
+        'saldo_atual': round(saldo_caixa, 2),
+        'movimentou_hoje': movimentou_hoje,
+    }
+
+    return jsonify({'kpis': kpis, 'grafico_7dias': grafico_7dias, 'alertas': alertas, 'caixa': caixa})
+
 
 @api_bp.route('/api/relatorios/dashboard', methods=['GET'])
 @token_required
