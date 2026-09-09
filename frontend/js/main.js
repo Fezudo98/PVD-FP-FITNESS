@@ -77,7 +77,16 @@ function checkAuth() {
         return;
     }
 
-    const userData = JSON.parse(userDataString);
+    let userData;
+    try {
+        userData = JSON.parse(userDataString);
+    } catch (error) {
+        console.error('Dados locais de usuário inválidos:', error);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+        window.location.href = '/login.html';
+        return;
+    }
 
     // Personaliza a página com os dados do usuário (se o elemento existir)
     const userNameSpan = document.getElementById('userName');
@@ -1047,4 +1056,3 @@ async function updateOrderStatus(id, newStatus) {
         Swal.fire('Erro', error.message, 'error');
     }
 }
-
