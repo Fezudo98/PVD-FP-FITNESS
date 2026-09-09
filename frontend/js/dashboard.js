@@ -10,7 +10,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const userDataString = localStorage.getItem('userData');
     if (!token || !userDataString) return; // checkAuth() do main.js já redireciona pro login
 
-    const userData = JSON.parse(userDataString);
+    let userData;
+    try {
+        userData = JSON.parse(userDataString);
+    } catch (error) {
+        console.error('Dados locais de usuário inválidos:', error);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+        window.location.href = '/login.html';
+        return;
+    }
 
     // KPIs, caixa, alertas e gráfico exigem permissão de admin (mesma regra do endpoint
     // /api/dashboard/resumo) - para vendedores, a seção some por completo em vez de mostrar
@@ -24,13 +33,21 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function formatarMoeda(valor) {
-    return `R$ ${(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const numero = Number(valor);
+    const valorSeguro = Number.isFinite(numero) ? numero : 0;
+    return valorSeguro.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 }
 
 async function carregarResumoDashboard() {
     const token = localStorage.getItem('authToken');
     const kpiGrid = document.getElementById('dashKpiGrid');
     const alertsBox = document.getElementById('dashAlerts');
+    const kpiSection = document.getElementById('dashKpiSection');
 
     try {
         const response = await fetch('/api/dashboard/resumo', {
@@ -40,22 +57,25 @@ async function carregarResumoDashboard() {
         if (!response.ok) throw new Error('Falha ao carregar o resumo.');
 
         const data = await response.json();
+        const kpis = data?.kpis || {};
+        const caixa = data?.caixa || {};
+        const alertas = data?.alertas || {};
 
         // --- KPIs ---
-        document.getElementById('kpiFaturamento').textContent = formatarMoeda(data.kpis.faturamento_hoje);
-        document.getElementById('kpiVendas').textContent = data.kpis.vendas_hoje;
-        document.getElementById('kpiTicket').textContent = formatarMoeda(data.kpis.ticket_medio_hoje);
-        document.getElementById('kpiLucro').textContent = formatarMoeda(data.kpis.lucro_estimado_hoje);
+        document.getElementById('kpiFaturamento').textContent = formatarMoeda(kpis.faturamento_hoje);
+        document.getElementById('kpiVendas').textContent = Number(kpis.vendas_hoje) || 0;
+        document.getElementById('kpiTicket').textContent = formatarMoeda(kpis.ticket_medio_hoje);
+        document.getElementById('kpiLucro').textContent = formatarMoeda(kpis.lucro_estimado_hoje);
         kpiGrid.querySelectorAll('.dash-kpi-value').forEach(el => el.classList.remove('is-loading'));
 
         // --- Caixa ---
-        document.getElementById('dashSaldoCaixa').textContent = formatarMoeda(data.caixa.saldo_atual);
+        document.getElementById('dashSaldoCaixa').textContent = formatarMoeda(caixa.saldo_atual);
 
         // --- Alertas operacionais (só mostra o que tem dado real > 0) ---
-        renderAlertas(alertsBox, data.alertas);
+        renderAlertas(alertsBox, alertas);
 
         // --- Gráfico dos últimos 7 dias ---
-        renderGraficoVendas7d(data.grafico_7dias);
+        renderGraficoVendas7d(Array.isArray(data?.grafico_7dias) ? data.grafico_7dias : []);
 
     } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
@@ -64,27 +84,37 @@ async function carregarResumoDashboard() {
             el.textContent = 'Erro';
         });
         alertsBox.innerHTML = '<div class="dash-alerts-empty">Não foi possível carregar os alertas agora.</div>';
+        mostrarEstadoGrafico('Não foi possível carregar o gráfico agora.');
+    } finally {
+        kpiSection?.setAttribute('aria-busy', 'false');
     }
 }
 
 function renderAlertas(container, alertas) {
     const itens = [];
 
-    if (alertas.sem_estoque > 0) {
+    const semEstoque = Number(alertas?.sem_estoque) || 0;
+    const estoqueBaixo = Number(alertas?.estoque_baixo) || 0;
+    const aguardandoEnvio = Number(alertas?.pedidos_aguardando_envio) || 0;
+
+    if (semEstoque > 0) {
         itens.push({
-            texto: `${alertas.sem_estoque} produto${alertas.sem_estoque > 1 ? 's' : ''} sem estoque`,
+            quantidade: semEstoque,
+            texto: `Produto${semEstoque > 1 ? 's' : ''} sem estoque`,
             href: '/estoque.html'
         });
     }
-    if (alertas.estoque_baixo > 0) {
+    if (estoqueBaixo > 0) {
         itens.push({
-            texto: `${alertas.estoque_baixo} produto${alertas.estoque_baixo > 1 ? 's' : ''} com estoque baixo`,
+            quantidade: estoqueBaixo,
+            texto: `Produto${estoqueBaixo > 1 ? 's' : ''} com estoque baixo`,
             href: '/estoque.html'
         });
     }
-    if (alertas.pedidos_aguardando_envio > 0) {
+    if (aguardandoEnvio > 0) {
         itens.push({
-            texto: `${alertas.pedidos_aguardando_envio} pedido${alertas.pedidos_aguardando_envio > 1 ? 's' : ''} aguardando envio`,
+            quantidade: aguardandoEnvio,
+            texto: `Pedido${aguardandoEnvio > 1 ? 's' : ''} aguardando envio`,
             href: '/loja_online.html'
         });
     }
@@ -96,9 +126,9 @@ function renderAlertas(container, alertas) {
 
     container.innerHTML = itens.map(item => `
         <a href="${item.href}" class="dash-alert-item">
-            <span class="dot"></span>
-            <span>${item.texto}</span>
-            <i class="fas fa-arrow-right dash-alert-arrow"></i>
+            <span class="dash-alert-count">${item.quantidade}</span>
+            <span class="dash-alert-text">${item.texto}</span>
+            <i class="fas fa-arrow-right dash-alert-arrow" aria-hidden="true"></i>
         </a>
     `).join('');
 }
@@ -107,7 +137,21 @@ let dashVendas7dChartInstance = null;
 
 function renderGraficoVendas7d(dados) {
     const canvas = document.getElementById('dashVendas7dChart');
-    if (!canvas || typeof Chart === 'undefined') return;
+    if (!canvas) return;
+
+    if (typeof Chart === 'undefined') {
+        mostrarEstadoGrafico('Gráfico indisponível no momento.');
+        return;
+    }
+
+    if (!dados.length) {
+        mostrarEstadoGrafico('Ainda não há vendas registradas neste período.');
+        return;
+    }
+
+    const status = document.getElementById('dashChartStatus');
+    canvas.hidden = false;
+    if (status) status.hidden = true;
 
     if (dashVendas7dChartInstance) dashVendas7dChartInstance.destroy();
 
@@ -168,4 +212,14 @@ function renderGraficoVendas7d(dados) {
             }
         }
     });
+}
+
+function mostrarEstadoGrafico(mensagem) {
+    const canvas = document.getElementById('dashVendas7dChart');
+    const status = document.getElementById('dashChartStatus');
+    if (canvas) canvas.hidden = true;
+    if (status) {
+        status.textContent = mensagem;
+        status.hidden = false;
+    }
 }
