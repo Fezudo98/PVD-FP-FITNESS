@@ -17,8 +17,8 @@
     <div class="row g-5">
         <!-- Product Image -->
         <div class="col-md-6">
-            <div class="card border-0 bg-white overflow-hidden rounded-4 shadow-sm h-100">
-                <div id="productCarousel" class="carousel slide" data-bs-ride="false">
+            <div class="card border-0 bg-white overflow-hidden rounded-4 shadow-sm">
+                <div id="productCarousel" class="carousel slide" data-bs-ride="false" data-bs-wrap="false">
                     <div class="carousel-inner" id="carouselInner" style="height: 550px;">
                         <!-- Images will be loaded here -->
                         <div class="carousel-item active h-100">
@@ -1050,32 +1050,38 @@
                 };
                 carouselThumbnails.appendChild(thumb);
             });
-            prevBtn.style.display = 'block';
-            nextBtn.style.display = 'block';
         } else {
             prevBtn.style.display = 'none';
             nextBtn.style.display = 'none';
         }
 
         const myCarousel = document.getElementById('productCarousel');
-        if (!myCarousel.dataset.listenerAttached) {
-            myCarousel.addEventListener('slide.bs.carousel', function (e) {
-                const index = e.to;
-                const thumbs = carouselThumbnails.querySelectorAll('img');
-                thumbs.forEach((t, i) => {
-                    if (i === index) {
-                        t.classList.remove('border-secondary');
-                        t.classList.add('border-warning');
-                        t.style.opacity = '1';
-                    } else {
-                        t.classList.remove('border-warning');
-                        t.classList.add('border-secondary');
-                        t.style.opacity = '0.6';
-                    }
-                });
+        const updateCarouselNavigation = (index) => {
+            const hasPrevious = images.length > 1 && index > 0;
+            const hasNext = images.length > 1 && index < images.length - 1;
+            prevBtn.style.display = hasPrevious ? 'block' : 'none';
+            nextBtn.style.display = hasNext ? 'block' : 'none';
+
+            const thumbs = carouselThumbnails.querySelectorAll('img');
+            thumbs.forEach((t, i) => {
+                if (i === index) {
+                    t.classList.remove('border-secondary');
+                    t.classList.add('border-warning');
+                    t.style.opacity = '1';
+                } else {
+                    t.classList.remove('border-warning');
+                    t.classList.add('border-secondary');
+                    t.style.opacity = '0.6';
+                }
             });
-            myCarousel.dataset.listenerAttached = 'true';
+        };
+
+        if (myCarousel.galleryNavigationHandler) {
+            myCarousel.removeEventListener('slide.bs.carousel', myCarousel.galleryNavigationHandler);
         }
+        myCarousel.galleryNavigationHandler = (event) => updateCarouselNavigation(event.to);
+        myCarousel.addEventListener('slide.bs.carousel', myCarousel.galleryNavigationHandler);
+        updateCarouselNavigation(0);
 
         // Initialize Zoom only for Desktops
         setupZoomInteractions();
