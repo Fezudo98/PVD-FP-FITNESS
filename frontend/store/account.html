@@ -499,7 +499,7 @@
 
                                     ${getTrackingContent(order)}
 
-                                    ${order.status === 'Pendente' || (order.status === 'Cancelada' && order.status_detail_mp) ? `
+                                    ${order.status === 'Pendente' || (order.status === 'Cancelada' && (order.status_detail_mp || order.roleta_recuperavel)) ? `
                                     <button class="btn btn-outline-success btn-sm rounded-pill px-4" onclick="retryPayment(${order.id}, this)">
                                         <i class="fas fa-rotate-right me-1"></i> Tentar Pagar Novamente
                                     </button>` : ''}

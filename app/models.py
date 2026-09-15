@@ -394,6 +394,16 @@ class Venda(db.Model):
 
         self.status = novo_status
 
+class RoletaPremio(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    id_cliente = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    campanha = db.Column(db.Date, nullable=False)
+    premio = db.Column(db.String(20), nullable=False)
+    id_venda = db.Column(db.Integer, db.ForeignKey('venda.id'), nullable=True)
+    aplicado = db.Column(db.Boolean, nullable=False, default=False)
+    __table_args__ = (db.UniqueConstraint('id_cliente', 'campanha', name='uq_roleta_cliente_campanha'),)
+
+
 class ItemVenda(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     quantidade = db.Column(db.Integer, nullable=False)

@@ -22,6 +22,33 @@ from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento
 from ..services.meta_capi_service import enviar_evento_purchase
 import mercadopago
 import threading
+from sqlalchemy.exc import IntegrityError
+from ..models import RoletaPremio
+from ..services import roleta_service as roleta
+
+
+def _premio_cliente(cliente):
+    if not roleta.ativa():
+        return None
+    return RoletaPremio.query.filter_by(id_cliente=cliente.id, campanha=roleta.CAMPANHA, id_venda=None).first()
+
+
+def _opcoes_roleta(cliente):
+    primeira = PromocaoAutomatica.query.filter_by(gatilho='primeira_compra', ativo=True).first()
+    if Venda.query.filter(Venda.id_cliente == cliente.id, Venda.status != 'Cancelada').first():
+        primeira = None
+    return (
+        (primeira.tipo_desconto, primeira.valor_desconto) if primeira else None,
+        (cliente.desconto_avaliacao_tipo, cliente.desconto_avaliacao_percentual) if cliente.recompensa_avaliacao_disponivel() else None,
+        (cliente.desconto_aniversario_tipo, cliente.desconto_aniversario_percentual) if cliente.recompensa_aniversario_disponivel() else None,
+    )
+
+
+def _escolher_roleta(cliente, premio, subtotal, base, frete, manual=0):
+    primeira, avaliacao, aniversario = _opcoes_roleta(cliente)
+    return roleta.escolher(premio.premio, subtotal, base, frete, primeira,
+                          avaliacao, manual, aniversario)
+
 
 store_bp = Blueprint('store', __name__)
 
@@ -371,6 +398,66 @@ def store_product_detail_page(produto_id):
 @store_bp.route('/store/carrinho')
 def store_cart_page():
     return render_template('store/cart.html')
+
+@store_bp.route('/api/store/roleta', methods=['GET', 'POST'])
+@client_token_required
+def roleta_cliente(cliente):
+    if not roleta.ativa():
+        return jsonify({'ativa': False}), 410
+    premio = RoletaPremio.query.filter_by(id_cliente=cliente.id, campanha=roleta.CAMPANHA).first()
+    if request.method == 'POST' and not premio:
+        premio = RoletaPremio(id_cliente=cliente.id, campanha=roleta.CAMPANHA, premio=roleta.sortear())
+        db.session.add(premio)
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            premio = RoletaPremio.query.filter_by(id_cliente=cliente.id, campanha=roleta.CAMPANHA).one()
+    return jsonify({'ativa': True, 'premios': roleta.ROTULOS,
+                    'premio': premio.premio if premio else None,
+                    'indice': roleta.PREMIOS.index(premio.premio) if premio else None,
+                    'utilizado': bool(premio and premio.id_venda)})
+
+
+@store_bp.route('/api/store/roleta/resumo', methods=['POST'])
+@client_token_required
+def roleta_resumo(cliente):
+    premio = _premio_cliente(cliente)
+    if not premio:
+        return jsonify({'ativa': False})
+    dados = request.get_json(silent=True) or {}
+    subtotal, base = 0, 0
+    for item in dados.get('itens', []):
+        produto = Produto.query.get(item.get('id_produto'))
+        qtd = item.get('quantidade')
+        if not produto or not isinstance(qtd, int) or isinstance(qtd, bool) or qtd <= 0:
+            return jsonify({'erro': 'Carrinho inválido.'}), 400
+        valor = produto.preco_efetivo * qtd
+        subtotal += valor
+        if not produto.em_promocao:
+            base += valor
+    try:
+        frete = float(dados.get('taxa_entrega', 0) or 0)
+    except (ValueError, TypeError):
+        return jsonify({'erro': 'Frete inválido.'}), 400
+    if not math.isfinite(frete) or frete < 0:
+        return jsonify({'erro': 'Frete inválido.'}), 400
+    # Frete nesta rota é apenas preview; checkout recalcula com a transportadora.
+    manual = 0
+    cupom = Cupom.query.get(dados.get('cupom_id')) if dados.get('cupom_id') not in (None, 0, '0') else None
+    if cupom and cupom.ativo:
+        if cupom.aplicacao == 'total':
+            manual = roleta.desconto(cupom.tipo_desconto, cupom.valor_desconto, base)
+        else:
+            ids = {p.id for p in cupom.produtos}
+            for item in dados.get('itens', []):
+                produto = Produto.query.get(item['id_produto'])
+                if produto.id in ids and not produto.em_promocao:
+                    manual += (produto.preco_efetivo * cupom.valor_desconto / 100 if cupom.tipo_desconto == 'percentual' else cupom.valor_desconto) * item['quantidade']
+    manual = min(manual, subtotal)
+    resultado = _escolher_roleta(cliente, premio, subtotal, base, frete, manual)
+    return jsonify(dict(resultado, ativa=True, premio=premio.premio))
+
 
 @store_bp.route('/store/checkout')
 def store_checkout_page():
@@ -1256,6 +1343,17 @@ def store_checkout():
     
     db.session.flush()
     
+    premio_roleta = _premio_cliente(cliente)
+    if premio_roleta:
+        # Benefícios pessoais só podem ser usados pelo titular autenticado.
+        try:
+            claims = jwt.decode(request.headers.get('x-client-token', ''), current_app.config['SECRET_KEY'], algorithms=['HS256'])
+            if claims.get('type') != 'client' or claims.get('id') != cliente.id:
+                raise ValueError()
+        except Exception:
+            db.session.rollback()
+            return jsonify({'erro': 'Entre na conta titular do prêmio para continuar.'}), 401
+
     # 2. Processar Itens e Estoque
     total_venda = 0
     itens_venda_objs = []
@@ -1267,6 +1365,8 @@ def store_checkout():
             return jsonify({'erro': f'Produto ID {item["id_produto"]} indisponível.'}), 400
 
         qtd = item['quantidade']
+        if not isinstance(qtd, int) or isinstance(qtd, bool) or qtd <= 0:
+            return jsonify({'erro': 'Quantidade inválida.'}), 400
         # Decremento atômico e condicional (em vez de checar e depois escrever em dois passos):
         # evita a corrida clássica de e-commerce onde duas compras simultâneas do último item
         # em estoque passam ambas na checagem antes de qualquer uma escrever, vendendo o mesmo
@@ -1343,11 +1443,11 @@ def store_checkout():
 
     # Recompensa automática de primeira avaliação: aplicada e consumida (uso único) por cima do
     # cupom manual, se o cliente tiver uma disponível e ainda válida.
-    desconto_avaliacao = cliente.consumir_recompensa_avaliacao(total_venda - desconto_total)
+    desconto_avaliacao = 0 if premio_roleta else cliente.consumir_recompensa_avaliacao(total_venda - desconto_total)
     desconto_total += desconto_avaliacao
 
     # Recompensa automática de aniversário: mesma lógica, empilhada por cima das anteriores.
-    desconto_aniversario = cliente.consumir_recompensa_aniversario(total_venda - desconto_total)
+    desconto_aniversario = 0 if premio_roleta else cliente.consumir_recompensa_aniversario(total_venda - desconto_total)
     desconto_total += desconto_aniversario
 
     total_final = total_venda - desconto_total
@@ -1359,7 +1459,14 @@ def store_checkout():
     # Também guardamos o ID técnico da opção escolhida (retirada, motoboy ou me_<service_id> do
     # Melhor Envio) em codigo_servico_frete: é o que permite gerar a etiqueta depois, diferente de
     # tipo_entrega/transportadora que só guardam o rótulo amigável exibido ao cliente.
-    taxa_entrega_informada = float(dados.get('taxa_entrega', 0.0) or 0.0)
+    try:
+        taxa_entrega_informada = float(dados.get('taxa_entrega', 0.0) or 0.0)
+    except (ValueError, TypeError):
+        db.session.rollback()
+        return jsonify({'erro': 'Taxa de entrega inválida.'}), 400
+    if not math.isfinite(taxa_entrega_informada) or taxa_entrega_informada < 0:
+        db.session.rollback()
+        return jsonify({'erro': 'Taxa de entrega inválida.'}), 400
     cep_destino_frete = end_data.get('cep') or cliente.endereco_cep
     cep_frete_clean = ''.join(filter(str.isdigit, str(cep_destino_frete or '')))
 
@@ -1375,6 +1482,9 @@ def store_checkout():
             print(f"Erro ao validar frete no checkout: {e}")
 
     servico_frete_informado = dados.get('servico_frete')
+    if servico_frete_informado and servico_frete_informado not in opcoes_frete_validas:
+        db.session.rollback()
+        return jsonify({'erro': 'Serviço de frete indisponível. Recalcule a entrega.'}), 400
     if servico_frete_informado and servico_frete_informado in opcoes_frete_validas:
         # Temos o ID da opção: valida que o valor informado bate exatamente com essa opção
         if abs(taxa_entrega_informada - opcoes_frete_validas[servico_frete_informado]) >= 0.01:
@@ -1385,6 +1495,21 @@ def store_checkout():
         if not any(abs(taxa_entrega_informada - v) < 0.01 for v in opcoes_frete_validas.values()):
             return jsonify({'erro': 'A taxa de entrega informada não corresponde a nenhuma opção de frete válida. Atualize a página e tente novamente.'}), 400
         codigo_servico_frete = None
+
+    resultado_roleta = None
+    if premio_roleta:
+        resultado_roleta = _escolher_roleta(cliente, premio_roleta, total_venda,
+                                           subtotal_elegivel_cupom, taxa_entrega_informada,
+                                           desconto_total)
+        if resultado_roleta['origem'] == 'avaliacao' or resultado_roleta.get('avaliacao', 0) > 0:
+            cliente.consumir_recompensa_avaliacao(total_venda)
+        if resultado_roleta['aniversario'] > 0:
+            cliente.consumir_recompensa_aniversario(total_venda)
+        if not resultado_roleta.get('cupom'):
+            cupom_aplicado = None
+        desconto_total = resultado_roleta['desconto']
+        total_final = round(total_venda - desconto_total, 2)
+        taxa_entrega_informada = resultado_roleta['frete']
 
     # 3. Criar Venda
     client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
@@ -1423,6 +1548,15 @@ def store_checkout():
     db.session.add(nova_venda)
     db.session.flush()
     
+    if premio_roleta:
+        # Reserva condicional na mesma transação do estoque/pedido/pagamento.
+        reservado = RoletaPremio.query.filter_by(id=premio_roleta.id, id_venda=None).update(
+            {RoletaPremio.id_venda: nova_venda.id,
+             RoletaPremio.aplicado: resultado_roleta['origem'] in ('roleta', 'brinde')}, synchronize_session=False)
+        if reservado != 1:
+            db.session.rollback()
+            return jsonify({'erro': 'Este prêmio já foi utilizado em outro pedido.'}), 409
+
     for item_obj in itens_venda_objs:
         item_obj.id_venda = nova_venda.id
         db.session.add(item_obj)
@@ -1692,6 +1826,7 @@ def get_client_orders(current_client):
             'tipo_entrega': venda.tipo_entrega,
             'codigo_rastreio': venda.codigo_rastreio,
             'transportadora': venda.transportadora,
+            'roleta_recuperavel': bool(roleta.ativa() and venda.status == 'Cancelada' and not venda.data_pagamento and RoletaPremio.query.filter_by(id_venda=venda.id).first()),
             'has_feedback': venda.feedback is not None
         })
     return jsonify(orders_data)
@@ -1710,7 +1845,11 @@ def retry_client_order_payment(current_client, venda_id):
 
     # Re-checa o status na hora, o mais perto possível da ação: evita reabrir pagamento de
     # um pedido que acabou de ser confirmado (webhook) ou cancelado (abandono) nesse meio-tempo.
-    era_rejeicao = venda.status == 'Cancelada' and bool(venda.status_detail_mp)
+    participacao = RoletaPremio.query.filter_by(id_venda=venda.id).first()
+    recuperar_roleta = bool(participacao and venda.status == 'Cancelada' and not venda.data_pagamento)
+    if recuperar_roleta and not roleta.ativa():
+        return jsonify({'erro': 'A campanha terminou. Este pedido cancelado não pode recuperar o prêmio.'}), 400
+    era_rejeicao = venda.status == 'Cancelada' and (bool(venda.status_detail_mp) or recuperar_roleta)
     if venda.status != 'Pendente' and not era_rejeicao:
         return jsonify({'erro': f'Este pedido não está mais pendente (status atual: {venda.status}).'}), 400
 

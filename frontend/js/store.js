@@ -539,6 +539,7 @@ function renderCheckoutPage() {
     // Expõe o valor numérico (não formatado) para outras funções (ex: recalculateTotal
     // ao trocar o frete) usarem diretamente, em vez de tentar reler o texto já formatado da tela
     window.currentDiscountValue = discount;
+    window.dispatchEvent(new Event("checkoutUpdated"));
 
     const total = subtotal - discount;
 
@@ -576,6 +577,7 @@ function renderCheckoutPage() {
 // Helper to perform the actual checkout API call
 async function performCheckout(payload) {
     try {
+        if (window.refreshRoletaSummary) await window.refreshRoletaSummary();
         Swal.fire({
             title: 'Processando...',
             text: 'Aguarde enquanto finalizamos seu pedido.',

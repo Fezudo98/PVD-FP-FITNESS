@@ -512,6 +512,10 @@
     }
 
     function recalculateTotal() {
+        if (window.roletaSummary && window.roletaSummary.ativa) {
+            window.refreshRoletaSummary();
+            return;
+        }
         const cart = JSON.parse(localStorage.getItem('fp_fitness_cart')) || [];
         const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 

@@ -1,7 +1,7 @@
 from flask import request, jsonify, current_app, Response
 from . import api_bp
 from ...extensions import db
-from ...models import Venda, ItemVenda, Pagamento, Cupom, MovimentacaoCaixa, Produto, Cliente, Configuracao, EventoMarketing, current_brazil_time
+from ...models import Venda, ItemVenda, Pagamento, Cupom, MovimentacaoCaixa, Produto, Cliente, Configuracao, EventoMarketing, RoletaPremio, current_brazil_time
 from ...utils import token_required, registrar_log, salvar_recibo_html, gerar_recibo_html, calcular_base_elegivel_cupom
 from ...services.etiqueta_service import gerar_etiqueta_me
 from ...services.meta_capi_service import enviar_evento_purchase
@@ -238,6 +238,7 @@ def get_venda_details(current_user, venda_id):
         'cliente_cpf': venda.cliente.cpf if venda.cliente else None,
         'vendedor_nome': venda.vendedor.nome if venda.vendedor else 'Online', 
         'itens': itens_list, 
+        'brinde_surpresa': bool(RoletaPremio.query.filter_by(id_venda=venda.id, premio='brinde', aplicado=True).first()),
         'cupons_utilizados': [c.codigo for c in venda.cupons], 
         'desconto_total': venda.desconto_total, 
         'parcelas': venda.parcelas,
