@@ -436,7 +436,10 @@ def roleta_resumo(cliente):
         subtotal += valor
         if not produto.em_promocao:
             base += valor
-    frete = float(dados.get('taxa_entrega', 0) or 0)
+    try:
+        frete = float(dados.get('taxa_entrega', 0) or 0)
+    except (ValueError, TypeError):
+        return jsonify({'erro': 'Frete inválido.'}), 400
     if not math.isfinite(frete) or frete < 0:
         return jsonify({'erro': 'Frete inválido.'}), 400
     # Frete nesta rota é apenas preview; checkout recalcula com a transportadora.
@@ -450,7 +453,8 @@ def roleta_resumo(cliente):
             for item in dados.get('itens', []):
                 produto = Produto.query.get(item['id_produto'])
                 if produto.id in ids and not produto.em_promocao:
-                    manual += roleta.desconto(cupom.tipo_desconto, cupom.valor_desconto, produto.preco_efetivo) * item['quantidade']
+                    manual += (produto.preco_efetivo * cupom.valor_desconto / 100 if cupom.tipo_desconto == 'percentual' else cupom.valor_desconto) * item['quantidade']
+    manual = min(manual, subtotal)
     resultado = _escolher_roleta(cliente, premio, subtotal, base, frete, manual)
     return jsonify(dict(resultado, ativa=True, premio=premio.premio))
 
@@ -1455,7 +1459,14 @@ def store_checkout():
     # Também guardamos o ID técnico da opção escolhida (retirada, motoboy ou me_<service_id> do
     # Melhor Envio) em codigo_servico_frete: é o que permite gerar a etiqueta depois, diferente de
     # tipo_entrega/transportadora que só guardam o rótulo amigável exibido ao cliente.
-    taxa_entrega_informada = float(dados.get('taxa_entrega', 0.0) or 0.0)
+    try:
+        taxa_entrega_informada = float(dados.get('taxa_entrega', 0.0) or 0.0)
+    except (ValueError, TypeError):
+        db.session.rollback()
+        return jsonify({'erro': 'Taxa de entrega inválida.'}), 400
+    if not math.isfinite(taxa_entrega_informada) or taxa_entrega_informada < 0:
+        db.session.rollback()
+        return jsonify({'erro': 'Taxa de entrega inválida.'}), 400
     cep_destino_frete = end_data.get('cep') or cliente.endereco_cep
     cep_frete_clean = ''.join(filter(str.isdigit, str(cep_destino_frete or '')))
 
@@ -1471,6 +1482,9 @@ def store_checkout():
             print(f"Erro ao validar frete no checkout: {e}")
 
     servico_frete_informado = dados.get('servico_frete')
+    if servico_frete_informado and servico_frete_informado not in opcoes_frete_validas:
+        db.session.rollback()
+        return jsonify({'erro': 'Serviço de frete indisponível. Recalcule a entrega.'}), 400
     if servico_frete_informado and servico_frete_informado in opcoes_frete_validas:
         # Temos o ID da opção: valida que o valor informado bate exatamente com essa opção
         if abs(taxa_entrega_informada - opcoes_frete_validas[servico_frete_informado]) >= 0.01:
@@ -1812,6 +1826,7 @@ def get_client_orders(current_client):
             'tipo_entrega': venda.tipo_entrega,
             'codigo_rastreio': venda.codigo_rastreio,
             'transportadora': venda.transportadora,
+            'roleta_recuperavel': bool(roleta.ativa() and venda.status == 'Cancelada' and not venda.data_pagamento and RoletaPremio.query.filter_by(id_venda=venda.id).first()),
             'has_feedback': venda.feedback is not None
         })
     return jsonify(orders_data)
@@ -1830,7 +1845,11 @@ def retry_client_order_payment(current_client, venda_id):
 
     # Re-checa o status na hora, o mais perto possível da ação: evita reabrir pagamento de
     # um pedido que acabou de ser confirmado (webhook) ou cancelado (abandono) nesse meio-tempo.
-    era_rejeicao = venda.status == 'Cancelada' and bool(venda.status_detail_mp)
+    participacao = RoletaPremio.query.filter_by(id_venda=venda.id).first()
+    recuperar_roleta = bool(participacao and venda.status == 'Cancelada' and not venda.data_pagamento)
+    if recuperar_roleta and not roleta.ativa():
+        return jsonify({'erro': 'A campanha terminou. Este pedido cancelado não pode recuperar o prêmio.'}), 400
+    era_rejeicao = venda.status == 'Cancelada' and (bool(venda.status_detail_mp) or recuperar_roleta)
     if venda.status != 'Pendente' and not era_rejeicao:
         return jsonify({'erro': f'Este pedido não está mais pendente (status atual: {venda.status}).'}), 400
 

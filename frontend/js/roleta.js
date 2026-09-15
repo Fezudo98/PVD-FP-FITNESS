@@ -58,11 +58,11 @@
       itens:items, taxa_entrega:window.shippingCost || 0,
       cupom_id:typeof currentCoupon !== 'undefined' && currentCoupon ? currentCoupon.id : null
     })});
-    if (!response.ok) return;
+    if (!response.ok) { if (response.status === 401) resetSummary(); return; }
     const data = await response.json();
     if (id !== sequence) return;
+    if (!data.ativa) { resetSummary(); return; }
     window.roletaSummary=data;
-    if (!data.ativa) return;
     const money = v => Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
     window.currentDiscountValue=data.desconto;
     document.getElementById('checkoutDiscount').textContent='- '+money(data.desconto);
@@ -75,6 +75,22 @@
     const origins={roleta:'Prêmio da roleta aplicado',brinde:'Brinde surpresa incluído, com os descontos disponíveis',avaliacao:'Desconto de avaliação aplicado: maior economia',primeira_compra:'Desconto de primeira compra aplicado: maior economia',cupom:'Cupom aplicado: maior economia',nenhum:'Seu prêmio não reduz este carrinho'};
     note.textContent=origins[data.origem];
   }
+  function resetSummary() {
+    const hadSummary=Boolean(window.roletaSummary?.ativa);
+    window.roletaSummary=null;
+    document.getElementById('roletaBeneficio')?.remove();
+    if (!hadSummary) return;
+    if (typeof renderCheckoutPage === 'function') renderCheckoutPage();
+    if (typeof recalculateTotal === 'function') recalculateTotal();
+  }
+  const deadline = Date.parse('2026-09-16T00:00:00-03:00');
+  const expiryTimer = setInterval(() => {
+    if (Date.now() < deadline) return;
+    clearInterval(expiryTimer);
+    dialog.close();
+    document.getElementById('roletaBanner').hidden=true;
+    resetSummary();
+  }, 1000);
   window.refreshRoletaSummary=refresh;
   const schedule=()=>{clearTimeout(timer);timer=setTimeout(()=>refresh().catch(console.error),150);};
   document.addEventListener('change',schedule);

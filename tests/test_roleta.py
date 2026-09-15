@@ -8,12 +8,12 @@ from app.models import Cliente, Produto, PromocaoAutomatica, RoletaPremio, Venda
 from app.services import roleta_service as r
 
 @pytest.fixture
-def shop():
+def shop(tmp_path):
     class Config:
         TESTING=True
         DEBUG=True
         SECRET_KEY='test-only'
-        SQLALCHEMY_DATABASE_URI='sqlite://'
+        SQLALCHEMY_DATABASE_URI='sqlite:///' + str(tmp_path / 'test.db')
         SQLALCHEMY_TRACK_MODIFICATIONS=False
         RATELIMIT_ENABLED=False
         CORS_ORIGINS=[]
@@ -88,3 +88,45 @@ def test_wheel_wins_preserves_review(shop):
     assert res.status_code==200 and res.json['total']==85
     assert c.desconto_avaliacao_percentual==2
     assert RoletaPremio.query.one().aplicado is True
+
+@pytest.mark.parametrize('frete', ['NaN', 'Infinity', -1, 'invalid'])
+def test_bad_shipping_rejected(shop,frete):
+    api,c,p,h=shop
+    res=api.post('/api/store/checkout',headers=h,json={'cliente':{'nome':c.nome,'email':c.email},'itens':[{'id_produto':p.id,'quantidade':1}],'termos_aceitos':True,'servico_frete':'retirada','taxa_entrega':frete})
+    assert res.status_code==400 and Venda.query.count()==0 and p.quantidade==10
+
+def test_unknown_shipping_rejected(shop):
+    api,c,p,h=shop
+    res=api.post('/api/store/checkout',headers=h,json={'cliente':{'nome':c.nome,'email':c.email},'itens':[{'id_produto':p.id,'quantidade':1}],'termos_aceitos':True,'servico_frete':'inventado','taxa_entrega':0})
+    assert res.status_code==400 and Venda.query.count()==0
+
+def test_parallel_spins(shop):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    api,c,p,h=shop
+    barrier=Barrier(2)
+    def draw():
+        barrier.wait(timeout=5)
+        return 'off15'
+    def spin():
+        with api.application.test_client() as client:
+            res=client.post('/api/store/roleta',headers=h)
+            return res.status_code,res.json
+    with patch.object(r,'sortear',side_effect=draw),ThreadPoolExecutor(max_workers=2) as pool:
+        one,two=list(pool.map(lambda _:spin(),range(2)))
+    assert one[0]==two[0]==200 and one[1]==two[1]
+    assert RoletaPremio.query.count()==1
+
+def test_recover_canceled_prize_same_order(shop):
+    api,c,p,h=shop
+    venda=Venda(id_cliente=c.id,total_venda=85,desconto_total=15,status='Cancelada')
+    db.session.add(venda);db.session.flush()
+    db.session.add(RoletaPremio(id_cliente=c.id,campanha=r.CAMPANHA,premio='off15',id_venda=venda.id,aplicado=True));db.session.commit()
+    with patch('app.routes.store.criar_preferencia_mercadopago',return_value=('https://example.com/pay',None)):
+        res=api.post(f'/api/client/orders/{venda.id}/retry_payment',headers=h,json={})
+    assert res.status_code==200 and venda.status=='Pendente'
+    assert RoletaPremio.query.one().id_venda==venda.id
+    venda.status='Cancelada';db.session.commit()
+    with patch.object(r,'ativa',return_value=False):
+        res=api.post(f'/api/client/orders/{venda.id}/retry_payment',headers=h,json={})
+    assert res.status_code==400
