@@ -1,19 +1,35 @@
-    {% if roleta_ativa %}
-    <div id="roletaBanner" style="position:fixed;left:16px;bottom:96px;z-index:1070;max-width:calc(100vw - 32px)">
-      <button class="btn-hero btn-hero-primary" id="abrirRoleta" type="button">🎁 Gire e ganhe</button>
-
-    </div>
-    <dialog id="roletaDialog" aria-labelledby="roletaTitulo" style="background:#141414;color:#fff;border:1px solid #c4a052;border-radius:24px;max-width:94vw;width:420px;padding:24px;text-align:center">
-      <button id="fecharRoleta" type="button" aria-label="Fechar roleta" style="float:right;background:transparent;color:white;border:0;font-size:24px">×</button>
-      <p style="color:#c4a052;letter-spacing:2px">DIA DO CLIENTE</p>
-      <h2 id="roletaTitulo">Seu próximo look vem com um presente.</h2>
-      <div style="position:relative;margin:24px auto;width:280px;max-width:100%;aspect-ratio:1">
-        <span style="position:absolute;top:-15px;left:calc(50% - 12px);z-index:2;color:#fff;font-size:28px">▼</span>
-        <canvas id="roletaCanvas" width="560" height="560" style="width:100%;border-radius:50%;box-shadow:0 0 30px #c4a05233;transition:transform 4s cubic-bezier(.12,.7,.12,1)"></canvas>
+{% if roleta_ativa %}
+<link rel="stylesheet" href="/frontend/css/roleta.css?v=3">
+<div id="roletaBanner" class="rw-launcher">
+  <button id="abrirRoleta" type="button"><span class="rw-launch-icon" aria-hidden="true">✦</span><span><small>DIA DO CLIENTE</small><strong>Gire e ganhe</strong></span></button>
+</div>
+<dialog id="roletaDialog" class="rw-dialog" aria-labelledby="roletaTitulo">
+  <button id="fecharRoleta" class="rw-close" type="button" aria-label="Fechar roleta">×</button>
+  <canvas id="roletaConfetti" class="rw-confetti" aria-hidden="true"></canvas>
+  <div class="rw-content">
+    <p class="rw-eyebrow">FITPRO STORE <span> / </span> DIA DO CLIENTE</p>
+    <div id="roletaWheelView">
+      <h2 id="roletaTitulo">Uma volta.<br><em>Uma surpresa sua.</em></h2>
+      <p class="rw-subtitle">Hoje, seu próximo look pode vir com algo a mais.</p>
+      <div class="rw-wheel-wrap">
+        <div class="rw-pointer" aria-hidden="true"></div>
+        <div class="rw-wheel-ring"><canvas id="roletaCanvas" width="720" height="720" aria-label="Roleta com descontos de 5%, 10%, 15%, frete grátis e brinde surpresa"></canvas></div>
+        <div class="rw-hub" aria-hidden="true"><span>FP</span><small>FITPRO</small></div>
       </div>
-      <p id="roletaResultado" role="status" aria-live="polite">5% OFF · 10% OFF · 15% OFF · Frete grátis · Brinde surpresa</p>
-      <button id="girarRoleta" class="btn-hero btn-hero-primary" type="button">Girar minha roleta</button>
-      <p class="small mt-3">O melhor benefício é aplicado no checkout, sem acumular descontos da roleta com os nativos. O brinde surpresa pode acumular. Prêmio válido apenas hoje.</p>
-    </dialog>
-    <script src="/frontend/js/roleta.js?v=2" defer></script>
-    {% endif %}
+      <p id="roletaResultado" class="rw-status" role="status" aria-live="polite">Cinco prêmios. Um deles pode ser seu.</p>
+      <button id="girarRoleta" class="rw-primary" type="button">Girar e descobrir <span aria-hidden="true">↗</span></button>
+    </div>
+    <div id="roletaPrizeView" class="rw-prize-view" hidden>
+      <span class="rw-prize-icon" aria-hidden="true">✦</span>
+      <p class="rw-eyebrow">SEU PRESENTE DE HOJE</p>
+      <h2 id="roletaPrizeTitle" tabindex="-1"></h2>
+      <p id="roletaPrizeDescription" class="rw-subtitle"></p>
+      <div class="rw-ticket"><span>Salvo na sua conta</span><strong>Válido hoje · até 23h59</strong><small>Horário de Brasília</small></div>
+      <a id="roletaUsePrize" class="rw-primary" href="/store/produtos">Escolher meu look <span aria-hidden="true">↗</span></a>
+      <button id="roletaBack" class="rw-secondary" type="button">Voltar à roleta</button>
+    </div>
+    <p class="rw-rules">Um giro por conta. Aplicamos o benefício que mais economiza no checkout. O brinde surpresa acumula com os descontos.</p>
+  </div>
+</dialog>
+<script src="/frontend/js/roleta.js?v=3" defer></script>
+{% endif %}
