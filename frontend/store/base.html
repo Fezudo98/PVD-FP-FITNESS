@@ -164,6 +164,25 @@
         </div>
     </div>
 
+    {% if roleta_ativa %}
+    <div class="container py-3 text-center" id="roletaBanner">
+      <button class="btn-hero btn-hero-primary" id="abrirRoleta" type="button">✦ Dia do Cliente · Gire e ganhe um prêmio</button>
+      <p class="small mt-2 mb-0">Só hoje, 15/09 · Um giro e um pedido por conta · Até 23h59 (Brasília)</p>
+    </div>
+    <dialog id="roletaDialog" aria-labelledby="roletaTitulo" style="background:#141414;color:#fff;border:1px solid #c4a052;border-radius:24px;max-width:94vw;width:420px;padding:24px;text-align:center">
+      <button id="fecharRoleta" type="button" aria-label="Fechar roleta" style="float:right;background:transparent;color:white;border:0;font-size:24px">×</button>
+      <p style="color:#c4a052;letter-spacing:2px">DIA DO CLIENTE</p>
+      <h2 id="roletaTitulo">Seu próximo look vem com um presente.</h2>
+      <div style="position:relative;margin:24px auto;width:280px;max-width:100%;aspect-ratio:1">
+        <span style="position:absolute;top:-15px;left:calc(50% - 12px);z-index:2;color:#fff;font-size:28px">▼</span>
+        <canvas id="roletaCanvas" width="560" height="560" style="width:100%;border-radius:50%;box-shadow:0 0 30px #c4a05233;transition:transform 4s cubic-bezier(.12,.7,.12,1)"></canvas>
+      </div>
+      <p id="roletaResultado" role="status" aria-live="polite">5% OFF · 10% OFF · 15% OFF · Frete grátis · Brinde surpresa</p>
+      <button id="girarRoleta" class="btn-hero btn-hero-primary" type="button">Girar minha roleta</button>
+      <p class="small mt-3">O melhor benefício é aplicado no checkout, sem acumular descontos da roleta com os nativos. O brinde surpresa pode acumular. Prêmio válido apenas hoje.</p>
+    </dialog>
+    <script src="/frontend/js/roleta.js?v=1" defer></script>
+    {% endif %}
     <!-- Main Content -->
     <main class="flex-grow-1">
         <!-- Banner de parcelamento sem juros (fecha e não volta a aparecer nesse navegador). -->
@@ -216,7 +235,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <!-- Device ID do Mercado Pago: reduz falsos positivos do antifraude deles no checkout -->
 <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
-<script src="/frontend/js/store.js?v=25"></script>
+<script src="/frontend/js/store.js?v=26"></script>
 {% block scripts %}{% endblock %}
 </body>
 

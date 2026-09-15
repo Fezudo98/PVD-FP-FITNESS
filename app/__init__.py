@@ -50,7 +50,9 @@ def create_app(config_class):
             termos_versao_formatada = datetime.strptime(termos_versao, '%Y-%m-%d').strftime('%d/%m/%Y')
         except (ValueError, TypeError):
             termos_versao_formatada = termos_versao
+        from .services.roleta_service import ativa
         return {
+            'roleta_ativa': ativa(),
             'current_year': datetime.now().year,
             'termos_versao': termos_versao,
             'termos_versao_formatada': termos_versao_formatada

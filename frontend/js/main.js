@@ -803,7 +803,7 @@ async function viewOrderDetails(id) {
 
         const transp = venda.transportadora ? ` (${venda.transportadora})` : '';
         document.getElementById('modalSummaryFreight').textContent = `R$ ${frete.toFixed(2)}`;
-        document.getElementById('modalSummaryFreightType').textContent = `${freteNome}${transp}`;
+        document.getElementById('modalSummaryFreightType').textContent = `${freteNome}${transp}${venda.brinde_surpresa ? ' · 🎁 Incluir brinde surpresa' : ''}`;
 
         document.getElementById('modalOrderTotal').textContent = `R$ ${venda.total_venda.toFixed(2)}`;
 
