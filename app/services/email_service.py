@@ -156,7 +156,7 @@ def enviar_pagamento_rejeitado(venda, status_detail=None):
         <p><strong>Dica:</strong> tentar novamente pagando com <strong>PIX</strong> costuma ter aprovação mais rápida do que cartão de crédito.</p>
         <a href="https://www.lojafpfitness.com.br/store/conta" style="display:inline-block;margin-top:10px;padding:12px 24px;background:linear-gradient(135deg,#e0b431,#c9a22b);color:#000000;text-decoration:none;font-weight:bold;border-radius:50px;">Tentar novamente</a>
         <p style="margin-top:16px;">Prefere ajuda de uma pessoa de verdade? A gente resolve com você:</p>
-        <a href="https://wa.me/558597293349?text={quote(f'Oi! Meu pagamento do pedido #{venda.id} na FitPro Store não foi aprovado, será que consegue me ajudar?')}" style="display:inline-block;padding:12px 24px;background:#25d366;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:50px;">Falar no WhatsApp</a>
+        <a href="https://wa.me/5585987046315?text={quote(f'Oi! Meu pagamento do pedido #{venda.id} na FitPro Store não foi aprovado, será que consegue me ajudar?')}" style="display:inline-block;padding:12px 24px;background:#25d366;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:50px;">Falar no WhatsApp</a>
     '''
 
     html = _template_base(f'Pagamento não aprovado - Pedido #{venda.id}', corpo)

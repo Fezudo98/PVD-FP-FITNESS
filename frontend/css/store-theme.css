@@ -137,6 +137,70 @@ img { max-width: 100%; display: block; }
    desse bloco e ajusta o espaço reservado no <main> - não depende de nenhum valor fixo aqui. */
 .store-top-fixed { position: fixed; top: 0; left: 0; right: 0; z-index: 1060; }
 
+.store-security-notice {
+  color: #fff;
+  background: linear-gradient(100deg, #511217, #8f1d24 52%, #511217);
+  border-bottom: 1px solid rgba(255, 255, 255, .18);
+  font-family: 'Manrope', sans-serif;
+  box-shadow: 0 3px 16px rgba(20, 4, 5, .28);
+}
+.store-security-notice-inner {
+  width: min(1180px, calc(100% - 32px));
+  min-height: 48px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  padding: 7px 0;
+}
+.store-security-notice-icon {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffd9da;
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 50%;
+}
+.store-security-notice p {
+  margin: 0;
+  max-width: 720px;
+  font-size: .78rem;
+  line-height: 1.35;
+}
+.store-security-notice p strong { color: #fff0b8; }
+.store-security-notice a {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  color: #102418;
+  background: #d9f7e4;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.store-security-notice a:hover,
+.store-security-notice a:focus-visible { color: #07160d; background: #fff; }
+@media (max-width: 767.98px) {
+  .store-security-notice-inner {
+    width: calc(100% - 20px);
+    min-height: 0;
+    gap: 8px;
+    padding: 8px 0;
+    flex-wrap: wrap;
+  }
+  .store-security-notice-icon { display: none; }
+  .store-security-notice p { flex: 1 1 100%; text-align: center; font-size: .7rem; }
+  .store-security-notice a { padding: 6px 11px; font-size: .7rem; }
+}
+
 .holiday-notice-bar { background: linear-gradient(135deg, #b91c1c, #7f1d1d); color: #fff; }
 .holiday-notice-bar .holiday-notice-text { font-size: 0.85rem; font-family: 'Manrope', sans-serif; }
 .holiday-notice-bar .holiday-notice-close {
