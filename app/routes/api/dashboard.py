@@ -3,6 +3,11 @@ from . import api_bp
 from ...extensions import db
 from ...models import Log, MovimentacaoCaixa, Venda, Pagamento, ItemVenda, Produto, Usuario, Configuracao, VisitaSite, current_brazil_time
 from ...utils import token_required
+from ...services.store_theme_service import (
+    THEME_KEYS,
+    safe_get_store_theme_state,
+    validate_store_theme_payload,
+)
 from datetime import datetime, timedelta
 from sqlalchemy import func
 
@@ -276,7 +281,19 @@ def manage_config(current_user):
     if current_user.role != 'admin': return jsonify({'message': 'Acesso negado.'}), 403
     
     if request.method == 'POST':
-        dados = request.get_json()
+        dados = request.get_json(silent=True)
+        if not isinstance(dados, dict):
+            return jsonify({'message': 'Configurações inválidas.'}), 400
+
+        if set(dados).intersection(THEME_KEYS):
+            validation_error = validate_store_theme_payload(dados)
+            if validation_error:
+                return jsonify({'message': validation_error}), 400
+            dados = dict(dados)
+            dados['STORE_HALLOWEEN_MODE'] = str(dados['STORE_HALLOWEEN_MODE']).strip().lower()
+            dados['STORE_HALLOWEEN_START'] = str(dados['STORE_HALLOWEEN_START']).strip()
+            dados['STORE_HALLOWEEN_END'] = str(dados['STORE_HALLOWEEN_END']).strip()
+
         for chave, valor in dados.items():
             config = Configuracao.query.filter_by(chave=chave).first()
             if config:
@@ -291,3 +308,11 @@ def manage_config(current_user):
     else: # GET
         configs = Configuracao.query.all()
         return jsonify({c.chave: c.valor for c in configs})
+
+
+@api_bp.route('/api/config/store-theme', methods=['GET'])
+@token_required
+def get_store_theme_config(current_user):
+    if current_user.role != 'admin':
+        return jsonify({'message': 'Acesso negado.'}), 403
+    return jsonify(safe_get_store_theme_state())

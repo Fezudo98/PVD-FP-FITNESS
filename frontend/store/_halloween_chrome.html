@@ -1,0 +1,11 @@
+{% if store_halloween.active %}
+<div class="halloween-season-bar">
+    <span class="halloween-bat halloween-bat-left" aria-hidden="true"></span>
+    <span class="halloween-season-copy">
+        <strong>Halloween FitPro</strong>
+        {% if store_halloween.end_label %}<span>até {{ store_halloween.end_label }}</span>{% endif %}
+    </span>
+    <span class="halloween-moon" aria-hidden="true"></span>
+    <span class="halloween-bat halloween-bat-right" aria-hidden="true"></span>
+</div>
+{% endif %}

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR"{% if store_halloween.active %} data-store-theme="halloween"{% endif %}>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,6 +23,9 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="/frontend/css/store-theme.css">
+{% if store_halloween.active %}
+<link rel="stylesheet" href="/frontend/css/store-halloween.css">
+{% endif %}
 <style>
 /* Estilos específicos da home - o sistema de design (cores, header, sidebar, botões, footer,
    cards de produto) mora em /frontend/css/store-theme.css, compartilhado com o resto da loja. */
@@ -172,6 +175,7 @@ section { position: relative; padding: 100px 0; }
 </a>
 
 <div class="store-top-fixed">
+  {% include 'store/_halloween_chrome.html' %}
   <header class="site-header" id="siteHeader">
     <div class="wrap header-row">
       <a href="#top" aria-label="FitPro Store">

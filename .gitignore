@@ -1,6 +1,8 @@
 # Ambiente Virtual do Python - nunca deve ir para o repositório
 venv/
+.venv/
 __pycache__/
+.pytest-tmp/
 
 # Pasta de backups - são específicos de cada instalação
 backups/
@@ -39,6 +41,7 @@ sorting_*.py
 add_*.py
 debug_*.py
 test_*.py
+!tests/test_*.py
 my_*.py
 diagnose_*.py
 system_check.py

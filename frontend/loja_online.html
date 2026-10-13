@@ -53,6 +53,38 @@
             transform: translateY(-5px);
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
         }
+
+        .season-theme-card {
+            background: linear-gradient(125deg, #211713, #18191b 68%);
+            border: 1px solid rgba(217, 120, 36, 0.32);
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+        }
+
+        .season-theme-icon {
+            width: 44px;
+            height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(217, 120, 36, 0.14);
+            color: #e9c777;
+            border: 1px solid rgba(233, 199, 119, 0.28);
+        }
+
+        .season-theme-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            border-radius: 999px;
+            padding: 0.42rem 0.75rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .season-theme-status.is-active { color: #f6dfab; background: rgba(217, 120, 36, 0.17); }
+        .season-theme-status.is-inactive { color: #b7b7b7; background: rgba(255, 255, 255, 0.07); }
     </style>
 </head>
 
@@ -137,6 +169,51 @@
                 </div>
             </div>
         </div>
+
+        <section class="season-theme-card p-4 mb-5" aria-labelledby="storeThemeTitle">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-4">
+                <div class="d-flex gap-3">
+                    <div class="season-theme-icon flex-shrink-0" aria-hidden="true"><i class="fa-solid fa-moon"></i></div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                            <h2 class="h5 text-white mb-0" id="storeThemeTitle">Tema sazonal da loja</h2>
+                            <span class="season-theme-status is-inactive" id="storeThemeStatus">
+                                <i class="fa-solid fa-circle" style="font-size:.45rem"></i>
+                                <span>Carregando estado...</span>
+                            </span>
+                        </div>
+                        <p class="text-white-50 small mb-0" id="storeThemeReason">O Halloween elegante afeta somente a loja pública.</p>
+                    </div>
+                </div>
+
+                <form class="row g-3 align-items-end flex-grow-1" id="storeThemeForm" style="max-width: 720px;">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label text-white-50 small" for="storeThemeMode">Controle</label>
+                        <select class="form-select bg-dark text-white border-secondary" id="storeThemeMode">
+                            <option value="auto">Automático pelas datas</option>
+                            <option value="on">Forçar ativado</option>
+                            <option value="off">Forçar desativado</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label text-white-50 small" for="storeThemeStart">Início</label>
+                        <input class="form-control bg-dark text-white border-secondary" type="date" id="storeThemeStart" value="2026-10-13">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label text-white-50 small" for="storeThemeEnd">Fim</label>
+                        <input class="form-control bg-dark text-white border-secondary" type="date" id="storeThemeEnd" value="2026-10-31">
+                    </div>
+                    <div class="col-12 col-md-2 d-grid">
+                        <button class="btn btn-warning fw-bold" type="submit" id="storeThemeSave">Salvar</button>
+                    </div>
+                    <div class="col-12">
+                        <div class="small text-danger d-none" id="storeThemeError" role="alert"></div>
+                        <div class="small text-white-50">O modo manual prevalece sobre as datas. Use “Forçar desativado” para voltar imediatamente ao visual normal.</div>
+                    </div>
+                </form>
+            </div>
+        </section>
+
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="text-white">Gerenciamento de Pedidos Online</h2>
             <div class="d-flex gap-2">
@@ -393,6 +470,7 @@
     <script src="/js/theme_manager.js?v=2"></script>
     <script src="/js/main.js?v=9"></script>
     <script src="/js/print_lote.js?v=2"></script>
+    <script src="/js/store_theme_admin.js?v=1"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
