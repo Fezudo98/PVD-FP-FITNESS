@@ -55,6 +55,7 @@ Thumbs.db
 # Editor directories
 .vscode/
 .idea/
+.superpowers/
 
 # Flask instance folder (database usually lives here or root)
 instance/
