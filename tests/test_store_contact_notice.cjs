@@ -26,6 +26,8 @@ const notice = fs.readFileSync(path.join(root, 'frontend/store/_security_notice.
 
 assert(base.includes("{% include 'store/_security_notice.html' %}"), 'aviso ausente do layout da loja');
 assert(home.includes("{% include 'store/_security_notice.html' %}"), 'aviso ausente da página inicial');
+assert(base.includes('/frontend/css/store-theme.css?v=27'), 'CSS da loja sem versão no layout base');
+assert(home.includes('/frontend/css/store-theme.css?v=27'), 'CSS da loja sem versão na página inicial');
 assert(notice.includes('nosso número anterior foi clonado'), 'o aviso não explica a clonagem');
 assert(notice.includes('Não responda, não envie dados e não faça pagamentos'), 'faltam orientações de segurança');
 
