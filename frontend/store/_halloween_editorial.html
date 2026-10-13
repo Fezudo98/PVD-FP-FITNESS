@@ -1,0 +1,37 @@
+{% if store_halloween.active %}
+<section class="halloween-editorial" aria-labelledby="halloween-title">
+  <div class="halloween-editorial-copy">
+    <p class="halloween-signature">FitPro apresenta · Halloween</p>
+    <h2 id="halloween-title">Depois da<br>meia-noite.</h2>
+    <p>Um toque de mistério.<br>A mesma força que move você.</p>
+    <a class="halloween-explore" href="/store/produtos">Explore a coleção <span aria-hidden="true">↗</span></a>
+  </div>
+  <svg class="halloween-art" viewBox="0 0 640 560" aria-hidden="true" focusable="false">
+    <defs>
+      <radialGradient id="hw-halo"><stop stop-color="#c78e79" stop-opacity=".28"/><stop offset="1" stop-color="#251629" stop-opacity="0"/></radialGradient>
+      <radialGradient id="hw-moon" cx=".35" cy=".28"><stop stop-color="#fff0ce"/><stop offset=".7" stop-color="#e8be8f"/><stop offset="1" stop-color="#bd8065"/></radialGradient>
+      <path id="hw-bat" d="M0 0 Q12 7 22 3 L25-5 29 2 33-5 36 3 Q48 7 60 0 Q54 10 55 19 Q45 13 40 23 Q34 17 29 25 Q25 17 20 23 Q15 13 5 19 Q6 10 0 0Z"/>
+    </defs>
+    <circle cx="350" cy="247" r="290" fill="url(#hw-halo)"/>
+    <circle cx="350" cy="237" r="155" fill="none" stroke="#c69c7d" stroke-opacity=".2"/>
+    <circle cx="350" cy="237" r="138" fill="url(#hw-moon)"/>
+    <g fill="#a86e60" opacity=".13"><ellipse cx="407" cy="177" rx="24" ry="33"/><circle cx="292" cy="281" r="28"/><circle cx="400" cy="291" r="15"/></g>
+    <g fill="#e4bd9d"><circle cx="137" cy="151" r="2"/><circle cx="531" cy="105" r="2"/><circle cx="496" cy="362" r="1.5"/><path d="M180 73v14m-7-7h14M548 288v14m-7-7h14" stroke="#e4bd9d"/></g>
+    <g fill="#211526"><use href="#hw-bat" transform="translate(144 217) rotate(-18) scale(.8)"/><use href="#hw-bat" transform="translate(449 111) rotate(16) scale(.65)"/><use href="#hw-bat" transform="translate(488 157) rotate(24) scale(.4)"/></g>
+    <g class="halloween-witch-flight" fill="#211526" stroke="#211526" stroke-linejoin="round">
+      <path d="M305 229q12-14 25-11l-5-9 18-32 6 27 22 14-34 7q9 11 1 19l14 20 22 5-3 7-30-5-17-18-10 22-32 7q17-20 17-37Z"/>
+      <path d="M334 224q17 0 17 9l8 4-10 3q0 9-10 7m-23 3 29 8 20-15 4 5-21 20-30-9"/>
+      <path d="m255 295 157-55" stroke-width="5" stroke-linecap="round"/>
+      <path d="m278 286-40-3-23 30 50-7Z"/>
+      <path d="m222 307 39-15m-31 17 32-12" fill="none" stroke="#9d726e"/>
+    </g>
+    <path d="M0 468Q137 375 281 463T640 419V560H0Z" fill="#2d1d33"/>
+    <path d="M0 518Q164 455 352 510T640 486V560H0Z" fill="#150f1b"/>
+    <g fill="none" stroke="#d1ac8c" stroke-opacity=".4">
+      <path d="M640 0H480m160 0v155M640 0 495 145M640 0 492 61M640 0 579 148"/>
+      <path d="M606 0q2 19 10 24 8 6 24 10M570 0q5 38 20 50 16 16 50 20M528 0q5 54 33 79 27 27 79 33M488 0q8 77 43 108 34 36 109 44M590 95v95"/>
+    </g>
+    <g fill="#d1ac8c" stroke="#d1ac8c" stroke-width="1.5"><ellipse cx="590" cy="199" rx="5" ry="7"/><path d="m586 195-7-6-3 5m10 4-10-1-2 6m20-8 7-6 3 5m-10 4 10-1 2 6m-20-2-7 5v5m15-10 7 5v5" fill="none"/></g>
+  </svg>
+</section>
+{% endif %}

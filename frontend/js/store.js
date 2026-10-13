@@ -841,6 +841,7 @@ function ajustarOffsetBarraFixa() {
     const searchBar = document.querySelector('.store-search-bar');
     if (!barra) return;
     const altura = barra.offsetHeight;
+    document.documentElement.style.setProperty('--store-header-height', `${altura}px`);
     if (main) main.style.marginTop = `${altura}px`;
     if (searchBar) searchBar.style.top = `${altura}px`;
 }
