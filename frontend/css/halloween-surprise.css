@@ -1,0 +1,18 @@
+.hs-launcher[hidden] { display: none; }
+.hs-launcher { position: fixed; right: 18px; bottom: calc(88px + env(safe-area-inset-bottom, 0px)); z-index: 91; display: grid; justify-items: center; gap: 0; padding: 4px; border: 0; background: transparent; color: #ffe0b2; cursor: pointer; font: 700 10px/1.5 'Manrope', sans-serif; }
+.hs-launcher svg { width: 66px; height: 66px; filter: drop-shadow(0 5px 12px #0009); transition: transform .2s; }
+.hs-launcher:hover svg { transform: rotate(-8deg) translateY(-3px); }
+.hs-launcher span { padding: 3px 8px; border: 1px solid #c5814e; border-radius: 12px; background: #281927; }
+.hs-launcher:focus-visible, .hs-close:focus-visible, .hs-action:focus-visible { outline: 3px solid #ffbc75; outline-offset: 4px; }
+.hs-dialog { box-sizing: border-box; width: 440px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); overflow: auto; padding: 32px 28px 24px; border: 1px solid #9c6451; border-radius: 24px; background: radial-gradient(ellipse at 50% 0, #633b3e, transparent 65%), #211625; color: #f8e7d6; text-align: center; box-shadow: 0 24px 90px #0009; font-family: 'Manrope', sans-serif; }
+.hs-dialog::backdrop { background: #120d19c9; backdrop-filter: blur(5px); }
+.hs-close { position: absolute; top: 10px; right: 10px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: #ffffff0d; color: #ffe0bd; font-size: 26px; cursor: pointer; }
+.hs-date { display: grid; width: 84px; margin: 4px auto 22px; color: #ffba79; font: 800 60px/1 'Big Shoulders Display', sans-serif; }
+.hs-date span { font: 500 12px/1.8 'Manrope', sans-serif; }
+.hs-eyebrow { color: #e8bca4; font-size: 12px; margin-bottom: 12px; }
+.hs-dialog h2 { margin: 0 0 18px; font: 800 clamp(32px, 9vw, 46px)/1.05 'Big Shoulders Display', sans-serif; color: #fff0dc; }
+.hs-dialog #hs-description { font-size: 14px; line-height: 1.7; color: #e1cbd7; margin: 0 0 24px; }
+.hs-action { display: flex; justify-content: center; gap: 14px; padding: 15px 12px; border-radius: 12px; color: #291624; background: #ffc184; font-size: 13px; font-weight: 800; text-decoration: none; }
+.hs-action:hover { background: #ffdab2; color: #291624; }
+.hs-note { margin: 16px 0 0; color: #c2aebe; font-size: 11px; line-height: 1.6; }
+@media (prefers-reduced-motion: reduce) { .hs-launcher svg { transition: none; } }

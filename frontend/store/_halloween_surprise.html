@@ -1,0 +1,22 @@
+<link rel="stylesheet" href="/frontend/css/halloween-surprise.css?v=1">
+<button id="halloweenSurpriseButton" class="hs-launcher" type="button" aria-label="Descobrir a surpresa de Halloween de 31 de outubro" aria-haspopup="dialog" aria-controls="halloweenSurpriseDialog" hidden>
+  <svg viewBox="0 0 80 80" aria-hidden="true" focusable="false">
+    <path d="M39 21q-3-12 7-15l4 5q-9 2-6 12" fill="#77934c"/>
+    <ellipse cx="26" cy="45" rx="19" ry="25" fill="#e37621"/>
+    <ellipse cx="54" cy="45" rx="19" ry="25" fill="#e37621"/>
+    <ellipse cx="40" cy="45" rx="21" ry="27" fill="#ff9e38"/>
+    <path d="m22 42 11-9 3 12Zm36 0-11-9-3 12ZM22 51l12 5 6-3 6 3 12-5-8 12H30Z" fill="#382030"/>
+    <path d="M28 26q-9 7-10 17" fill="none" stroke="#ffd28a" stroke-width="3" stroke-linecap="round"/>
+  </svg>
+  <span>31/10 · Surpresa</span>
+</button>
+<dialog id="halloweenSurpriseDialog" class="hs-dialog" aria-labelledby="hs-title" aria-describedby="hs-description">
+  <button type="button" class="hs-close" aria-label="Fechar surpresa de Halloween" autofocus>×</button>
+  <div class="hs-date">31 <span>outubro</span></div>
+  <p class="hs-eyebrow">Halloween FitPro</p>
+  <h2 id="hs-title">Gostosuras ou…<br>um look novo?</h2>
+  <p id="hs-description">Tem um mistério no ar! No dia 31 de outubro, volte à loja para descobrir a surpresa de Halloween.</p>
+  <a class="hs-action" href="/store/promocoes">Explorar promoções atuais <span aria-hidden="true">↗</span></a>
+  <p class="hs-note">A oferta de Halloween e suas condições serão divulgadas na loja. Nenhum desconto é aplicado por este botão.</p>
+</dialog>
+<script src="/frontend/js/halloween-surprise.js?v=1" defer></script>
