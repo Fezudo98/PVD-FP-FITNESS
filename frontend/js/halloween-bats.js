@@ -28,7 +28,7 @@
 
   function onScroll() {
     // A restored scroll position or a jump to another section must not trigger it.
-    if (window.scrollY > limit()) { cleanup(); return; }
+    if (window.scrollY > (played ? window.innerHeight : limit())) { cleanup(); return; }
     if (played || window.scrollY < 12 || motion.matches) return;
     played = true;
     flock = document.createElement('div');
@@ -39,14 +39,14 @@
       const bat = document.createElement('span');
       bat.className = 'hf-bat';
       bat.style.setProperty('--bat-top', `${30 + (i * 13) % 45}%`);
-      bat.style.setProperty('--bat-size', `${32 + (i * 11) % 32}px`);
+      bat.style.setProperty('--bat-size', `${(window.innerWidth < 768 ? 78 : 100) + (i * 13) % 40}px`);
       bat.style.setProperty('--bat-delay', `${i * .14}s`);
-      bat.style.setProperty('--bat-duration', `${2.5 + (i % 3) * .22}s`);
+      bat.style.setProperty('--bat-duration', `${3.8 + (i % 3) * .25}s`);
       bat.innerHTML = '<svg viewBox="0 0 100 50" focusable="false" aria-hidden="true" fill="currentColor"><path class="hf-bat-wing" d="M49 23Q31 7 2 6Q11 18 8 32Q22 23 29 39Q39 29 49 36Z"/><path class="hf-bat-wing hf-bat-wing-right" d="M51 23Q69 7 98 6Q89 18 92 32Q78 23 71 39Q61 29 51 36Z"/><path d="m43 22 1-12 6 7 6-7 1 12q5 14-7 23-12-9-7-23Z"/></svg>';
       flock.appendChild(bat);
     }
     document.body.appendChild(flock);
-    cleanupTimer = window.setTimeout(cleanup, 4400);
+    cleanupTimer = window.setTimeout(cleanup, 5600);
   }
 
   if (window.scrollY > limit()) return;
