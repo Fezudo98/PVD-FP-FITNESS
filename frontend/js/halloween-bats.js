@@ -42,7 +42,25 @@
       bat.style.setProperty('--bat-size', `${(window.innerWidth < 768 ? 78 : 100) + (i * 13) % 40}px`);
       bat.style.setProperty('--bat-delay', `${i * .14}s`);
       bat.style.setProperty('--bat-duration', `${3.8 + (i % 3) * .25}s`);
-      bat.innerHTML = '<svg viewBox="0 0 100 50" focusable="false" aria-hidden="true" fill="currentColor"><path class="hf-bat-wing" d="M49 23Q31 7 2 6Q11 18 8 32Q22 23 29 39Q39 29 49 36Z"/><path class="hf-bat-wing hf-bat-wing-right" d="M51 23Q69 7 98 6Q89 18 92 32Q78 23 71 39Q61 29 51 36Z"/><path d="m43 22 1-12 6 7 6-7 1 12q5 14-7 23-12-9-7-23Z"/></svg>';
+      bat.innerHTML = `<svg viewBox="0 0 100 56" focusable="false" aria-hidden="true" fill="currentColor">
+        <g class="hf-bat-wing">
+          <path class="hf-bat-outline" d="M43 25Q25 5 2 7Q12 19 7 36Q20 26 27 43Q34 32 44 38Z"/>
+          <path class="hf-bat-rib" d="M43 29 8 11M42 31Q25 18 27 40"/>
+        </g>
+        <g class="hf-bat-wing hf-bat-wing-right">
+          <path class="hf-bat-outline" d="M57 25Q75 5 98 7Q88 19 93 36Q80 26 73 43Q66 32 56 38Z"/>
+          <path class="hf-bat-rib" d="M57 29 92 11M58 31Q75 18 73 40"/>
+        </g>
+        <path class="hf-bat-outline hf-bat-body" d="M37 23 35 5 47 17Q50 15 53 17L65 5 63 23Q69 36 60 46L50 52 40 46Q31 36 37 23Z"/>
+        <path class="hf-bat-ear" d="m39 12 2 11 5-3Zm22 0-2 11-5-3Z"/>
+        <ellipse class="hf-bat-eye" cx="43" cy="28" rx="4.5" ry="4"/>
+        <ellipse class="hf-bat-eye" cx="57" cy="28" rx="4.5" ry="4"/>
+        <ellipse class="hf-bat-pupil" cx="44" cy="28" rx="1.5" ry="2.8"/>
+        <ellipse class="hf-bat-pupil" cx="56" cy="28" rx="1.5" ry="2.8"/>
+        <path class="hf-bat-nose" d="m47 33 3 3 3-3Z"/>
+        <path class="hf-bat-mouth" d="M40 37Q50 40 60 37Q58 48 50 47Q42 48 40 37Z"/>
+        <path class="hf-bat-fangs" d="m42 38 2 7 3-6Zm11 1 3 6 2-7Z"/>
+      </svg>`;
       flock.appendChild(bat);
     }
     document.body.appendChild(flock);

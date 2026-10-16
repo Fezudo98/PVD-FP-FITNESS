@@ -1,6 +1,13 @@
 .hf-bats { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 100; }
 .hf-bat { position: absolute; left: -150px; top: var(--bat-top); width: var(--bat-size); color: #a65328; filter: drop-shadow(0 0 4px #ffbd70) drop-shadow(0 5px 6px #000b); animation: hf-cross var(--bat-duration) var(--bat-delay) linear both; }
-.hf-bat svg path { stroke: #ffe0a3; stroke-width: 1.4; stroke-linejoin: round; paint-order: stroke fill; }
+.hf-bat-outline { stroke: #ffe0a3; stroke-width: 1.4; stroke-linejoin: round; paint-order: stroke fill; }
+.hf-bat-body { fill: #482439; }
+.hf-bat-rib { fill: none; stroke: #efb777; stroke-width: 1; opacity: .75; }
+.hf-bat-ear { fill: #dc8b88; }
+.hf-bat-eye { fill: #fff17d; }
+.hf-bat-pupil, .hf-bat-mouth { fill: #170f20; }
+.hf-bat-nose { fill: #f3ac91; }
+.hf-bat-fangs { fill: #fffbed; }
 .hf-bat svg { display: block; width: 100%; height: auto; overflow: visible; }
 .hf-bat-wing { transform-box: view-box; transform-origin: 50% 50%; animation: hf-flap .24s ease-in-out infinite alternate; }
 .hf-bat-wing-right { animation-delay: -.03s; }
