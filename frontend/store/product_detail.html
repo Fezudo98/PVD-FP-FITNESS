@@ -70,7 +70,7 @@
                     <h2 class="product-detail-price" id="productPrice">R$ --,--</h2>
                 </div>
                 <div class="product-card-countdown mb-2" id="productCountdown" style="display: none;" data-promocao-fim=""></div>
-                <div class="text-muted small mb-4" id="productParcelamento"></div>
+                <div class="text-muted small mb-4" id="productParcelamento">Consulte condições e disponibilidade pelo WhatsApp.</div>
 
                 <!-- Options -->
                 <div class="row g-3 mb-4">
@@ -105,11 +105,11 @@
                 <!-- Actions -->
                 <div class="d-grid gap-2">
                     <button id="btnAddToCart" class="btn product-detail-btn product-detail-btn-primary"
-                        onclick="addToCartCurrent()">
-                        <i class="fa-solid fa-cart-plus me-2"></i> Adicionar ao Carrinho
+                        onclick="contactWhatsAppCurrent()">
+                        <i class="fa-brands fa-whatsapp me-2"></i> Pedir pelo WhatsApp
                     </button>
-                    <button id="btnBuyNow" class="btn product-detail-btn product-detail-btn-accent" onclick="buyNow()">
-                        <i class="fa-solid fa-bolt me-2"></i> Comprar Agora
+                    <button id="btnBuyNow" class="btn product-detail-btn product-detail-btn-accent" onclick="contactWhatsAppCurrent()">
+                        <i class="fa-brands fa-whatsapp me-2"></i> Falar com a loja
                     </button>
                     <button id="btnFavorite" class="btn product-detail-btn product-detail-btn-outline" onclick="toggleFavorite()">
                         <i id="favoriteIcon" class="fa-regular fa-heart me-2"></i> <span id="favoriteText">Adicionar aos Favoritos</span>
@@ -664,6 +664,8 @@
     async function carregarParcelamento(preco) {
         const el = document.getElementById('productParcelamento');
         if (!el || !preco) return;
+        el.textContent = 'Consulte condições e disponibilidade pelo WhatsApp.';
+        return;
 
         if (cacheParcelamento[preco]) {
             el.innerHTML = cacheParcelamento[preco];
@@ -1224,6 +1226,8 @@
     }
 
     function addToCartCurrent() {
+        return contactWhatsAppCurrent();
+        /* Legacy cart flow retained for historical orders; public buttons use WhatsApp. */
         const variant = findSelectedVariant();
         if (allVariants.some(v => v.cor) && !selectedColor) {
             Swal.fire({ icon: 'info', title: 'Selecione uma cor', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
@@ -1281,7 +1285,27 @@
         });
     }
 
+    function contactWhatsAppCurrent() {
+        const variant = findSelectedVariant();
+        if (allVariants.some(v => v.cor) && !selectedColor) {
+            Swal.fire({ icon: 'info', title: 'Selecione uma cor', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+        if (allVariants.some(v => v.tamanho) && !selectedSize) {
+            Swal.fire({ icon: 'info', title: 'Selecione um tamanho', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+        const finalProduct = variant || currentProduct;
+        if (!finalProduct) return;
+        const qty = parseInt(document.getElementById('productQty').value || '1', 10);
+        const details = [finalProduct.nome, finalProduct.cor && `cor ${finalProduct.cor}`, finalProduct.tamanho && `tamanho ${finalProduct.tamanho}`, `quantidade ${qty}`].filter(Boolean).join(' — ');
+        const message = `Oi! Vim da vitrine da FitPro Store e quero consultar este produto: ${details}.`;
+        window.open(`https://wa.me/5585987046315?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
+    }
+
     function buyNow() {
+        return contactWhatsAppCurrent();
+        /* Legacy checkout flow retained for historical orders; public buttons use WhatsApp. */
         const variant = findSelectedVariant();
         if (allVariants.some(v => v.cor) && !selectedColor) {
             Swal.fire({ icon: 'info', title: 'Selecione uma cor', toast: true, position: 'top-end', background: '#1e1e1e', color: '#fff' });

@@ -1,0 +1,14 @@
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const root = path.resolve(__dirname, '..');
+const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const base = read('frontend/store/base.html');
+const home = read('frontend/store/index.html');
+const detail = read('frontend/store/product_detail.html');
+assert(base.includes('Falar no WhatsApp'), 'header da vitrine sem WhatsApp');
+assert(!base.includes('id="cartBtn"'), 'carrinho ainda aparece no header');
+assert(home.includes('Consulte as peças disponíveis'), 'home sem texto de vitrine');
+assert(detail.includes('contactWhatsAppCurrent'), 'detalhe sem ação de WhatsApp');
+assert(detail.includes('wa.me/5585987046315'), 'detalhe sem número oficial');
+console.log('store showcase mode: ok');

@@ -162,6 +162,10 @@ def test_admin_state_endpoint_and_server_rendering(theme_app):
     )
     for path in public_paths:
         page = client.get(path)
+        if path in ('/store/carrinho', '/store/checkout'):
+            assert page.status_code == 302
+            assert page.headers['Location'].startswith('https://wa.me/5585987046315')
+            continue
         assert page.status_code == 200
         assert b'data-store-theme="halloween"' in page.data
         assert b'/frontend/css/store-halloween.css' in page.data
