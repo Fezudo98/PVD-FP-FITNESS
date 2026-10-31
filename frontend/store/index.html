@@ -227,7 +227,7 @@ section { position: relative; padding: 100px 0; }
   </div>
 </div>
 
-{% include 'store/_halloween_editorial.html' %}
+{% if store_halloween.active %}{% include 'store/_halloween_editorial.html' %}{% endif %}
 <section class="hero" id="top">
   <div class="hero-glow" data-speed="0.15"></div>
   <div class="hero-photo-layer" data-speed="0.35">
@@ -818,8 +818,10 @@ section { position: relative; padding: 100px 0; }
 })();
 </script>
 {% include 'store/_roleta.html' %}
+{% if store_halloween.active %}
 {% include 'store/_halloween_surprise.html' %}
 <link rel="stylesheet" href="/frontend/css/halloween-bats.css?v=3">
 <script src="/frontend/js/halloween-bats.js?v=3" defer></script>
+{% endif %}
 </body>
 </html>
