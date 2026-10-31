@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, current_app, Response, redirect
+from flask import Blueprint, render_template, request, jsonify, current_app, Response
 from sqlalchemy import func, case, and_, or_
 import math
 import jwt
@@ -404,7 +404,7 @@ def store_product_detail_page(produto_id):
 
 @store_bp.route('/store/carrinho')
 def store_cart_page():
-    return redirect('https://wa.me/5585987046315?text=Oi!%20Vim%20da%20vitrine%20da%20FitPro%20Store%20e%20quero%20fazer%20um%20pedido.')
+    return render_template('store/cart.html')
 
 @store_bp.route('/api/store/roleta', methods=['GET', 'POST'])
 @client_token_required
@@ -468,7 +468,7 @@ def roleta_resumo(cliente):
 
 @store_bp.route('/store/checkout')
 def store_checkout_page():
-    return redirect('https://wa.me/5585987046315?text=Oi!%20Vim%20da%20vitrine%20da%20FitPro%20Store%20e%20quero%20fazer%20um%20pedido.')
+    return render_template('store/checkout.html')
 
 @store_bp.route('/store/politicas')
 def store_policies():
