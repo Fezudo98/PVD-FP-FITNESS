@@ -1,6 +1,36 @@
 {% if black_week.active %}
 <section class="black-week-editorial" aria-labelledby="black-week-title">
-  <div class="black-week-editorial-copy"><p class="black-week-kicker">FITPRO STORE · EDIÇÃO ESPECIAL</p><h2 id="black-week-title">BLACK<br><span>WEEK</span></h2><p>Seu próximo treino começa com a peça certa. Consulte a seleção especial direto com a loja.</p><a href="https://wa.me/5585987046315?text=Oi!%20Quero%20conhecer%20a%20Black%20Week%20FitPro." target="_blank" rel="noopener" class="black-week-cta">Falar com a loja <span>↗</span></a></div>
-  <div class="black-week-poster" aria-hidden="true"><span class="black-week-stamp">FIT</span><span class="black-week-slash"></span><span class="black-week-number">W</span><span class="black-week-caption">BLACK WEEK<br>FIT PRO</span></div>
+  <div class="black-week-editorial-copy">
+    <div class="black-week-kicker"><span class="black-week-live-dot"></span> FITPRO STORE · EDIÇÃO ESPECIAL</div>
+    <h2 id="black-week-title">BLACK<br><span>WEEK</span></h2>
+    <p class="black-week-lede">A seleção mais intensa da temporada, com condições reais e estoque que muda rápido.</p>
+    <div class="black-week-proof-row" aria-label="Destaques da campanha">
+      <span><strong>01</strong> preços cadastrados</span><span><strong>02</strong> estoque real</span><span><strong>03</strong> checkout seguro</span>
+    </div>
+    <a href="https://wa.me/5585987046315?text=Oi!%20Quero%20conhecer%20a%20Black%20Week%20FitPro." target="_blank" rel="noopener" class="black-week-cta">Ver condições da campanha <span>↗</span></a>
+  </div>
+  <div class="black-week-poster" aria-hidden="true"><span class="black-week-stamp">FIT</span><span class="black-week-slash"></span><span class="black-week-number">W</span><span class="black-week-caption">BLACK WEEK<br>FIT PRO</span><span class="black-week-side-note">NO EXCESSO.<br>SÓ PERFORMANCE.</span></div>
+  <div class="black-week-corner-label">BW / 26</div>
 </section>
+<div class="black-week-countdown" data-black-week-end="{{ black_week.end or '' }}" role="status" aria-live="polite">
+  <span class="black-week-countdown-label">BLACK WEEK TERMINA EM</span><strong class="black-week-countdown-value">consulte a data da campanha</strong><span class="black-week-countdown-note">Condições e produtos variam conforme o estoque.</span>
+</div>
+<script>
+  (function () {
+    const el = document.querySelector('.black-week-countdown');
+    if (!el || !el.dataset.blackWeekEnd) return;
+    const value = el.querySelector('.black-week-countdown-value');
+    const end = new Date(el.dataset.blackWeekEnd + 'T23:59:59-03:00');
+    function tick() {
+      const diff = end.getTime() - Date.now();
+      if (diff <= 0) { value.textContent = 'último dia'; return; }
+      const days = Math.floor(diff / 86400000);
+      const hours = Math.floor((diff % 86400000) / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      value.textContent = days + 'd ' + String(hours).padStart(2, '0') + 'h ' + String(minutes).padStart(2, '0') + 'min';
+    }
+    tick();
+    setInterval(tick, 60000);
+  }());
+</script>
 {% endif %}
