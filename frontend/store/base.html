@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR"{% if store_halloween.active %} data-store-theme="halloween"{% endif %}>
+<html lang="pt-BR"{% if store_halloween.active %} data-store-theme="halloween"{% elif black_week.active %} data-store-theme="black-week"{% endif %}>
 
 <head>
     <meta charset="UTF-8">
@@ -34,6 +34,7 @@
     {% if store_halloween.active %}
     <link rel="stylesheet" href="/frontend/css/store-halloween.css?v=2">
     {% endif %}
+    {% if black_week.active %}<link rel="stylesheet" href="/frontend/css/store-black-week.css?v=1">{% endif %}
 
     <!-- Meta Pixel (Facebook/Instagram Ads) - rastreia PageView em todo o site e eventos de
          funil (ViewContent, AddToCart, InitiateCheckout, Purchase, Search) disparados via JS.
@@ -78,6 +79,7 @@
     <div class="store-top-fixed">
         {% include 'store/_security_notice.html' %}
         {% include 'store/_halloween_chrome.html' %}
+        {% include 'store/_black_week_chrome.html' %}
         <div id="holidayNoticeBar" class="holiday-notice-bar d-none">
             <div class="container d-flex align-items-center justify-content-center gap-2 position-relative py-2">
                 <i class="fa-solid fa-triangle-exclamation"></i>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR"{% if store_halloween.active %} data-store-theme="halloween"{% endif %}>
+<html lang="pt-BR"{% if store_halloween.active %} data-store-theme="halloween"{% elif black_week.active %} data-store-theme="black-week"{% endif %}>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -26,6 +26,7 @@
 {% if store_halloween.active %}
 <link rel="stylesheet" href="/frontend/css/store-halloween.css?v=2">
 {% endif %}
+{% if black_week.active %}<link rel="stylesheet" href="/frontend/css/store-black-week.css?v=1">{% endif %}
 <style>
 /* Estilos específicos da home - o sistema de design (cores, header, sidebar, botões, footer,
    cards de produto) mora em /frontend/css/store-theme.css, compartilhado com o resto da loja. */
@@ -177,6 +178,7 @@ section { position: relative; padding: 100px 0; }
 <div class="store-top-fixed">
   {% include 'store/_security_notice.html' %}
   {% include 'store/_halloween_chrome.html' %}
+  {% include 'store/_black_week_chrome.html' %}
   <header class="site-header" id="siteHeader">
     <div class="wrap header-row">
       <a href="#top" aria-label="FitPro Store">
@@ -228,6 +230,7 @@ section { position: relative; padding: 100px 0; }
 </div>
 
 {% if store_halloween.active %}{% include 'store/_halloween_editorial.html' %}{% endif %}
+{% include 'store/_black_week_editorial.html' %}
 <section class="hero" id="top">
   <div class="hero-glow" data-speed="0.15"></div>
   <div class="hero-photo-layer" data-speed="0.35">

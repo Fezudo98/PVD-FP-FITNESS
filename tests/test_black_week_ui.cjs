@@ -1,0 +1,14 @@
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const root = path.resolve(__dirname, '..');
+const home = fs.readFileSync(path.join(root, 'frontend/store/index.html'), 'utf8');
+const base = fs.readFileSync(path.join(root, 'frontend/store/base.html'), 'utf8');
+const css = fs.readFileSync(path.join(root, 'frontend/css/store-black-week.css'), 'utf8');
+const chrome = fs.readFileSync(path.join(root, 'frontend/store/_black_week_chrome.html'), 'utf8');
+assert(home.includes('black_week.active'));
+assert(base.includes('black_week.active'));
+assert(home.includes('_black_week_editorial.html'));
+assert(chrome.includes('BLACK WEEK'));
+assert(css.includes('#f0c400'));
+console.log('black week UI: ok');

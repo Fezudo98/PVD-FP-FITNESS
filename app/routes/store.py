@@ -26,6 +26,7 @@ from sqlalchemy.exc import IntegrityError
 from ..models import RoletaPremio
 from ..services import roleta_service as roleta
 from ..services.store_theme_service import safe_get_store_theme_state
+from ..services.black_week_service import safe_get_black_week_state
 
 
 def _premio_cliente(cliente):
@@ -56,7 +57,7 @@ store_bp = Blueprint('store', __name__)
 
 @store_bp.context_processor
 def inject_store_theme():
-    return {'store_halloween': safe_get_store_theme_state()}
+    return {'store_halloween': safe_get_store_theme_state(), 'black_week': safe_get_black_week_state()}
 
 # Frete grátis de verdade (não é mais um desconto limitado a R$30 - zera o frete inteiro)
 # pra compras acima do valor mínimo definido pela lojista. Só se aplica a fretes pagos
