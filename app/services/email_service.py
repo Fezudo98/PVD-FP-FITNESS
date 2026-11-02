@@ -201,6 +201,41 @@ def enviar_aviso_pagamento_rejeitado_admin(venda, status_detail=None):
     return _enviar_email(destinatario, f'📉 Pagamento recusado - Pedido #{venda.id} - FitPro Store', html)
 
 
+def enviar_aviso_risco_mercadopago_admin(venda, evento, payment_id=None, recurso_id=None):
+    """Avisa a lojista quando o Mercado Pago informa fraude ou contestação.
+
+    A venda não é cancelada automaticamente aqui: o objetivo é impedir despacho automático
+    e dar à lojista contexto suficiente para decidir entre cancelar, reembolsar ou contestar.
+    """
+    destinatario = current_app.config.get('ADMIN_NOTIFICATION_EMAIL') or current_app.config.get('MAIL_USERNAME')
+    if not destinatario:
+        return False
+    cliente_nome = venda.cliente.nome if venda.cliente else 'Cliente não identificado'
+    rotulo = {
+        'stop_delivery_op_wh': 'alerta de fraude',
+        'delivery_cancellation': 'alerta de fraude',
+        'topic_chargebacks_wh': 'contestação/chargeback',
+        'chargebacks': 'contestação/chargeback',
+    }.get(evento, evento)
+    corpo = f'''
+        <p><strong>Mercado Pago sinalizou um risco no pedido.</strong></p>
+        <p><strong>Tipo:</strong> {rotulo}</p>
+        <p><strong>Pedido:</strong> #{venda.id}</p>
+        <p><strong>Cliente:</strong> {cliente_nome} {f'({venda.cliente.email})' if venda.cliente and venda.cliente.email else ''}</p>
+        <p><strong>Total:</strong> R$ {_fmt_brl(venda.total_venda)}</p>
+        <p><strong>Pagamento Mercado Pago:</strong> {payment_id or 'não identificado'}</p>
+        <p><strong>Recurso da notificação:</strong> {recurso_id or 'não informado'}</p>
+        <p style="color:#9b1c1c;font-weight:bold;">Não despache este pedido até revisar o caso no painel do Mercado Pago.</p>
+        <p>Verifique o status da contestação, o prazo de resposta e reúna comprovante, rastreio, entrega e histórico de atendimento.</p>
+    '''
+    html = _template_base(
+        f'Risco Mercado Pago - Pedido #{venda.id}', corpo,
+        rodape_link='https://www.lojafpfitness.com.br/loja_online.html',
+        rodape_texto='Abrir painel administrativo'
+    )
+    return _enviar_email(destinatario, f'⚠️ Risco Mercado Pago - Pedido #{venda.id}', html)
+
+
 def enviar_lembrete_carrinho_abandonado(venda):
     """Lembrete enviado pra quem iniciou o checkout mas não terminou de pagar, antes que o
     pedido seja cancelado automaticamente por abandono (30 min). Link vai para o login com

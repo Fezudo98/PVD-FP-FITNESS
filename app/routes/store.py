@@ -14,11 +14,11 @@ from datetime import datetime, timedelta, timezone
 import uuid
 import types
 from ..extensions import db, limiter
-from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, VisitaSite, EventoMarketing, TabelaMedidas, current_brazil_time
+from ..models import Produto, ItemVenda, Cliente, Cupom, Venda, Pagamento, AvaliacaoMidia, Avaliacao, Configuracao, Favorito, FeedbackCompra, PromocaoAutomatica, VisitaSite, EventoMarketing, Log, TabelaMedidas, current_brazil_time
 from ..utils import token_required, client_token_required, validate_cpf, registrar_log, salvar_recibo_html, gerar_recibo_html, traduzir_status_detail_mp, calcular_base_elegivel_cupom
 from ..services.frete_service import calcular_melhor_envio
 from ..services.etiqueta_service import gerar_etiqueta_me
-from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin, enviar_pagamento_rejeitado, enviar_aviso_pagamento_rejeitado_admin, enviar_lembrete_carrinho_abandonado, enviar_aviso_revisao_manual
+from ..services.email_service import enviar_confirmacao_pedido, enviar_pagamento_aprovado, enviar_aviso_novo_pedido_admin, enviar_pagamento_rejeitado, enviar_aviso_pagamento_rejeitado_admin, enviar_lembrete_carrinho_abandonado, enviar_aviso_revisao_manual, enviar_aviso_risco_mercadopago_admin
 from ..services.meta_capi_service import enviar_evento_purchase
 import mercadopago
 import threading
@@ -1630,6 +1630,44 @@ def _validar_assinatura_webhook_mp(webhook_secret):
 
     return hmac.compare_digest(assinatura_esperada, v1)
 
+
+def _processar_alerta_risco_mp(evento, payload):
+    """Processa chargebacks e alertas de fraude sem liberar despacho automático.
+
+    Os tópicos opcionais do Mercado Pago não seguem o mesmo formato do tópico payment:
+    ambos normalmente trazem ``data.payment_id`` e ``data.id``. O registro no Log serve
+    como trilha operacional e também evita e-mails duplicados quando o provedor reenvia
+    a mesma notificação.
+    """
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    payment_id = str(data.get('payment_id') or payload.get('payment_id') or '') or None
+    recurso_id = str(data.get('id') or payload.get('id') or '') or None
+    notification_id = str(payload.get('id') or '') or recurso_id or payment_id
+    detalhe = f'evento={evento}; notificacao={notification_id}; pagamento={payment_id or "n/a"}; recurso={recurso_id or "n/a"}'
+
+    if notification_id and Log.query.filter(
+        Log.acao == 'Alerta Mercado Pago', Log.detalhes.contains(f'notificacao={notification_id}')
+    ).first():
+        return {'status': 'duplicado'}
+
+    pagamento = Pagamento.query.filter_by(transacao_id=payment_id).first() if payment_id else None
+    venda = pagamento.venda if pagamento else None
+    if not venda:
+        registrar_log(None, 'Alerta Mercado Pago', detalhe + '; pedido=não localizado')
+        db.session.commit()
+        return {'status': 'registrado_sem_pedido'}
+
+    # Segura a etiqueta/expedição automática. A decisão de cancelar, reembolsar ou contestar
+    # continua manual para evitar cancelar uma venda legítima por um alerta transitório.
+    venda.revisao_manual_necessaria = True
+    registrar_log(None, 'Alerta Mercado Pago', detalhe + f'; pedido={venda.id}')
+    db.session.commit()
+    try:
+        enviar_aviso_risco_mercadopago_admin(venda, evento, payment_id, recurso_id)
+    except Exception as error:
+        print(f'Erro ao enviar alerta de risco Mercado Pago do pedido {venda.id}: {error}')
+    return {'status': 'registrado', 'pedido': venda.id}
+
 @store_bp.route('/api/store/webhook/mercadopago', methods=['POST'])
 @limiter.exempt  # webhook de pagamento - IPs do MP sao compartilhados entre varios lojistas,
                  # e um evento de aprovacao/estorno perdido por rate limit tem custo real
@@ -1640,6 +1678,9 @@ def mercadopago_webhook():
         return jsonify({'erro': 'Assinatura inválida'}), 401
 
     topic = request.args.get('topic') or request.args.get('type')
+    payload = request.get_json(silent=True) or {}
+    if topic in ('topic_chargebacks_wh', 'chargebacks', 'stop_delivery_op_wh', 'delivery_cancellation'):
+        return jsonify(_processar_alerta_risco_mp(topic, payload)), 200
     if topic == 'payment':
         payment_id = request.args.get('id') or request.args.get('data.id')
         if not payment_id:
